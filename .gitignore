@@ -2,3 +2,11 @@
 /.gradle/
 /build/
 /build/classes/java/main/
+
+# 개인 데이터 (메모/북마크/달력 JSON)
+/data/
+
+# 빌드 결과물
+/dist/*.jar
+/dist/*.zip
+/dist/libs/
