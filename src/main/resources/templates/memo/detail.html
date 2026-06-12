@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="fragments/layout :: head('메모 상세')"></head>
+<body>
+<nav>
+    <span class="brand">📋 메모&amp;북마크</span>
+    <a th:href="@{/memos}" style="color:#ecf0f1;text-decoration:none;padding:5px 10px;border-radius:4px;background:#3d5166;">메모</a>
+    <a th:href="@{/bookmarks}" style="color:#ecf0f1;text-decoration:none;padding:5px 10px;border-radius:4px;">북마크</a>
+</nav>
+<div class="container">
+    <div class="top-bar">
+        <h2 th:text="${memo.title}"></h2>
+        <div class="actions">
+            <a th:href="@{/memos/{id}/edit(id=${memo.id})}" class="btn btn-primary">수정</a>
+            <form th:action="@{/memos/{id}/delete(id=${memo.id})}" method="post" style="display:inline;" onsubmit="return confirm('삭제하시겠습니까?')">
+                <button type="submit" class="btn btn-danger">삭제</button>
+            </form>
+            <a th:href="@{/memos}" class="btn btn-secondary">목록</a>
+        </div>
+    </div>
+    <div class="detail-card">
+        <span class="tag" th:text="${memo.category != null ? memo.category : '카테고리 없음'}"></span>
+        <p class="meta">
+            작성: <span th:text="${#temporals.format(memo.createdAt, 'yyyy-MM-dd HH:mm')}"></span>
+            &nbsp;|&nbsp;
+            수정: <span th:text="${#temporals.format(memo.updatedAt, 'yyyy-MM-dd HH:mm')}"></span>
+        </p>
+        <div class="content" th:text="${memo.content}"></div>
+    </div>
+</div>
+</body>
+</html>

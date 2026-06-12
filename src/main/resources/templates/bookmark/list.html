@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="fragments/layout :: head('북마크')"></head>
+<style>
+    .bk-card {
+        background: #fff;
+        border-radius: 14px;
+        box-shadow: 0 2px 12px rgba(0,0,0,.07);
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        padding: 16px 20px;
+        margin-bottom: 10px;
+        transition: transform .18s, box-shadow .18s;
+        text-decoration: none;
+    }
+    .bk-card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,.12); }
+
+    .bk-favicon {
+        width: 42px; height: 42px;
+        border-radius: 10px;
+        background: linear-gradient(135deg, #6366F1, #8B5CF6);
+        display: flex; align-items: center; justify-content: center;
+        font-size: 18px; color: #fff; font-weight: 800;
+        flex-shrink: 0;
+    }
+    .bk-info { flex: 1; min-width: 0; }
+    .bk-name {
+        font-size: 15px; font-weight: 700; color: #1E293B;
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .bk-url {
+        font-size: 12px; color: #94A3B8; margin-top: 2px;
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .bk-desc {
+        font-size: 12px; color: #64748B; margin-top: 4px;
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .bk-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+    .bk-badge {
+        padding: 3px 10px;
+        background: #EEF2FF; color: #6366F1;
+        border-radius: 99px; font-size: 11px; font-weight: 700;
+    }
+    .btn-sm {
+        display: inline-flex; align-items: center;
+        height: 32px; padding: 0 12px;
+        border-radius: 8px; font-size: 12px; font-weight: 600;
+        text-decoration: none; cursor: pointer; border: none;
+        transition: all .15s;
+    }
+    .btn-open   { background: #F0FDF4; color: #16A34A; }
+    .btn-open:hover { background: #DCFCE7; }
+    .btn-edit   { background: #EEF2FF; color: #6366F1; }
+    .btn-edit:hover { background: #E0E7FF; }
+    .btn-del    { background: #FEF2F2; color: #EF4444; }
+    .btn-del:hover  { background: #FEE2E2; }
+</style>
+<body>
+<nav>
+    <div class="nav-brand">
+        <div class="nav-brand-icon">🗂</div>
+        내 메모
+    </div>
+    <a th:href="@{/memos}"     class="nav-link">메모</a>
+    <a th:href="@{/bookmarks}" class="nav-link active">북마크</a>
+    <a th:href="@{/calendar}"  class="nav-link">달력</a>
+</nav>
+
+<div class="container">
+    <div class="page-header">
+        <div>
+            <div class="page-title">북마크</div>
+            <div class="page-sub" th:text="${bookmarks.size()} + '개의 링크'"></div>
+        </div>
+        <a th:href="@{/bookmarks/new}" class="btn btn-primary btn-lg">＋ 새 북마크</a>
+    </div>
+
+    <div class="search-wrap">
+        <form method="get" th:action="@{/bookmarks}" style="display:flex;gap:8px;flex:1;">
+            <input class="search-input" type="text" name="search"
+                   placeholder="이름, URL, 설명으로 검색..." th:value="${search}"/>
+            <button type="submit" class="btn btn-primary">검색</button>
+            <a th:href="@{/bookmarks}" class="btn btn-ghost">전체</a>
+        </form>
+    </div>
+
+    <div th:if="${bookmarks.isEmpty()}" class="empty-state">
+        <div class="empty-icon">🔖</div>
+        <div class="empty-text">저장된 북마크가 없습니다.<br>즐겨찾는 사이트를 추가해보세요.</div>
+    </div>
+
+    <div th:if="${!bookmarks.isEmpty()}">
+        <div class="bk-card" th:each="bk : ${bookmarks}">
+            <div class="bk-favicon"
+                 th:text="${#strings.substring(bk.name,0,1).toUpperCase()}"></div>
+            <div class="bk-info">
+                <div class="bk-name" th:text="${bk.name}"></div>
+                <div class="bk-url" th:text="${bk.url}"></div>
+                <div class="bk-desc" th:if="${bk.description != null and !bk.description.isEmpty()}"
+                     th:text="${bk.description}"></div>
+            </div>
+            <div class="bk-right">
+                <span class="bk-badge"
+                      th:if="${bk.category != null and !bk.category.isEmpty()}"
+                      th:text="${bk.category}"></span>
+                <a th:href="@{/bookmarks/{id}/open(id=${bk.id})}" class="btn-sm btn-open">↗ 열기</a>
+                <a th:href="@{/bookmarks/{id}/edit(id=${bk.id})}" class="btn-sm btn-edit">✏ 수정</a>
+                <form th:action="@{/bookmarks/{id}/delete(id=${bk.id})}" method="post"
+                      style="display:inline;" onsubmit="return confirm('삭제하시겠습니까?')">
+                    <button type="submit" class="btn-sm btn-del">🗑</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>

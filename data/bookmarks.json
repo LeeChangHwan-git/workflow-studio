@@ -1,0 +1,37 @@
+[ {
+  "id" : "29609565-3488-4426-b133-25796a5cd78b",
+  "name" : "구글",
+  "url" : "https://google.com",
+  "category" : "테스트",
+  "description" : "",
+  "browser" : null,
+  "createdAt" : "2026-06-12T15:54:59.926152",
+  "updatedAt" : "2026-06-12T15:54:59.926178"
+}, {
+  "id" : "79785ac6-d8ee-4021-bd98-587b188b7d74",
+  "name" : "구글",
+  "url" : "https://google.com",
+  "category" : "테스트",
+  "description" : "",
+  "browser" : null,
+  "createdAt" : "2026-06-12T15:56:53.147435",
+  "updatedAt" : "2026-06-12T15:56:53.147448"
+}, {
+  "id" : "dc78b7c0-0453-4604-8f95-46844150b745",
+  "name" : "구글Chrome",
+  "url" : "https://google.com",
+  "category" : "테스트",
+  "description" : "",
+  "browser" : "chrome",
+  "createdAt" : "2026-06-12T16:02:43.897056",
+  "updatedAt" : "2026-06-12T16:02:43.897086"
+}, {
+  "id" : "d2cb0249-3e62-43ef-ba98-2d62e23f54cf",
+  "name" : "네이버Edge",
+  "url" : "https://naver.com",
+  "category" : "테스트",
+  "description" : "",
+  "browser" : "edge",
+  "createdAt" : "2026-06-12T16:02:43.922537",
+  "updatedAt" : "2026-06-12T16:02:43.922546"
+} ]

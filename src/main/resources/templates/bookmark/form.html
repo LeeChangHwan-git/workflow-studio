@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="fragments/layout :: head('북마크 작성')"></head>
+<body>
+<nav>
+    <div class="nav-brand">
+        <div class="nav-brand-icon">🗂</div>
+        내 메모
+    </div>
+    <a th:href="@{/memos}"     class="nav-link">메모</a>
+    <a th:href="@{/bookmarks}" class="nav-link active">북마크</a>
+    <a th:href="@{/calendar}"  class="nav-link">달력</a>
+</nav>
+<div class="container" style="max-width:640px;">
+    <div class="page-header">
+        <div>
+            <div class="page-title" th:text="${bookmark.id != null} ? '북마크 수정' : '새 북마크'"></div>
+            <div class="page-sub">즐겨찾는 링크를 저장하세요</div>
+        </div>
+    </div>
+    <div class="form-card">
+        <form th:action="${bookmark.id != null} ? @{/bookmarks/{id}(id=${bookmark.id})} : @{/bookmarks}" method="post">
+            <div class="form-group">
+                <label class="form-label">이름 *</label>
+                <input class="form-control" type="text" name="name"
+                       th:value="${bookmark.name}" required placeholder="예: 구글, 사내 포털, GitHub"/>
+            </div>
+            <div class="form-group">
+                <label class="form-label">URL *</label>
+                <input class="form-control mono" type="text" name="url"
+                       th:value="${bookmark.url}" required placeholder="https:// 또는 google.com"/>
+            </div>
+            <div class="form-group">
+                <label class="form-label">카테고리</label>
+                <input class="form-control" type="text" name="category"
+                       th:value="${bookmark.category}" placeholder="예: 업무, 개발, 쇼핑, 뉴스"/>
+            </div>
+            <div class="form-group">
+                <label class="form-label">메모</label>
+                <textarea class="form-control" name="description"
+                          placeholder="이 링크에 대한 메모를 자유롭게 입력하세요"
+                          th:text="${bookmark.description}"></textarea>
+            </div>
+            <div class="form-group">
+                <label class="form-label">열기 브라우저</label>
+                <select class="form-control" name="browser">
+                    <option value="default" th:selected="${bookmark.browser == null or bookmark.browser == 'default'}">기본 브라우저</option>
+                    <option value="edge"    th:selected="${bookmark.browser == 'edge'}">Microsoft Edge</option>
+                    <option value="chrome"  th:selected="${bookmark.browser == 'chrome'}">Google Chrome</option>
+                    <option value="ie"      th:selected="${bookmark.browser == 'ie'}">Internet Explorer</option>
+                </select>
+            </div>
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary btn-lg">저장</button>
+                <a th:href="@{/bookmarks}" class="btn btn-ghost btn-lg">취소</a>
+            </div>
+        </form>
+    </div>
+</div>
+</body>
+</html>

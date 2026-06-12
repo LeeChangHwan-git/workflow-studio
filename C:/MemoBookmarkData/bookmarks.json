@@ -1,0 +1,9 @@
+[ {
+  "id" : "04ee4872-2cc1-4a9d-82f1-037a1abd95d7",
+  "name" : "구글",
+  "url" : "https://www.google.com",
+  "category" : "검색엔진",
+  "description" : "메인 검색엔진",
+  "createdAt" : "2026-06-11T10:29:02.477337",
+  "updatedAt" : "2026-06-11T10:29:02.477349"
+} ]
