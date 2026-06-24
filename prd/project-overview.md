@@ -59,6 +59,12 @@ LocalDate / LocalDateTime은 `jackson-datatype-jsr310` 모듈로 처리.
 
 ## 현재 구현된 기능
 
+### 0. 파이프라인 자동화 ✅ (2026-06-24 구현 완료)
+
+→ 상세 문서: `prd/feature-2-pipeline.md`
+
+n8n 스타일 시각적 노드 에디터. 브라우저/화면 자동화 + AI 질의를 파이프라인으로 구성.
+
 ### 1. 메모 관리
 - 시스템명(제목) + 카테고리 + 내용(자유 텍스트)으로 구성
 - 카드 그리드 UI — 시스템별로 색상 띠/아이콘 자동 배정 (8색 순환)
@@ -104,6 +110,18 @@ JDK 17이 기본인 경우 `실행.bat`에서 `javaw` 대신 JDK 21 전체 경�
 
 ---
 
+## 파이프라인 데이터 경로 (신규)
+
+```
+{app.storage.path}/
+├── settings.json          # Claude API 키, 이미지 매칭 설정
+└── pipelines/
+    ├── {uuid}.json        # 파이프라인 정의 (노드 + 연결)
+    └── images/            # 노드에 사용되는 이미지 파일
+```
+
+---
+
 ## 소스 경로
 
 ```
@@ -112,10 +130,10 @@ JDK 17이 기본인 경우 `실행.bat`에서 `javaw` 대신 JDK 21 전체 경�
 │   ├── Launcher.java           # 진입점 (Application.launch 위임)
 │   ├── DesktopApp.java         # JavaFX Application (Spring Boot 기동 + WebView)
 │   ├── MemoBookmarkApplication.java
-│   ├── config/                 # StorageConfig (저장 경로 Bean)
-│   ├── controller/             # MemoController, BookmarkController, CalendarController
-│   ├── model/                  # Memo, Bookmark, CalendarEvent
-│   └── service/                # MemoService, BookmarkService, CalendarEventService
+│   ├── config/                 # StorageConfig (저장 경로 Bean + 디렉토리 초기화)
+│   ├── controller/             # Memo/Bookmark/Calendar/Pipeline/SettingsController
+│   ├── model/                  # Memo, Bookmark, CalendarEvent, Pipeline*, AppSettings
+│   └── service/                # Memo/Bookmark/Calendar/Pipeline/NodeType/Runner/Settings Service
 ├── src/main/resources/
 │   ├── templates/
 │   │   ├── fragments/layout.html   # 공통 CSS/nav fragment

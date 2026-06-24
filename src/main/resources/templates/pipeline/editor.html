@@ -1,0 +1,963 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="fragments/layout :: head('파이프라인 편집')"></head>
+<style>
+/* ── 에디터 전체 레이아웃 ── */
+body { overflow: hidden; }
+.editor-wrap {
+    display: flex;
+    height: calc(100vh - 56px);
+}
+
+/* ── 왼쪽 팔레트 ── */
+.palette {
+    width: 200px;
+    min-width: 200px;
+    background: #fff;
+    border-right: 1.5px solid #E2E8F0;
+    display: flex;
+    flex-direction: column;
+    padding: 14px 10px;
+    gap: 6px;
+    overflow-y: auto;
+}
+.palette-title {
+    font-size: 11px; font-weight: 700; color: #94A3B8;
+    text-transform: uppercase; letter-spacing: .6px;
+    padding: 0 4px;
+    margin-bottom: 4px;
+}
+.palette-item {
+    display: flex; align-items: center; gap: 9px;
+    padding: 9px 10px;
+    border-radius: 9px;
+    cursor: grab;
+    font-size: 13px;
+    color: #334155;
+    font-weight: 500;
+    border: 1.5px solid transparent;
+    transition: all .15s;
+    user-select: none;
+}
+.palette-item:hover {
+    background: #F8FAFF;
+    border-color: #E2E8F0;
+}
+.palette-item:active { cursor: grabbing; }
+.palette-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+/* ── 중앙 캔버스 ── */
+.canvas-wrap {
+    flex: 1;
+    position: relative;
+    background:
+        radial-gradient(circle, #CBD5E1 1px, transparent 1px),
+        #F0F4FF;
+    background-size: 24px 24px;
+    overflow: hidden;
+}
+#canvasArea {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+}
+#svgLayer {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    overflow: visible;
+}
+#nodesLayer {
+    position: absolute;
+    inset: 0;
+}
+
+/* ── 노드 ── */
+.pnode {
+    position: absolute;
+    min-width: 160px;
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 2px 12px rgba(0,0,0,.10);
+    border: 2px solid #E2E8F0;
+    cursor: pointer;
+    user-select: none;
+    transition: box-shadow .15s, border-color .15s;
+    z-index: 10;
+}
+.pnode:hover { box-shadow: 0 6px 24px rgba(0,0,0,.15); }
+.pnode.selected { border-color: #6366F1; box-shadow: 0 0 0 3px rgba(99,102,241,.2); }
+.pnode.connecting-target:hover { border-color: #22C55E; box-shadow: 0 0 0 3px rgba(34,197,94,.2); }
+
+.pnode-header {
+    display: flex; align-items: center; gap: 8px;
+    padding: 10px 12px 8px;
+    border-bottom: 1px solid #F1F5F9;
+}
+.pnode-icon { font-size: 18px; }
+.pnode-label { font-size: 13px; font-weight: 700; color: #1E293B; flex: 1; }
+.pnode-del {
+    background: none; border: none; cursor: pointer;
+    font-size: 14px; color: #CBD5E1; padding: 0 2px;
+    line-height: 1;
+    transition: color .15s;
+}
+.pnode-del:hover { color: #EF4444; }
+
+.pnode-ports {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 8px;
+}
+.pnode-port {
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: #E2E8F0;
+    border: 2px solid #fff;
+    box-shadow: 0 0 0 1.5px #CBD5E1;
+    cursor: crosshair;
+    transition: all .15s;
+    flex-shrink: 0;
+}
+.pnode-port:hover,
+.pnode-port.active { background: #6366F1; box-shadow: 0 0 0 1.5px #6366F1; }
+.pnode-port.port-out { margin-left: auto; }
+
+/* ── 연결선 ── */
+.conn-path {
+    fill: none;
+    stroke: #94A3B8;
+    stroke-width: 2;
+    stroke-dasharray: none;
+    marker-end: url(#arrow);
+    transition: stroke .15s;
+    pointer-events: stroke;
+    cursor: pointer;
+}
+.conn-path:hover { stroke: #EF4444; }
+.conn-path-preview {
+    fill: none;
+    stroke: #6366F1;
+    stroke-width: 2;
+    stroke-dasharray: 6 4;
+    pointer-events: none;
+}
+
+/* ── 오른쪽 패널 ── */
+.config-panel {
+    width: 280px;
+    min-width: 280px;
+    background: #fff;
+    border-left: 1.5px solid #E2E8F0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+.config-header {
+    padding: 16px 18px 12px;
+    border-bottom: 1px solid #F1F5F9;
+    font-size: 14px; font-weight: 700; color: #1E293B;
+}
+.config-body { flex: 1; overflow-y: auto; padding: 14px 16px; }
+.config-empty {
+    display: flex; flex-direction: column; align-items: center;
+    justify-content: center; height: 100%;
+    color: #CBD5E1; font-size: 14px; gap: 10px;
+}
+.config-empty-icon { font-size: 36px; opacity: .5; }
+.cfg-group { margin-bottom: 14px; }
+.cfg-label {
+    display: block;
+    font-size: 12px; font-weight: 600; color: #64748B;
+    margin-bottom: 5px;
+}
+.cfg-input, .cfg-select, .cfg-textarea {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1.5px solid #E2E8F0;
+    border-radius: 8px;
+    font-size: 13px;
+    font-family: inherit;
+    color: #1E293B;
+    background: #FAFBFF;
+    outline: none;
+    transition: border-color .15s;
+}
+.cfg-input:focus, .cfg-select:focus, .cfg-textarea:focus {
+    border-color: #6366F1;
+    box-shadow: 0 0 0 3px rgba(99,102,241,.1);
+}
+.cfg-textarea { min-height: 80px; resize: vertical; line-height: 1.6; }
+.cfg-img-wrap {
+    display: flex; flex-direction: column; gap: 6px;
+}
+.cfg-img-preview {
+    width: 100%; max-height: 100px;
+    object-fit: contain;
+    border: 1.5px solid #E2E8F0;
+    border-radius: 8px;
+    background: #F8FAFC;
+    display: none;
+}
+.cfg-img-preview.visible { display: block; }
+.cfg-upload-btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 7px 12px;
+    background: #F8FAFF; border: 1.5px solid #E2E8F0;
+    border-radius: 8px;
+    font-size: 12px; font-weight: 600; color: #6366F1;
+    cursor: pointer; transition: all .15s;
+}
+.cfg-upload-btn:hover { border-color: #6366F1; background: #EEF2FF; }
+.cfg-upload-input { display: none; }
+
+/* ── 하단 툴바 ── */
+.editor-toolbar {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 8px;
+    background: #fff;
+    border-radius: 14px;
+    padding: 10px 14px;
+    box-shadow: 0 8px 32px rgba(0,0,0,.16);
+    z-index: 100;
+}
+.pipeline-name-input {
+    height: 36px;
+    padding: 0 14px;
+    border: 1.5px solid #E2E8F0;
+    border-radius: 8px;
+    font-size: 14px; font-weight: 600;
+    min-width: 220px;
+    outline: none;
+    transition: border-color .15s;
+}
+.pipeline-name-input:focus { border-color: #6366F1; }
+.pipeline-desc-input {
+    height: 36px;
+    padding: 0 12px;
+    border: 1.5px solid #E2E8F0;
+    border-radius: 8px;
+    font-size: 13px;
+    min-width: 160px;
+    outline: none;
+    color: #64748B;
+    transition: border-color .15s;
+}
+.pipeline-desc-input:focus { border-color: #6366F1; }
+
+/* ── 실행 모달 ── */
+.modal-backdrop {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,.45); z-index: 999;
+    align-items: center; justify-content: center;
+}
+.modal-backdrop.show { display: flex; }
+.modal-box {
+    background: #fff; border-radius: 18px;
+    width: 560px; max-height: 75vh;
+    display: flex; flex-direction: column;
+    box-shadow: 0 24px 64px rgba(0,0,0,.22);
+    overflow: hidden;
+}
+.modal-header {
+    padding: 18px 22px 14px;
+    border-bottom: 1px solid #F1F5F9;
+    display: flex; align-items: center; gap: 10px;
+}
+.modal-title { font-size: 15px; font-weight: 700; flex: 1; }
+.modal-close {
+    background: none; border: none; cursor: pointer;
+    font-size: 18px; color: #94A3B8; padding: 4px;
+    border-radius: 6px;
+}
+.modal-close:hover { color: #EF4444; }
+.modal-body { flex: 1; overflow-y: auto; padding: 14px 22px; }
+.modal-footer {
+    padding: 12px 22px;
+    border-top: 1px solid #F1F5F9;
+    display: flex; gap: 8px; justify-content: flex-end;
+}
+.log-item {
+    display: flex; gap: 10px;
+    padding: 9px 12px;
+    border-radius: 8px;
+    margin-bottom: 6px;
+    font-size: 13px;
+}
+.log-item.running { background: #F8FAFF; border-left: 3px solid #6366F1; }
+.log-item.success { background: #F0FDF4; border-left: 3px solid #22C55E; }
+.log-item.error   { background: #FEF2F2; border-left: 3px solid #EF4444; }
+.log-output {
+    font-family: monospace; font-size: 11px;
+    color: #64748B; margin-top: 4px;
+    white-space: pre-wrap; word-break: break-all;
+    max-height: 80px; overflow-y: auto;
+}
+.overall-status {
+    padding: 9px 12px; border-radius: 8px;
+    font-size: 13px; font-weight: 600; margin-bottom: 10px;
+}
+.overall-status.running { background: #EEF2FF; color: #6366F1; }
+.overall-status.done    { background: #F0FDF4; color: #16A34A; }
+.overall-status.error   { background: #FEF2F2; color: #DC2626; }
+</style>
+<body>
+<nav>
+    <div class="nav-brand"><div class="nav-brand-icon">🗂</div>내 메모</div>
+    <a th:href="@{/memos}"     class="nav-link">메모</a>
+    <a th:href="@{/bookmarks}" class="nav-link">북마크</a>
+    <a th:href="@{/calendar}"  class="nav-link">달력</a>
+    <a th:href="@{/pipelines}" class="nav-link active">파이프라인</a>
+    <a th:href="@{/settings}"  class="nav-link">설정</a>
+</nav>
+
+<div class="editor-wrap">
+    <!-- 왼쪽 팔레트 -->
+    <div class="palette">
+        <div class="palette-title">노드 추가</div>
+        <div class="palette-item"
+             th:each="nt : ${nodeTypes}"
+             th:data-type="${nt.id()}"
+             th:data-icon="${nt.icon()}"
+             th:data-label="${nt.label()}"
+             th:data-color="${nt.color()}"
+             draggable="true"
+             ondragstart="onPaletteDragStart(event)"
+             onclick="addNodeFromPalette(this)">
+            <div class="palette-dot" th:style="'background:' + ${nt.color()}"></div>
+            <span th:text="${nt.icon()}"></span>
+            <span th:text="${nt.label()}"></span>
+        </div>
+    </div>
+
+    <!-- 중앙 캔버스 -->
+    <div class="canvas-wrap" id="canvasWrap"
+         ondragover="event.preventDefault()"
+         ondrop="onCanvasDrop(event)">
+        <div id="canvasArea">
+            <svg id="svgLayer">
+                <defs>
+                    <marker id="arrow" markerWidth="8" markerHeight="8"
+                            refX="6" refY="3" orient="auto">
+                        <path d="M0,0 L0,6 L8,3 z" fill="#94A3B8"/>
+                    </marker>
+                    <marker id="arrowGreen" markerWidth="8" markerHeight="8"
+                            refX="6" refY="3" orient="auto">
+                        <path d="M0,0 L0,6 L8,3 z" fill="#22C55E"/>
+                    </marker>
+                </defs>
+            </svg>
+            <div id="nodesLayer"></div>
+        </div>
+    </div>
+
+    <!-- 오른쪽 설정 패널 -->
+    <div class="config-panel">
+        <div class="config-header" id="configHeader">노드 설정</div>
+        <div class="config-body" id="configBody">
+            <div class="config-empty">
+                <div class="config-empty-icon">🖱️</div>
+                <div>노드를 클릭하면<br>설정이 표시됩니다</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 하단 툴바 -->
+<div class="editor-toolbar">
+    <a th:href="@{/pipelines}" class="btn btn-ghost">← 목록</a>
+    <input class="pipeline-name-input" id="pipelineName"
+           type="text" placeholder="파이프라인 이름..."
+           th:value="${pipeline.name != null ? pipeline.name : ''}">
+    <input class="pipeline-desc-input" id="pipelineDesc"
+           type="text" placeholder="설명 (선택)"
+           th:value="${pipeline.description != null ? pipeline.description : ''}">
+    <button class="btn btn-primary" onclick="savePipeline()">💾 저장</button>
+    <button class="btn btn-success" onclick="runPipeline()">▶ 실행</button>
+    <button class="btn btn-ghost" onclick="clearCanvas()">🗑 전체삭제</button>
+</div>
+
+<!-- 실행 모달 -->
+<div class="modal-backdrop" id="runModal">
+    <div class="modal-box">
+        <div class="modal-header">
+            <span>⚡</span>
+            <div class="modal-title">파이프라인 실행</div>
+            <button class="modal-close" onclick="closeRunModal()">✕</button>
+        </div>
+        <div class="modal-body">
+            <div class="overall-status running" id="overallStatus">⏳ 실행 중...</div>
+            <div id="logContainer"></div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-ghost" id="cancelBtn" onclick="cancelRun()">중단</button>
+            <button class="btn btn-primary" id="closeBtn" style="display:none" onclick="closeRunModal()">닫기</button>
+        </div>
+    </div>
+</div>
+
+<script th:inline="javascript">
+// ── 서버 데이터 ─────────────────────────────────────────────────
+const PIPELINE_ID    = /*[[${pipeline.id}]]*/ null;
+const IS_NEW         = /*[[${isNew}]]*/ true;
+const INIT_NODES     = /*[[${pipeline.nodes}]]*/ [];
+const INIT_CONNS     = /*[[${pipeline.connections}]]*/ [];
+const NODE_TYPES_RAW = /*[[${nodeTypes}]]*/ [];
+
+// nodeTypeId → nodeTypeInfo map
+const NT = {};
+NODE_TYPES_RAW.forEach(t => NT[t.id] = t);
+
+// ── 에디터 상태 ──────────────────────────────────────────────────
+let nodeCounter   = 0;
+const nodes       = {};   // nodeId → {id, type, el, portIn, portOut, config}
+const connections = [];   // [{id, from, to, el}]
+let selectedId    = null;
+let connectingFrom = null; // 연결 시작 노드 ID
+let previewPath   = null;
+let pipelineId    = PIPELINE_ID;
+
+const nodesLayer = document.getElementById('nodesLayer');
+const svgLayer   = document.getElementById('svgLayer');
+const canvasWrap = document.getElementById('canvasWrap');
+
+// ── 노드 추가 ────────────────────────────────────────────────────
+function addNode(type, x, y, config) {
+    const id  = 'n' + (++nodeCounter);
+    const nt  = NT[type];
+    if (!nt) return null;
+
+    const el = document.createElement('div');
+    el.className = 'pnode';
+    el.dataset.id = id;
+    el.style.left = x + 'px';
+    el.style.top  = y + 'px';
+    el.innerHTML = `
+        <div class="pnode-header">
+            <span class="pnode-icon">${nt.icon}</span>
+            <span class="pnode-label">${nt.label}</span>
+            <button class="pnode-del" onclick="removeNode('${id}',event)">✕</button>
+        </div>
+        <div class="pnode-ports">
+            <div class="pnode-port port-in"  data-node="${id}" data-port="in"></div>
+            <div class="pnode-port port-out" data-node="${id}" data-port="out"></div>
+        </div>`;
+    el.style.borderColor = nt.color;
+
+    nodesLayer.appendChild(el);
+
+    const portIn  = el.querySelector('.port-in');
+    const portOut = el.querySelector('.port-out');
+
+    // 노드 드래그
+    makeDraggable(el, id);
+
+    // 노드 클릭 → 선택
+    el.addEventListener('mousedown', e => {
+        if (e.target.classList.contains('pnode-port') || e.target.classList.contains('pnode-del')) return;
+        e.stopPropagation();
+        selectNode(id);
+    });
+
+    // 출력 포트 클릭 → 연결 시작
+    portOut.addEventListener('mousedown', e => {
+        e.stopPropagation();
+        startConnect(id);
+    });
+
+    // 입력 포트 클릭 → 연결 완료
+    portIn.addEventListener('mousedown', e => {
+        e.stopPropagation();
+        finishConnect(id);
+    });
+
+    nodes[id] = { id, type, el, portIn, portOut, config: config || buildDefaultConfig(type) };
+    return id;
+}
+
+function buildDefaultConfig(type) {
+    const nt = NT[type];
+    if (!nt || !nt.params) return {};
+    const cfg = {};
+    nt.params.forEach(p => { cfg[p.name] = p.defaultValue || ''; });
+    return cfg;
+}
+
+function removeNode(id, event) {
+    event.stopPropagation();
+    if (!nodes[id]) return;
+    nodes[id].el.remove();
+    // 연결선 삭제
+    for (let i = connections.length - 1; i >= 0; i--) {
+        const c = connections[i];
+        if (c.from === id || c.to === id) {
+            c.el.remove();
+            connections.splice(i, 1);
+        }
+    }
+    delete nodes[id];
+    if (selectedId === id) { selectedId = null; renderConfigPanel(null); }
+    redrawConnections();
+}
+
+// ── 노드 선택 ────────────────────────────────────────────────────
+function selectNode(id) {
+    if (selectedId && nodes[selectedId]) {
+        nodes[selectedId].el.classList.remove('selected');
+    }
+    selectedId = id;
+    if (id && nodes[id]) {
+        nodes[id].el.classList.add('selected');
+        renderConfigPanel(id);
+    }
+}
+
+// 캔버스 빈 곳 클릭 → 선택 해제
+canvasWrap.addEventListener('mousedown', e => {
+    if (e.target === canvasWrap || e.target.id === 'canvasArea'
+        || e.target.id === 'nodesLayer' || e.target.id === 'svgLayer') {
+        selectNode(null);
+    }
+});
+
+// ── 연결 ─────────────────────────────────────────────────────────
+function startConnect(fromId) {
+    connectingFrom = fromId;
+    nodes[fromId].portOut.classList.add('active');
+
+    // 미리보기 선
+    previewPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    previewPath.className.baseVal = 'conn-path-preview';
+    svgLayer.appendChild(previewPath);
+
+    canvasWrap.style.cursor = 'crosshair';
+}
+
+canvasWrap.addEventListener('mousemove', e => {
+    if (!connectingFrom || !previewPath) return;
+    const fromPort = nodes[connectingFrom].portOut;
+    const fr = fromPort.getBoundingClientRect();
+    const wr = canvasWrap.getBoundingClientRect();
+    const x1 = fr.left - wr.left + fr.width / 2;
+    const y1 = fr.top  - wr.top  + fr.height / 2;
+    const x2 = e.clientX - wr.left;
+    const y2 = e.clientY - wr.top;
+    previewPath.setAttribute('d', bezier(x1, y1, x2, y2));
+});
+
+canvasWrap.addEventListener('mouseup', () => {
+    if (connectingFrom) {
+        cancelConnect();
+    }
+});
+
+function finishConnect(toId) {
+    if (!connectingFrom) return;
+    const fromId = connectingFrom;
+    cancelConnect();
+    if (fromId === toId) return;
+    // 중복 연결 방지
+    if (connections.some(c => c.from === fromId && c.to === toId)) return;
+    addConnection(fromId, toId);
+}
+
+function cancelConnect() {
+    if (connectingFrom && nodes[connectingFrom]) {
+        nodes[connectingFrom].portOut.classList.remove('active');
+    }
+    if (previewPath) { previewPath.remove(); previewPath = null; }
+    connectingFrom = null;
+    canvasWrap.style.cursor = '';
+    document.querySelectorAll('.connecting-target').forEach(el => el.classList.remove('connecting-target'));
+}
+
+canvasWrap.addEventListener('mouseover', e => {
+    if (!connectingFrom) return;
+    const port = e.target.closest('.port-in');
+    if (port) {
+        const nodeEl = port.closest('.pnode');
+        if (nodeEl) nodeEl.classList.add('connecting-target');
+    }
+});
+canvasWrap.addEventListener('mouseout', e => {
+    if (!connectingFrom) return;
+    const nodeEl = e.target.closest('.pnode');
+    if (nodeEl) nodeEl.classList.remove('connecting-target');
+});
+
+function addConnection(fromId, toId) {
+    const connId = 'c_' + fromId + '_' + toId;
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path.className.baseVal = 'conn-path';
+    path.setAttribute('data-conn', connId);
+    path.addEventListener('click', () => {
+        if (confirm('이 연결을 삭제하시겠습니까?')) removeConnection(connId);
+    });
+    svgLayer.appendChild(path);
+    connections.push({ id: connId, from: fromId, to: toId, el: path });
+    redrawConnections();
+}
+
+function removeConnection(connId) {
+    const idx = connections.findIndex(c => c.id === connId);
+    if (idx === -1) return;
+    connections[idx].el.remove();
+    connections.splice(idx, 1);
+}
+
+function redrawConnections() {
+    const wr = canvasWrap.getBoundingClientRect();
+    connections.forEach(c => {
+        const fromNode = nodes[c.from];
+        const toNode   = nodes[c.to];
+        if (!fromNode || !toNode) return;
+        const fr = fromNode.portOut.getBoundingClientRect();
+        const tr = toNode.portIn.getBoundingClientRect();
+        const x1 = fr.left - wr.left + fr.width  / 2;
+        const y1 = fr.top  - wr.top  + fr.height / 2;
+        const x2 = tr.left - wr.left + tr.width  / 2;
+        const y2 = tr.top  - wr.top  + tr.height / 2;
+        c.el.setAttribute('d', bezier(x1, y1, x2, y2));
+    });
+}
+
+function bezier(x1, y1, x2, y2) {
+    const cx = (x1 + x2) / 2;
+    return `M ${x1} ${y1} C ${cx} ${y1}, ${cx} ${y2}, ${x2} ${y2}`;
+}
+
+// 노드 이동할 때 연결선 갱신
+const resizeObs = new ResizeObserver(redrawConnections);
+resizeObs.observe(nodesLayer);
+
+// ── 노드 드래그 (이동) ───────────────────────────────────────────
+function makeDraggable(el, id) {
+    let startX, startY, startLeft, startTop, dragging = false;
+
+    el.addEventListener('mousedown', e => {
+        if (e.target.classList.contains('pnode-port') || e.target.classList.contains('pnode-del')) return;
+        dragging = true;
+        startX = e.clientX;
+        startY = e.clientY;
+        startLeft = parseInt(el.style.left) || 0;
+        startTop  = parseInt(el.style.top)  || 0;
+        el.style.zIndex = 50;
+        e.preventDefault();
+    });
+
+    document.addEventListener('mousemove', e => {
+        if (!dragging) return;
+        el.style.left = (startLeft + e.clientX - startX) + 'px';
+        el.style.top  = (startTop  + e.clientY - startY) + 'px';
+        nodes[id].el = el;
+        redrawConnections();
+    });
+
+    document.addEventListener('mouseup', () => {
+        if (dragging) { dragging = false; el.style.zIndex = ''; }
+    });
+}
+
+// ── 팔레트 드래그 앤 드롭 ────────────────────────────────────────
+let dragType = null;
+function onPaletteDragStart(e) {
+    dragType = e.currentTarget.dataset.type;
+}
+function onCanvasDrop(e) {
+    e.preventDefault();
+    if (!dragType) return;
+    const wr = canvasWrap.getBoundingClientRect();
+    const x = e.clientX - wr.left - 80;
+    const y = e.clientY - wr.top  - 30;
+    addNode(dragType, Math.max(0, x), Math.max(0, y), null);
+    dragType = null;
+}
+function addNodeFromPalette(el) {
+    const type = el.dataset.type;
+    const x = 80 + Object.keys(nodes).length * 30;
+    const y = 80 + (Object.keys(nodes).length % 5) * 20;
+    const id = addNode(type, x, y, null);
+    if (id) selectNode(id);
+}
+
+// ── 설정 패널 렌더링 ─────────────────────────────────────────────
+function renderConfigPanel(id) {
+    const header = document.getElementById('configHeader');
+    const body   = document.getElementById('configBody');
+
+    if (!id || !nodes[id]) {
+        header.textContent = '노드 설정';
+        body.innerHTML = `<div class="config-empty">
+            <div class="config-empty-icon">🖱️</div>
+            <div>노드를 클릭하면<br>설정이 표시됩니다</div></div>`;
+        return;
+    }
+
+    const node = nodes[id];
+    const nt   = NT[node.type];
+    if (!nt) return;
+
+    header.innerHTML = nt.icon + ' ' + nt.label;
+
+    let html = '';
+    (nt.params || []).forEach(p => {
+        const val = node.config[p.name] != null ? node.config[p.name] : (p.defaultValue || '');
+        html += `<div class="cfg-group"><label class="cfg-label">${p.label}</label>`;
+        if (p.type === 'select') {
+            html += `<select class="cfg-select" onchange="updateConfig('${id}','${p.name}',this.value)">`;
+            (p.options || []).forEach(opt => {
+                html += `<option value="${escAttr(opt)}" ${opt == val ? 'selected' : ''}>${escHtml(opt)}</option>`;
+            });
+            html += `</select>`;
+        } else if (p.type === 'textarea') {
+            html += `<textarea class="cfg-textarea"
+                onchange="updateConfig('${id}','${p.name}',this.value)">${escHtml(String(val))}</textarea>`;
+        } else if (p.type === 'number') {
+            html += `<input class="cfg-input" type="number" value="${escAttr(String(val))}"
+                onchange="updateConfig('${id}','${p.name}',this.value)">`;
+        } else if (p.type === 'image') {
+            const hasImg = val && String(val).trim();
+            html += `<div class="cfg-img-wrap">
+                <img id="img-${id}-${p.name}" class="cfg-img-preview ${hasImg ? 'visible' : ''}"
+                     src="${hasImg ? '/api/' + val : ''}">
+                <label class="cfg-upload-btn">
+                    📁 이미지 업로드
+                    <input type="file" accept="image/*" class="cfg-upload-input"
+                        onchange="uploadNodeImage('${id}','${p.name}',this)">
+                </label>
+            </div>`;
+        } else {
+            html += `<input class="cfg-input" type="text" value="${escAttr(String(val))}"
+                oninput="updateConfig('${id}','${p.name}',this.value)">`;
+        }
+        html += '</div>';
+    });
+
+    // ${nodeId.output} 참조 힌트
+    html += `<div style="margin-top:12px;padding:8px 10px;background:#F8FAFF;
+        border-radius:8px;font-size:11px;color:#6366F1;line-height:1.7;">
+        💡 <b>변수 참조:</b><br>
+        이전 노드 출력 참조: <code>\${nodeId.output}</code><br>
+        outputVar 설정 시: <code>\${변수명}</code>
+    </div>`;
+
+    body.innerHTML = html;
+}
+
+function updateConfig(id, key, value) {
+    if (!nodes[id]) return;
+    nodes[id].config[key] = value;
+}
+
+async function uploadNodeImage(nodeId, paramName, input) {
+    if (!input.files[0]) return;
+    const fd = new FormData();
+    fd.append('file', input.files[0]);
+    try {
+        const r = await fetch('/api/images', { method: 'POST', body: fd });
+        const data = await r.json();
+        if (data.imagePath) {
+            updateConfig(nodeId, paramName, data.imagePath);
+            const preview = document.getElementById('img-' + nodeId + '-' + paramName);
+            if (preview) {
+                preview.src = '/api/' + data.imagePath;
+                preview.classList.add('visible');
+            }
+        }
+    } catch(e) { alert('이미지 업로드 실패: ' + e.message); }
+}
+
+// ── 저장 ─────────────────────────────────────────────────────────
+async function savePipeline() {
+    const name = document.getElementById('pipelineName').value.trim();
+    if (!name) { alert('파이프라인 이름을 입력하세요.'); return; }
+
+    const payload = {
+        name,
+        description: document.getElementById('pipelineDesc').value.trim(),
+        nodes: Object.values(nodes).map(n => ({
+            id: n.id,
+            type: n.type,
+            posX: parseFloat(n.el.style.left) || 0,
+            posY: parseFloat(n.el.style.top)  || 0,
+            config: n.config
+        })),
+        connections: connections.map(c => ({ fromNodeId: c.from, toNodeId: c.to }))
+    };
+
+    try {
+        let r;
+        if (pipelineId) {
+            r = await fetch('/api/pipelines/' + pipelineId, {
+                method: 'PUT',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(payload)
+            });
+        } else {
+            r = await fetch('/api/pipelines', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(payload)
+            });
+        }
+        if (!r.ok) throw new Error('저장 실패');
+        const saved = await r.json();
+        pipelineId = saved.id;
+        history.replaceState(null, '', '/pipelines/' + pipelineId);
+        showToast('💾 저장 완료');
+    } catch(e) { alert(e.message); }
+}
+
+// ── 실행 ─────────────────────────────────────────────────────────
+let currentExecId = null;
+let pollTimer = null;
+
+async function runPipeline() {
+    if (!pipelineId) {
+        await savePipeline();
+        if (!pipelineId) return;
+    }
+    document.getElementById('logContainer').innerHTML = '';
+    const os = document.getElementById('overallStatus');
+    os.className = 'overall-status running';
+    os.textContent = '⏳ 실행 중...';
+    document.getElementById('cancelBtn').style.display = '';
+    document.getElementById('closeBtn').style.display = 'none';
+    document.getElementById('runModal').classList.add('show');
+
+    try {
+        const r = await fetch('/api/pipelines/' + pipelineId + '/run', {method: 'POST'});
+        const data = await r.json();
+        if (data.error) { showRunError(data.error); return; }
+        currentExecId = data.executionId;
+        pollTimer = setInterval(pollLogs, 800);
+    } catch(e) { showRunError(e.message); }
+}
+
+async function pollLogs() {
+    try {
+        const r = await fetch('/api/executions/' + currentExecId);
+        const data = await r.json();
+        renderRunLogs(data.logs);
+        if (data.status !== 'running') {
+            clearInterval(pollTimer); pollTimer = null;
+            const os = document.getElementById('overallStatus');
+            if (data.status === 'done') {
+                os.className = 'overall-status done'; os.textContent = '✅ 완료';
+            } else {
+                os.className = 'overall-status error'; os.textContent = '❌ 오류 발생';
+            }
+            document.getElementById('cancelBtn').style.display = 'none';
+            document.getElementById('closeBtn').style.display = '';
+        }
+    } catch(e) {}
+}
+
+function renderRunLogs(logs) {
+    const c = document.getElementById('logContainer');
+    c.innerHTML = '';
+    (logs || []).forEach(log => {
+        const icon = log.status === 'success' ? '✅' : log.status === 'error' ? '❌' : '⏳';
+        const d = document.createElement('div');
+        d.className = 'log-item ' + log.status;
+        d.innerHTML = `<div style="flex-shrink:0">${icon}</div>
+            <div>
+                <b>${escHtml(log.nodeType || '')}</b> — ${escHtml(log.message || '')}
+                ${log.output ? '<div class="log-output">' + escHtml(log.output) + '</div>' : ''}
+            </div>`;
+        c.appendChild(d);
+    });
+    c.scrollTop = c.scrollHeight;
+}
+
+function showRunError(msg) {
+    clearInterval(pollTimer);
+    const os = document.getElementById('overallStatus');
+    os.className = 'overall-status error';
+    os.textContent = '❌ ' + msg;
+    document.getElementById('cancelBtn').style.display = 'none';
+    document.getElementById('closeBtn').style.display = '';
+}
+
+function cancelRun() {
+    if (currentExecId) fetch('/api/executions/' + currentExecId + '/cancel', {method:'POST'});
+    clearInterval(pollTimer);
+    document.getElementById('overallStatus').className = 'overall-status error';
+    document.getElementById('overallStatus').textContent = '⛔ 중단됨';
+    document.getElementById('cancelBtn').style.display = 'none';
+    document.getElementById('closeBtn').style.display = '';
+}
+
+function closeRunModal() {
+    clearInterval(pollTimer);
+    document.getElementById('runModal').classList.remove('show');
+}
+
+// ── 기타 ─────────────────────────────────────────────────────────
+function clearCanvas() {
+    if (!confirm('캔버스의 모든 노드와 연결을 삭제하시겠습니까?')) return;
+    Object.keys(nodes).forEach(id => { nodes[id].el.remove(); delete nodes[id]; });
+    connections.splice(0);
+    svgLayer.querySelectorAll('path').forEach(p => p.remove());
+    renderConfigPanel(null);
+}
+
+function showToast(msg) {
+    const t = document.createElement('div');
+    t.textContent = msg;
+    t.style.cssText = `position:fixed;bottom:80px;left:50%;transform:translateX(-50%);
+        background:#1E293B;color:#fff;padding:8px 18px;border-radius:9px;
+        font-size:13px;font-weight:600;z-index:9999;opacity:1;transition:opacity .4s`;
+    document.body.appendChild(t);
+    setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 400); }, 1800);
+}
+
+function escHtml(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+function escAttr(s) {
+    return String(s).replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+// ── 기존 파이프라인 로드 ──────────────────────────────────────────
+(function initEditor() {
+    // 서버에서 받은 nodes/connections 복원
+    const initNodes = INIT_NODES || [];
+    const initConns = INIT_CONNS || [];
+
+    initNodes.forEach(n => {
+        const id = addNode(n.type, n.posX || 80, n.posY || 80, n.config || {});
+        if (id && n.id !== id) {
+            // 서버 ID와 생성된 ID를 매핑
+            nodes[id]._serverId = n.id;
+        }
+        if (id) nodes[id]._serverId = n.id;
+    });
+
+    // serverId → localId 매핑으로 연결 복원
+    const idMap = {};
+    Object.values(nodes).forEach(n => {
+        if (n._serverId) idMap[n._serverId] = n.id;
+    });
+
+    initConns.forEach(c => {
+        const from = idMap[c.fromNodeId];
+        const to   = idMap[c.toNodeId];
+        if (from && to) addConnection(from, to);
+    });
+
+    // 약간 지연 후 연결선 재렌더 (DOM 정착 후)
+    setTimeout(redrawConnections, 100);
+})();
+</script>
+</body>
+</html>

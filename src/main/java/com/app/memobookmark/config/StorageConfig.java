@@ -21,9 +21,9 @@ public class StorageConfig {
     @Bean
     public Path storageDirectory() throws IOException {
         Path path = Paths.get(storagePath);
-        if (!Files.exists(path)) {
-            Files.createDirectories(path);
-        }
+        Files.createDirectories(path);
+        Files.createDirectories(path.resolve("pipelines"));
+        Files.createDirectories(path.resolve("pipelines").resolve("images"));
         return path;
     }
 
