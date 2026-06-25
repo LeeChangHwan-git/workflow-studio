@@ -12,6 +12,7 @@
         align-items: center;
         gap: 18px;
         transition: transform .15s, box-shadow .15s;
+        cursor: pointer;
     }
     .pl-card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,.11); }
     .pl-icon {
@@ -141,7 +142,9 @@
     </div>
 
     <div th:if="${!pipelines.isEmpty()}">
-        <div class="pl-card" th:each="pl : ${pipelines}">
+        <div class="pl-card" th:each="pl : ${pipelines}"
+             th:data-id="${pl.id}"
+             onclick="if(!event.target.closest('button,a,form,input')) location.href='/pipelines/'+this.dataset.id">
             <div class="pl-icon">⚡</div>
             <div class="pl-info">
                 <div class="pl-name" th:text="${pl.name}"></div>

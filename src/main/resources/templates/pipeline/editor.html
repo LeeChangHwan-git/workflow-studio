@@ -59,6 +59,9 @@ body { overflow: hidden; }
         #F0F4FF;
     background-size: 24px 24px;
     overflow: hidden;
+    /* 드래그 중 텍스트 선택 방지 */
+    -webkit-user-select: none;
+    user-select: none;
 }
 #canvasArea {
     position: absolute;
@@ -68,12 +71,18 @@ body { overflow: hidden; }
 #svgLayer {
     position: absolute;
     inset: 0;
+    /* 연결선 클릭은 허용, 나머지는 노드 레이어로 통과 */
     pointer-events: none;
     overflow: visible;
+}
+#svgLayer path.conn-path {
+    pointer-events: stroke;
 }
 #nodesLayer {
     position: absolute;
     inset: 0;
+    -webkit-user-select: none;
+    user-select: none;
 }
 
 /* ── 노드 ── */
@@ -88,45 +97,80 @@ body { overflow: hidden; }
     user-select: none;
     transition: box-shadow .15s, border-color .15s;
     z-index: 10;
+    /* 포트가 박스 밖으로 나오도록 */
+    overflow: visible;
 }
 .pnode:hover { box-shadow: 0 6px 24px rgba(0,0,0,.15); }
 .pnode.selected { border-color: #6366F1; box-shadow: 0 0 0 3px rgba(99,102,241,.2); }
-.pnode.connecting-target:hover { border-color: #22C55E; box-shadow: 0 0 0 3px rgba(34,197,94,.2); }
 
 .pnode-header {
     display: flex; align-items: center; gap: 8px;
-    padding: 10px 12px 8px;
-    border-bottom: 1px solid #F1F5F9;
+    padding: 10px 12px 10px;
 }
 .pnode-icon { font-size: 18px; }
 .pnode-label { font-size: 13px; font-weight: 700; color: #1E293B; flex: 1; }
 .pnode-del {
     background: none; border: none; cursor: pointer;
     font-size: 14px; color: #CBD5E1; padding: 0 2px;
-    line-height: 1;
-    transition: color .15s;
+    line-height: 1; transition: color .15s;
 }
 .pnode-del:hover { color: #EF4444; }
 
-.pnode-ports {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 6px 8px;
-}
+/* ── 포트: 노드 좌우 바깥에 절대 위치 ── */
 .pnode-port {
-    width: 14px; height: 14px;
+    position: absolute;
+    width: 16px; height: 16px;
     border-radius: 50%;
     background: #E2E8F0;
-    border: 2px solid #fff;
+    border: 2.5px solid #fff;
     box-shadow: 0 0 0 1.5px #CBD5E1;
-    cursor: crosshair;
-    transition: all .15s;
-    flex-shrink: 0;
+    transition: background .15s, box-shadow .15s, transform .15s;
+    z-index: 20;
+    /* 세로 중앙 */
+    top: 50%;
+    transform: translateY(-50%);
 }
-.pnode-port:hover,
-.pnode-port.active { background: #6366F1; box-shadow: 0 0 0 1.5px #6366F1; }
-.pnode-port.port-out { margin-left: auto; }
+
+/* 입력 포트: 왼쪽 바깥 */
+.pnode-port.port-in {
+    left: -10px;
+    cursor: default;
+}
+
+/* 출력 포트: 오른쪽 바깥, grab 커서 */
+.pnode-port.port-out {
+    right: -10px;
+    cursor: grab;
+    background: #C7D2FE;
+    box-shadow: 0 0 0 1.5px #A5B4FC;
+}
+.pnode-port.port-out:hover {
+    background: #6366F1;
+    box-shadow: 0 0 0 5px rgba(99,102,241,.25);
+    transform: translateY(-50%) scale(1.3);
+    cursor: grab;
+}
+.pnode-port.port-out:active { cursor: grabbing; }
+
+/* 연결 중: 연결 가능한 입력 포트 초록 강조 */
+.pnode-port.port-in.connectable {
+    background: #86EFAC;
+    box-shadow: 0 0 0 4px rgba(34,197,94,.3);
+    cursor: crosshair;
+    transform: translateY(-50%) scale(1.25);
+}
+/* 마우스가 바로 위에 올라온 입력 포트 */
+.pnode-port.port-in.hover-target {
+    background: #22C55E;
+    box-shadow: 0 0 0 6px rgba(34,197,94,.4);
+    transform: translateY(-50%) scale(1.5);
+    cursor: crosshair;
+}
+.pnode-port.active {
+    background: #6366F1;
+    box-shadow: 0 0 0 5px rgba(99,102,241,.3);
+    transform: translateY(-50%) scale(1.2);
+}
 
 /* ── 연결선 ── */
 .conn-path {
@@ -442,15 +486,13 @@ function addNode(type, x, y, config) {
     el.style.left = x + 'px';
     el.style.top  = y + 'px';
     el.innerHTML = `
+        <div class="pnode-port port-in"  data-node="${id}" data-port="in"  title="입력 포트"></div>
         <div class="pnode-header">
             <span class="pnode-icon">${nt.icon}</span>
             <span class="pnode-label">${nt.label}</span>
             <button class="pnode-del" onclick="removeNode('${id}',event)">✕</button>
         </div>
-        <div class="pnode-ports">
-            <div class="pnode-port port-in"  data-node="${id}" data-port="in"></div>
-            <div class="pnode-port port-out" data-node="${id}" data-port="out"></div>
-        </div>`;
+        <div class="pnode-port port-out" data-node="${id}" data-port="out" title="드래그하여 연결"></div>`;
     el.style.borderColor = nt.color;
 
     nodesLayer.appendChild(el);
@@ -461,23 +503,19 @@ function addNode(type, x, y, config) {
     // 노드 드래그
     makeDraggable(el, id);
 
-    // 노드 클릭 → 선택
+    // 노드 클릭 → 선택 (포트·삭제 버튼 제외)
     el.addEventListener('mousedown', e => {
         if (e.target.classList.contains('pnode-port') || e.target.classList.contains('pnode-del')) return;
         e.stopPropagation();
         selectNode(id);
     });
 
-    // 출력 포트 클릭 → 연결 시작
+    // 출력 포트 mousedown → 연결 드래그 시작
+    // e.preventDefault() 로 텍스트 선택 완전 차단
     portOut.addEventListener('mousedown', e => {
         e.stopPropagation();
+        e.preventDefault();
         startConnect(id);
-    });
-
-    // 입력 포트 클릭 → 연결 완료
-    portIn.addEventListener('mousedown', e => {
-        e.stopPropagation();
-        finishConnect(id);
     });
 
     nodes[id] = { id, type, el, portIn, portOut, config: config || buildDefaultConfig(type) };
@@ -534,38 +572,61 @@ function startConnect(fromId) {
     connectingFrom = fromId;
     nodes[fromId].portOut.classList.add('active');
 
-    // 미리보기 선
+    // 미리보기 선 (SVG)
     previewPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
     previewPath.className.baseVal = 'conn-path-preview';
     svgLayer.appendChild(previewPath);
 
     canvasWrap.style.cursor = 'crosshair';
+
+    // 연결 가능한 입력 포트 모두 초록으로 강조
+    document.querySelectorAll('.port-in').forEach(p => {
+        if (p.dataset.node !== fromId) p.classList.add('connectable');
+    });
 }
 
-canvasWrap.addEventListener('mousemove', e => {
+// ── mousemove: 프리뷰 선 업데이트 ────────────────────────────────
+document.addEventListener('mousemove', e => {
     if (!connectingFrom || !previewPath) return;
     const fromPort = nodes[connectingFrom].portOut;
     const fr = fromPort.getBoundingClientRect();
     const wr = canvasWrap.getBoundingClientRect();
-    const x1 = fr.left - wr.left + fr.width / 2;
+    const x1 = fr.left - wr.left + fr.width  / 2;
     const y1 = fr.top  - wr.top  + fr.height / 2;
     const x2 = e.clientX - wr.left;
     const y2 = e.clientY - wr.top;
     previewPath.setAttribute('d', bezier(x1, y1, x2, y2));
+
+    // 현재 마우스 아래 port-in 이 있으면 강조
+    const underEl = document.elementFromPoint(e.clientX, e.clientY);
+    const overPort = underEl?.closest('.port-in');
+    document.querySelectorAll('.port-in.hover-target').forEach(p => p.classList.remove('hover-target'));
+    if (overPort && overPort.dataset.node !== connectingFrom) {
+        overPort.classList.add('hover-target');
+    }
 });
 
-canvasWrap.addEventListener('mouseup', () => {
-    if (connectingFrom) {
+// ── mouseup: elementFromPoint 로 연결 대상 판정 ─────────────────
+// canvasWrap.mouseup 대신 document.mouseup 를 사용해야
+// 포트 위에서 마우스를 떼는 경우를 정확히 잡을 수 있음
+document.addEventListener('mouseup', e => {
+    if (!connectingFrom) return;
+
+    const underEl = document.elementFromPoint(e.clientX, e.clientY);
+    const targetPort = underEl?.closest('.port-in');
+    const targetNodeId = targetPort?.dataset.node;
+
+    if (targetNodeId && targetNodeId !== connectingFrom) {
+        finishConnect(targetNodeId);
+    } else {
         cancelConnect();
     }
 });
 
 function finishConnect(toId) {
-    if (!connectingFrom) return;
     const fromId = connectingFrom;
     cancelConnect();
-    if (fromId === toId) return;
-    // 중복 연결 방지
+    if (!fromId || fromId === toId) return;
     if (connections.some(c => c.from === fromId && c.to === toId)) return;
     addConnection(fromId, toId);
 }
@@ -575,23 +636,16 @@ function cancelConnect() {
         nodes[connectingFrom].portOut.classList.remove('active');
     }
     if (previewPath) { previewPath.remove(); previewPath = null; }
+    // connectable / hover-target 강조 해제
+    document.querySelectorAll('.port-in.connectable').forEach(p => p.classList.remove('connectable'));
+    document.querySelectorAll('.port-in.hover-target').forEach(p => p.classList.remove('hover-target'));
     connectingFrom = null;
     canvasWrap.style.cursor = '';
-    document.querySelectorAll('.connecting-target').forEach(el => el.classList.remove('connecting-target'));
 }
 
-canvasWrap.addEventListener('mouseover', e => {
-    if (!connectingFrom) return;
-    const port = e.target.closest('.port-in');
-    if (port) {
-        const nodeEl = port.closest('.pnode');
-        if (nodeEl) nodeEl.classList.add('connecting-target');
-    }
-});
-canvasWrap.addEventListener('mouseout', e => {
-    if (!connectingFrom) return;
-    const nodeEl = e.target.closest('.pnode');
-    if (nodeEl) nodeEl.classList.remove('connecting-target');
+// ── 드래그 중 텍스트 선택 전역 차단 ─────────────────────────────
+document.addEventListener('selectstart', e => {
+    if (connectingFrom) e.preventDefault();
 });
 
 function addConnection(fromId, toId) {
