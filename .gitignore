@@ -10,3 +10,6 @@
 /dist/*.jar
 /dist/*.zip
 /dist/libs/
+
+# Windows 절대경로가 실수로 추적되는 것 방지
+C:/
