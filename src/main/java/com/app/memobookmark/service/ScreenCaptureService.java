@@ -34,8 +34,7 @@ public class ScreenCaptureService {
         hideStage();
         try {
             Thread.sleep(250); // 창이 사라지고 화면이 다시 그려질 시간
-            GraphicsDevice gd = GraphicsEnvironment.getLocalGraphicsEnvironment().getDefaultScreenDevice();
-            Rectangle screenBounds = gd.getDefaultConfiguration().getBounds();
+            Rectangle screenBounds = getAllScreenBounds();
             Robot robot = new Robot();
             BufferedImage fullShot = robot.createScreenCapture(screenBounds);
 
@@ -45,6 +44,15 @@ public class ScreenCaptureService {
         } finally {
             showStage();
         }
+    }
+
+    /** 연결된 모든 모니터를 합친 가상 영역 반환 */
+    static Rectangle getAllScreenBounds() {
+        Rectangle bounds = new Rectangle();
+        for (GraphicsDevice gd : GraphicsEnvironment.getLocalGraphicsEnvironment().getScreenDevices()) {
+            bounds = bounds.union(gd.getDefaultConfiguration().getBounds());
+        }
+        return bounds;
     }
 
     private void hideStage() throws InterruptedException {

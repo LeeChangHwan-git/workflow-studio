@@ -31,9 +31,7 @@ public class ImageMatcherUtil {
      */
     public static Point findOnScreen(File templateFile, double threshold) throws Exception {
         Robot robot = new Robot();
-        GraphicsEnvironment ge = GraphicsEnvironment.getLocalGraphicsEnvironment();
-        GraphicsDevice gd = ge.getDefaultScreenDevice();
-        Rectangle screenBounds = gd.getDefaultConfiguration().getBounds();
+        Rectangle screenBounds = getAllScreenBounds();
 
         BufferedImage screen = robot.createScreenCapture(screenBounds);
         BufferedImage template = ImageIO.read(templateFile);
@@ -189,8 +187,15 @@ public class ImageMatcherUtil {
     /** 전체 화면 스크린샷을 파일로 저장하고 경로 반환 */
     public static BufferedImage captureScreen() throws AWTException {
         Robot robot = new Robot();
-        GraphicsDevice gd = GraphicsEnvironment.getLocalGraphicsEnvironment().getDefaultScreenDevice();
-        Rectangle bounds = gd.getDefaultConfiguration().getBounds();
-        return robot.createScreenCapture(bounds);
+        return robot.createScreenCapture(getAllScreenBounds());
+    }
+
+    /** 연결된 모든 모니터를 합친 가상 영역 반환 */
+    private static Rectangle getAllScreenBounds() {
+        Rectangle bounds = new Rectangle();
+        for (GraphicsDevice gd : GraphicsEnvironment.getLocalGraphicsEnvironment().getScreenDevices()) {
+            bounds = bounds.union(gd.getDefaultConfiguration().getBounds());
+        }
+        return bounds;
     }
 }
