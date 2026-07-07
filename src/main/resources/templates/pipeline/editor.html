@@ -259,6 +259,19 @@ body { overflow: hidden; }
 }
 .cfg-upload-btn:hover { border-color: #6366F1; background: #EEF2FF; }
 .cfg-upload-input { display: none; }
+.cfg-img-btns { display: flex; gap: 6px; }
+.cfg-img-btns .cfg-upload-btn { flex: 1; justify-content: center; }
+.cfg-capture-btn {
+    flex: 1;
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    padding: 7px 12px;
+    background: #F8FAFF; border: 1.5px solid #E2E8F0;
+    border-radius: 8px;
+    font-size: 12px; font-weight: 600; color: #6366F1;
+    cursor: pointer; transition: all .15s;
+}
+.cfg-capture-btn:hover { border-color: #6366F1; background: #EEF2FF; }
+.cfg-capture-btn:disabled { opacity: .6; cursor: default; }
 
 /* ── 하단 툴바 ── */
 .editor-toolbar {
@@ -783,11 +796,17 @@ function renderConfigPanel(id) {
             html += `<div class="cfg-img-wrap">
                 <img id="img-${id}-${p.name}" class="cfg-img-preview ${hasImg ? 'visible' : ''}"
                      src="${hasImg ? '/api/' + val : ''}">
-                <label class="cfg-upload-btn">
-                    📁 이미지 업로드
-                    <input type="file" accept="image/*" class="cfg-upload-input"
-                        onchange="uploadNodeImage('${id}','${p.name}',this)">
-                </label>
+                <div class="cfg-img-btns">
+                    <label class="cfg-upload-btn">
+                        📁 이미지 업로드
+                        <input type="file" accept="image/*" class="cfg-upload-input"
+                            onchange="uploadNodeImage('${id}','${p.name}',this)">
+                    </label>
+                    <button type="button" class="cfg-capture-btn"
+                        onclick="captureNodeImage('${id}','${p.name}',this)">
+                        📷 화면 캡처
+                    </button>
+                </div>
             </div>`;
         } else {
             html += `<input class="cfg-input" type="text" value="${escAttr(String(val))}"
@@ -828,6 +847,35 @@ async function uploadNodeImage(nodeId, paramName, input) {
             }
         }
     } catch(e) { alert('이미지 업로드 실패: ' + e.message); }
+}
+
+async function captureNodeImage(nodeId, paramName, btn) {
+    showToast('🖥️ 잠시 후 화면이 사라지면 캡처할 영역을 드래그하세요 (ESC: 취소)');
+    btn.disabled = true;
+    const origText = btn.textContent;
+    btn.textContent = '캡처 대기 중...';
+    try {
+        await new Promise(r => setTimeout(r, 700)); // 토스트 읽을 시간 확보
+        const r = await fetch('/api/capture', { method: 'POST' });
+        const data = await r.json();
+        if (data.imagePath) {
+            updateConfig(nodeId, paramName, data.imagePath);
+            const preview = document.getElementById('img-' + nodeId + '-' + paramName);
+            if (preview) {
+                preview.src = '/api/' + data.imagePath;
+                preview.classList.add('visible');
+            }
+            showToast('📷 캡처 완료');
+        } else if (data.cancelled) {
+            showToast('캡처를 취소했습니다');
+        } else if (data.error) {
+            alert('캡처 실패: ' + data.error);
+        }
+    } catch(e) { alert('캡처 실패: ' + e.message); }
+    finally {
+        btn.disabled = false;
+        btn.textContent = origText;
+    }
 }
 
 // ── 저장 ─────────────────────────────────────────────────────────
@@ -876,10 +924,9 @@ let currentExecId = null;
 let pollTimer = null;
 
 async function runPipeline() {
-    if (!pipelineId) {
-        await savePipeline();
-        if (!pipelineId) return;
-    }
+    // 실행 전 항상 먼저 저장 — 편집기의 현재 상태(노드/연결)로 실행되도록 보장
+    await savePipeline();
+    if (!pipelineId) return;
     document.getElementById('logContainer').innerHTML = '';
     const os = document.getElementById('overallStatus');
     os.className = 'overall-status running';

@@ -39,6 +39,7 @@ public class NodeTypeRegistry {
 
         new NodeTypeInfo("CLICK_IMAGE", "이미지 클릭", "🖱️", "#E74C3C", List.of(
             new NodeParam("imagePath", "클릭할 이미지", "image", null, null),
+            new NodeParam("timeoutSec", "대기 시간(초)", "number", 8, null),
             new NodeParam("offsetX", "X 오프셋(px)", "number", 0, null),
             new NodeParam("offsetY", "Y 오프셋(px)", "number", 0, null)
         )),

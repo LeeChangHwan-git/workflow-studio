@@ -168,11 +168,18 @@ public class PipelineRunnerService {
                 String imagePath = str(cfg, "imagePath");
                 int offsetX = intVal(cfg, "offsetX", 0);
                 int offsetY = intVal(cfg, "offsetY", 0);
+                int timeoutSec = intVal(cfg, "timeoutSec", 8);
                 if (imagePath == null || imagePath.isBlank())
                     throw new Exception("이미지 경로가 설정되지 않았습니다");
                 File imgFile = pipelineService.getImagePath(imagePath).toFile();
-                Point found = ImageMatcherUtil.findOnScreen(imgFile, settings.getImageMatchThreshold());
-                if (found == null) throw new Exception("이미지를 화면에서 찾지 못했습니다");
+                Point found = null;
+                long deadline = System.currentTimeMillis() + timeoutSec * 1000L;
+                while (System.currentTimeMillis() < deadline) {
+                    found = ImageMatcherUtil.findOnScreen(imgFile, settings.getImageMatchThreshold());
+                    if (found != null) break;
+                    Thread.sleep(settings.getImageMatchRetryMs());
+                }
+                if (found == null) throw new Exception("이미지를 " + timeoutSec + "초 안에 화면에서 찾지 못했습니다");
                 Robot robot = new Robot();
                 robot.mouseMove(found.x + offsetX, found.y + offsetY);
                 Thread.sleep(100);

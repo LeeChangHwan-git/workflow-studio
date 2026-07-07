@@ -79,6 +79,8 @@ public class DesktopApp extends Application {
         stage.show();
 
         portFuture.thenAccept(port -> Platform.runLater(() -> {
+            springContext.getBean(com.app.memobookmark.service.ScreenCaptureService.class).bindStage(stage);
+
             WebView webView = new WebView();
             webView.setPrefSize(1280, 840);
 

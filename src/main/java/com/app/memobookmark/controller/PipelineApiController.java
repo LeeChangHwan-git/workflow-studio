@@ -7,6 +7,9 @@ import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayOutputStream;
 import java.util.*;
 
 @RestController
@@ -17,15 +20,18 @@ public class PipelineApiController {
     private final PipelineRunnerService runnerService;
     private final NodeTypeRegistry nodeTypeRegistry;
     private final AppSettingsService settingsService;
+    private final ScreenCaptureService screenCaptureService;
 
     public PipelineApiController(PipelineService pipelineService,
                                   PipelineRunnerService runnerService,
                                   NodeTypeRegistry nodeTypeRegistry,
-                                  AppSettingsService settingsService) {
+                                  AppSettingsService settingsService,
+                                  ScreenCaptureService screenCaptureService) {
         this.pipelineService = pipelineService;
         this.runnerService = runnerService;
         this.nodeTypeRegistry = nodeTypeRegistry;
         this.settingsService = settingsService;
+        this.screenCaptureService = screenCaptureService;
     }
 
     // ── 노드 타입 ─────────────────────────────────────────────
@@ -103,6 +109,23 @@ public class PipelineApiController {
     public ResponseEntity<Map<String, String>> uploadImage(@RequestParam("file") MultipartFile file) {
         try {
             String path = pipelineService.saveImage(file.getOriginalFilename(), file.getBytes());
+            return ResponseEntity.ok(Map.of("imagePath", path));
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    // ── 화면 캡처 (드래그로 영역 선택 → 바로 저장) ─────────────
+    @PostMapping("/capture")
+    public ResponseEntity<Map<String, String>> captureRegion() {
+        try {
+            BufferedImage img = screenCaptureService.captureRegionInteractive();
+            if (img == null) {
+                return ResponseEntity.ok(Map.of("cancelled", "true"));
+            }
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            ImageIO.write(img, "png", baos);
+            String path = pipelineService.saveImage("capture.png", baos.toByteArray());
             return ResponseEntity.ok(Map.of("imagePath", path));
         } catch (Exception e) {
             return ResponseEntity.internalServerError().body(Map.of("error", e.getMessage()));
