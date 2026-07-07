@@ -139,11 +139,21 @@ public class PipelineRunnerService {
             case "OPEN_URL" -> {
                 String url = resolveVars(str(cfg, "url"), ctx);
                 String browser = str(cfg, "browser", "기본");
-                String[] cmd = switch (browser) {
-                    case "Edge"   -> new String[]{"cmd", "/c", "start", "msedge", url};
-                    case "Chrome" -> new String[]{"cmd", "/c", "start", "chrome", url};
-                    default       -> new String[]{"cmd", "/c", "start", url};
-                };
+                boolean isWindows = System.getProperty("os.name").toLowerCase().contains("win");
+                String[] cmd;
+                if (isWindows) {
+                    cmd = switch (browser) {
+                        case "Edge"   -> new String[]{"cmd", "/c", "start", "msedge", url};
+                        case "Chrome" -> new String[]{"cmd", "/c", "start", "chrome", url};
+                        default       -> new String[]{"cmd", "/c", "start", url};
+                    };
+                } else {
+                    cmd = switch (browser) {
+                        case "Edge"   -> new String[]{"open", "-a", "Microsoft Edge", url};
+                        case "Chrome" -> new String[]{"open", "-a", "Google Chrome", url};
+                        default       -> new String[]{"open", url};
+                    };
+                }
                 new ProcessBuilder(cmd).start();
                 Thread.sleep(1500);
                 yield "URL 열기 완료: " + url;

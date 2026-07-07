@@ -93,7 +93,12 @@ public class BookmarkController {
                     default       -> null;
                 };
                 if (exe != null) {
-                    new ProcessBuilder("cmd", "/c", "start", exe, url).start();
+                    boolean isWindows = System.getProperty("os.name").toLowerCase().contains("win");
+                    if (isWindows) {
+                        new ProcessBuilder("cmd", "/c", "start", exe, url).start();
+                    } else {
+                        new ProcessBuilder("open", "-a", exe, url).start();
+                    }
                 } else {
                     Desktop.getDesktop().browse(new URI(url));
                 }
