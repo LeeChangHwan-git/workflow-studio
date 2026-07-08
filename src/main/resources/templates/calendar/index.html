@@ -2,122 +2,115 @@
 <html xmlns:th="http://www.thymeleaf.org">
 <head th:replace="fragments/layout :: head('달력')"></head>
 <style>
-  /* ── 전체 레이아웃 ── */
   body { overflow: hidden; }
   .cal-wrap {
     display: flex;
     height: calc(100vh - 56px);
     gap: 0;
   }
-
-  /* ── 왼쪽: 달력 패널 ── */
   .cal-panel {
     flex: 1 1 0;
     min-width: 0;
     display: flex;
     flex-direction: column;
-    padding: 24px 20px 16px 28px;
+    padding: 20px 16px 14px 24px;
     overflow: hidden;
   }
-
-  /* 월 네비게이션 */
   .cal-nav {
     display: flex;
     align-items: center;
-    gap: 16px;
-    margin-bottom: 20px;
+    gap: 12px;
+    margin-bottom: 16px;
   }
   .cal-nav-btn {
-    width: 36px; height: 36px;
-    border: none; border-radius: 50%; cursor: pointer;
-    background: #EEF2FF; color: #6366F1; font-size: 16px;
+    width: 32px; height: 32px;
+    border: 1px solid var(--border); border-radius: var(--radius); cursor: pointer;
+    background: var(--bg-3); color: var(--text); font-size: 15px;
     display: flex; align-items: center; justify-content: center;
-    transition: background .15s;
+    transition: background .15s, border-color .15s;
     text-decoration: none;
   }
-  .cal-nav-btn:hover { background: #E0E7FF; }
+  .cal-nav-btn:hover { background: #3E3E42; border-color: #606060; }
   .cal-title {
-    font-size: 22px; font-weight: 800; color: #1E293B;
+    font-size: 20px; font-weight: 700; color: var(--text);
     flex: 1;
   }
   .cal-today-btn {
-    height: 32px; padding: 0 14px;
-    border: 1.5px solid #E2E8F0; border-radius: 8px;
-    background: #fff; color: #64748B;
-    font-size: 13px; font-weight: 600;
+    height: 30px; padding: 0 13px;
+    border: 1px solid var(--border); border-radius: var(--radius);
+    background: var(--bg-3); color: var(--muted);
+    font-size: 12px; font-weight: 600;
     cursor: pointer; text-decoration: none;
     display: flex; align-items: center;
     transition: all .15s;
   }
-  .cal-today-btn:hover { border-color: #6366F1; color: #6366F1; }
+  .cal-today-btn:hover { border-color: var(--primary-text); color: var(--primary-text); }
 
-  /* 요일 헤더 */
   .cal-dow {
     display: grid;
     grid-template-columns: repeat(7, 1fr);
-    gap: 4px;
-    margin-bottom: 6px;
+    gap: 3px;
+    margin-bottom: 4px;
   }
   .cal-dow-cell {
     text-align: center;
-    font-size: 12px; font-weight: 700;
-    color: #94A3B8;
+    font-size: 11px; font-weight: 700;
+    color: var(--dim);
     padding: 4px 0;
+    letter-spacing: .3px;
+    text-transform: uppercase;
   }
-  .cal-dow-cell:first-child { color: #EF4444; }
-  .cal-dow-cell:last-child  { color: #3B82F6; }
+  .cal-dow-cell:first-child { color: #F14C4C; }
+  .cal-dow-cell:last-child  { color: #569CD6; }
 
-  /* 날짜 그리드 */
   .cal-grid {
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 3px;
     flex: 1;
   }
   .cal-week {
     display: grid;
     grid-template-columns: repeat(7, 1fr);
-    gap: 4px;
+    gap: 3px;
     flex: 1;
   }
   .cal-day {
-    border-radius: 10px;
-    padding: 6px 8px;
+    border-radius: var(--radius);
+    padding: 5px 7px;
     cursor: pointer;
     position: relative;
     display: flex;
     flex-direction: column;
-    transition: background .15s, box-shadow .15s;
+    transition: background .12s, border-color .12s;
     min-height: 0;
-    border: 2px solid transparent;
-    background: #fff;
+    border: 1px solid transparent;
+    background: var(--bg-2);
   }
-  .cal-day:hover { background: #F5F7FF; }
-  .cal-day.other-month { background: #F8FAFC; }
-  .cal-day.other-month .day-num { color: #CBD5E1; }
-  .cal-day.is-today { border-color: #6366F1; }
-  .cal-day.selected { background: #EEF2FF; border-color: #6366F1; box-shadow: 0 0 0 2px #C7D2FE; }
-  .cal-day.selected .day-num { color: #4F46E5; font-weight: 800; }
+  .cal-day:hover { background: var(--bg-3); border-color: var(--border); }
+  .cal-day.other-month { background: #1A1A1A; opacity: .5; }
+  .cal-day.is-today { border-color: #0E639C; }
+  .cal-day.selected { background: #1E3A5F; border-color: #0E639C; }
+  .cal-day.selected .day-num { color: #4FC1FF; font-weight: 800; }
 
   .day-num {
-    font-size: 14px; font-weight: 700;
-    color: #334155;
+    font-size: 13px; font-weight: 600;
+    color: var(--text);
     line-height: 1;
   }
-  .cal-day.sun .day-num { color: #EF4444; }
-  .cal-day.sat .day-num { color: #3B82F6; }
-  .cal-day.other-month .day-num { color: #CBD5E1 !important; }
+  .cal-day.sun .day-num { color: #F14C4C; }
+  .cal-day.sat .day-num { color: #569CD6; }
+  .cal-day.other-month .day-num { color: var(--dim) !important; }
   .cal-day.is-today .day-num {
-    width: 24px; height: 24px;
-    background: #6366F1; color: #fff;
+    width: 22px; height: 22px;
+    background: #0E639C; color: #fff;
     border-radius: 50%;
     display: flex; align-items: center; justify-content: center;
-    font-size: 12px;
+    font-size: 11px;
   }
 
-  /* 이벤트 점 & 미리보기 */
   .day-events {
-    margin-top: 4px;
+    margin-top: 3px;
     display: flex;
     flex-direction: column;
     gap: 2px;
@@ -125,147 +118,109 @@
     flex: 1;
   }
   .day-event-pill {
-    font-size: 10px;
-    font-weight: 600;
+    font-size: 10px; font-weight: 600;
     padding: 1px 5px;
-    border-radius: 4px;
-    background: #EEF2FF;
-    color: #6366F1;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    border-radius: 3px;
+    background: #1E3A5F; color: #4FC1FF;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     line-height: 1.4;
   }
   .day-event-more {
-    font-size: 10px;
-    color: #94A3B8;
-    font-weight: 600;
-    padding-left: 3px;
+    font-size: 10px; color: var(--dim); font-weight: 600; padding-left: 3px;
   }
 
-  /* ── 오른쪽: 날짜 상세 패널 ── */
   .day-panel {
-    width: 360px;
-    min-width: 320px;
-    flex-shrink: 0;
-    border-left: 1.5px solid #E2E8F0;
-    background: #fff;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
+    width: 340px; min-width: 300px; flex-shrink: 0;
+    border-left: 1px solid var(--border);
+    background: var(--bg-2);
+    display: flex; flex-direction: column; overflow: hidden;
   }
   .day-panel-header {
-    padding: 24px 24px 16px;
-    border-bottom: 1.5px solid #F1F5F9;
+    padding: 20px 20px 14px;
+    border-bottom: 1px solid var(--border);
     flex-shrink: 0;
   }
-  .day-panel-date {
-    font-size: 20px; font-weight: 800; color: #1E293B;
-    line-height: 1.2;
-  }
-  .day-panel-sub {
-    font-size: 12px; color: #94A3B8; margin-top: 4px;
-  }
+  .day-panel-date { font-size: 18px; font-weight: 700; color: var(--text); }
+  .day-panel-sub  { font-size: 12px; color: var(--muted); margin-top: 3px; }
   .day-panel-empty {
-    text-align: center;
-    padding: 48px 24px;
-    color: #CBD5E1;
-    font-size: 14px;
+    text-align: center; padding: 40px 20px;
+    color: var(--dim); font-size: 13px;
   }
-
-  /* 이벤트 목록 */
-  .day-events-list {
-    flex: 1;
-    overflow-y: auto;
-    padding: 12px 20px;
-  }
+  .day-events-list { flex: 1; overflow-y: auto; padding: 10px 16px; }
   .day-events-list::-webkit-scrollbar { width: 4px; }
-  .day-events-list::-webkit-scrollbar-thumb { background: #E2E8F0; border-radius: 4px; }
+  .day-events-list::-webkit-scrollbar-thumb { background: #555; border-radius: 4px; }
 
   .event-item {
-    background: #F8FAFC;
-    border: 1.5px solid #E2E8F0;
-    border-radius: 10px;
-    padding: 12px 14px;
-    margin-bottom: 10px;
+    background: var(--bg-3);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 11px 13px;
+    margin-bottom: 8px;
     position: relative;
   }
-  .event-item-title {
-    font-size: 13px; font-weight: 700; color: #1E293B;
-    margin-bottom: 4px;
-  }
-  .event-item-content {
-    font-size: 13px; color: #475569;
-    white-space: pre-wrap; line-height: 1.6;
-  }
-  .event-item-actions {
-    display: flex; gap: 6px;
-    margin-top: 10px;
-  }
+  .event-item-title { font-size: 13px; font-weight: 700; color: var(--text); margin-bottom: 4px; }
+  .event-item-content { font-size: 13px; color: var(--muted); white-space: pre-wrap; line-height: 1.6; }
+  .event-item-actions { display: flex; gap: 6px; margin-top: 8px; }
   .btn-ev {
-    height: 28px; padding: 0 10px;
-    border-radius: 6px; font-size: 11px; font-weight: 700;
-    cursor: pointer; border: none; transition: all .15s;
+    height: 26px; padding: 0 10px;
+    border-radius: var(--radius); font-size: 11px; font-weight: 700;
+    cursor: pointer; border: 1px solid transparent; transition: all .15s;
   }
-  .btn-ev-edit { background: #EEF2FF; color: #6366F1; }
-  .btn-ev-edit:hover { background: #E0E7FF; }
-  .btn-ev-del  { background: #FEF2F2; color: #EF4444; }
-  .btn-ev-del:hover  { background: #FEE2E2; }
+  .btn-ev-edit { background: #1E3A5F; color: #4FC1FF; border-color: #264F78; }
+  .btn-ev-edit:hover { background: #264F78; }
+  .btn-ev-del  { background: #3A1E1E; color: #F48771; border-color: #5A2D2D; }
+  .btn-ev-del:hover  { background: #5A2D2D; }
 
-  /* 인라인 수정 폼 */
   .edit-form { margin-top: 8px; }
   .edit-form input, .edit-form textarea {
     width: 100%; padding: 7px 10px;
-    border: 1.5px solid #E2E8F0; border-radius: 7px;
-    font-size: 13px; font-family: inherit;
+    border: 1px solid var(--border); border-radius: var(--radius);
+    font-size: 13px; font-family: inherit; color: var(--text);
+    background: var(--input-bg);
     margin-bottom: 6px; outline: none;
     transition: border-color .15s;
   }
-  .edit-form input:focus, .edit-form textarea:focus { border-color: #6366F1; }
+  .edit-form input:focus, .edit-form textarea:focus { border-color: var(--primary); }
+  .edit-form input::placeholder, .edit-form textarea::placeholder { color: var(--dim); }
   .edit-form textarea { min-height: 72px; resize: vertical; }
   .edit-form-actions { display: flex; gap: 6px; }
 
-  /* 추가 폼 */
   .add-form-wrap {
-    padding: 14px 20px 18px;
-    border-top: 1.5px solid #F1F5F9;
+    padding: 12px 16px 16px;
+    border-top: 1px solid var(--border);
     flex-shrink: 0;
   }
   .add-form-label {
-    font-size: 12px; font-weight: 700; color: #94A3B8;
-    margin-bottom: 8px; letter-spacing: .3px;
+    font-size: 11px; font-weight: 700; color: var(--dim);
+    margin-bottom: 8px; letter-spacing: .3px; text-transform: uppercase;
   }
   .add-form input, .add-form textarea {
-    width: 100%; padding: 8px 12px;
-    border: 1.5px solid #E2E8F0; border-radius: 8px;
-    font-size: 13px; font-family: inherit;
-    margin-bottom: 8px; outline: none;
-    background: #F8FAFC;
-    transition: border-color .15s, background .15s;
+    width: 100%; padding: 7px 10px;
+    border: 1px solid var(--border); border-radius: var(--radius);
+    font-size: 13px; font-family: inherit; color: var(--text);
+    background: var(--input-bg);
+    margin-bottom: 7px; outline: none;
+    transition: border-color .15s;
   }
-  .add-form input:focus, .add-form textarea:focus {
-    border-color: #6366F1; background: #fff;
-  }
-  .add-form textarea { min-height: 70px; resize: none; }
+  .add-form input:focus, .add-form textarea:focus { border-color: var(--primary); }
+  .add-form input::placeholder, .add-form textarea::placeholder { color: var(--dim); }
+  .add-form textarea { min-height: 64px; resize: none; }
   .btn-add-submit {
-    width: 100%; height: 36px;
-    background: #6366F1; color: #fff;
-    border: none; border-radius: 8px;
+    width: 100%; height: 34px;
+    background: var(--primary); color: #fff;
+    border: none; border-radius: var(--radius);
     font-size: 13px; font-weight: 700;
     cursor: pointer; transition: background .15s;
   }
-  .btn-add-submit:hover { background: #4F46E5; }
+  .btn-add-submit:hover { background: var(--primary-hover); }
 
-  /* 날짜 없을 때 안내 */
   .no-date-guide {
-    flex: 1;
-    display: flex; flex-direction: column;
+    flex: 1; display: flex; flex-direction: column;
     align-items: center; justify-content: center;
-    color: #CBD5E1; padding: 24px;
-    text-align: center;
+    color: var(--dim); padding: 24px; text-align: center;
   }
-  .no-date-guide .icon { font-size: 42px; margin-bottom: 12px; opacity: .5; }
-  .no-date-guide .text { font-size: 14px; line-height: 1.6; }
+  .no-date-guide .icon { font-size: 38px; margin-bottom: 12px; opacity: .3; }
+  .no-date-guide .text { font-size: 13px; line-height: 1.6; }
 </style>
 <body>
 <nav>
@@ -278,7 +233,6 @@
 </nav>
 
 <div class="cal-wrap">
-  <!-- ────── 왼쪽: 달력 ────── -->
   <div class="cal-panel">
     <div class="cal-nav">
       <a th:href="@{/calendar(year=${prevYear},month=${prevMonth})}" class="cal-nav-btn">&#8249;</a>
@@ -313,9 +267,7 @@
                  th:attr="data-date=${dateStr}, data-month=${day.monthValue}, data-year=${day.year}"
                  onclick="selectDay(this)">
               <div class="day-num" th:text="${day.dayOfMonth}"></div>
-              <div class="day-events" th:attr="id='pills-' + ${dateStr}">
-                <!-- JS가 동적으로 채움 -->
-              </div>
+              <div class="day-events" th:attr="id='pills-' + ${dateStr}"></div>
             </div>
           </th:block>
         </th:block>
@@ -323,7 +275,6 @@
     </div>
   </div>
 
-  <!-- ────── 오른쪽: 날짜 상세 ────── -->
   <div class="day-panel" id="dayPanel">
     <div class="no-date-guide">
       <div class="icon">📅</div>
@@ -332,21 +283,18 @@
   </div>
 </div>
 
-<!-- 이벤트 데이터 (서버에서 주입) -->
 <script th:inline="javascript">
-  const EVENTS  = /*[[${eventsJson}]]*/ '{}';
+  const EVENTS    = /*[[${eventsJson}]]*/ '{}';
   const CUR_YEAR  = /*[[${currentYear}]]*/ 0;
   const CUR_MONTH = /*[[${currentMonth}]]*/ 0;
   const eventsMap = JSON.parse(EVENTS);
 
-  /* ── 달력 이벤트 뱃지 렌더링 ── */
   (function initPills() {
     Object.keys(eventsMap).forEach(dateStr => {
       const container = document.getElementById('pills-' + dateStr);
       if (!container) return;
       const list = eventsMap[dateStr];
-      const shown = list.slice(0, 2);
-      shown.forEach(ev => {
+      list.slice(0, 2).forEach(ev => {
         const pill = document.createElement('div');
         pill.className = 'day-event-pill';
         pill.textContent = ev.title || ev.content.split('\n')[0] || '일정';
@@ -361,36 +309,27 @@
     });
   })();
 
-  /* ── 날짜 선택 ── */
   let selectedDate = null;
 
   function selectDay(el) {
     document.querySelectorAll('.cal-day.selected').forEach(d => d.classList.remove('selected'));
     el.classList.add('selected');
-
-    const dateStr = el.getAttribute('data-date');
-    selectedDate = dateStr;
-    renderDayPanel(dateStr);
+    selectedDate = el.getAttribute('data-date');
+    renderDayPanel(selectedDate);
   }
 
-  /* ── 오른쪽 패널 렌더링 ── */
   function renderDayPanel(dateStr) {
     const [y, m, d] = dateStr.split('-').map(Number);
     const dow = ['일','월','화','수','목','금','토'][new Date(y, m-1, d).getDay()];
     const label = y + '년 ' + m + '월 ' + d + '일 (' + dow + ')';
     const events = eventsMap[dateStr] || [];
 
-    let eventsHtml = '';
-    if (events.length === 0) {
-      eventsHtml = '<div class="day-panel-empty">등록된 일정이 없어요</div>';
-    } else {
-      events.forEach(ev => {
-        const title   = escHtml(ev.title || '');
-        const content = escHtml(ev.content || '');
-        eventsHtml += `
+    let eventsHtml = events.length === 0
+      ? '<div class="day-panel-empty">등록된 일정이 없어요</div>'
+      : events.map(ev => `
           <div class="event-item" id="ev-${ev.id}">
-            ${title ? `<div class="event-item-title">${title}</div>` : ''}
-            <div class="event-item-content">${content}</div>
+            ${ev.title ? `<div class="event-item-title">${escHtml(ev.title)}</div>` : ''}
+            <div class="event-item-content">${escHtml(ev.content || '')}</div>
             <div class="event-item-actions">
               <button class="btn-ev btn-ev-edit" onclick="showEditForm('${ev.id}','${escJs(ev.title)}','${escJs(ev.content)}','${dateStr}')">수정</button>
               <form action="/calendar/${ev.id}/delete" method="post" style="display:inline;" onsubmit="return confirm('삭제하시겠습니까?')">
@@ -399,9 +338,7 @@
                 <button type="submit" class="btn-ev btn-ev-del">삭제</button>
               </form>
             </div>
-          </div>`;
-      });
-    }
+          </div>`).join('');
 
     const addForm = `
       <div class="add-form-wrap">
@@ -425,7 +362,6 @@
       ${addForm}`;
   }
 
-  /* ── 인라인 수정 폼 ── */
   function showEditForm(id, title, content, dateStr) {
     const item = document.getElementById('ev-' + id);
     item.innerHTML = `
@@ -436,13 +372,12 @@
         <input type="text" name="title" value="${escAttr(title)}" placeholder="제목 (선택)"/>
         <textarea name="content" required>${escHtml(content)}</textarea>
         <div class="edit-form-actions">
-          <button type="submit" class="btn btn-primary" style="height:30px;padding:0 12px;font-size:12px;">저장</button>
-          <button type="button" class="btn btn-ghost" style="height:30px;padding:0 12px;font-size:12px;" onclick="renderDayPanel('${dateStr}')">취소</button>
+          <button type="submit" class="btn btn-primary" style="height:28px;padding:0 12px;font-size:12px;">저장</button>
+          <button type="button" class="btn btn-ghost" style="height:28px;padding:0 12px;font-size:12px;" onclick="renderDayPanel('${dateStr}')">취소</button>
         </div>
       </form>`;
   }
 
-  /* ── 유틸 ── */
   function escHtml(s) {
     return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   }

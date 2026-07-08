@@ -3,114 +3,115 @@
 <head th:replace="fragments/layout :: head('파이프라인')"></head>
 <style>
     .pl-card {
-        background: #fff;
-        border-radius: 14px;
-        box-shadow: 0 2px 12px rgba(0,0,0,.07);
-        padding: 20px 24px;
-        margin-bottom: 12px;
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 16px 20px;
+        margin-bottom: 8px;
         display: flex;
         align-items: center;
-        gap: 18px;
-        transition: transform .15s, box-shadow .15s;
+        gap: 16px;
+        transition: border-color .15s, background .15s;
         cursor: pointer;
     }
-    .pl-card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,.11); }
+    .pl-card:hover { border-color: #606060; background: var(--bg-3); }
     .pl-icon {
-        width: 48px; height: 48px;
-        background: linear-gradient(135deg, #9B59B6, #6366F1);
-        border-radius: 12px;
+        width: 44px; height: 44px;
+        background: linear-gradient(135deg, #0D7377, #0E639C);
+        border-radius: var(--radius);
         display: flex; align-items: center; justify-content: center;
-        font-size: 22px; flex-shrink: 0;
+        font-size: 20px; flex-shrink: 0;
     }
     .pl-info { flex: 1; min-width: 0; }
-    .pl-name { font-size: 16px; font-weight: 700; color: #1E293B; }
-    .pl-desc { font-size: 12px; color: #94A3B8; margin-top: 3px; }
-    .pl-meta { font-size: 11px; color: #CBD5E1; margin-top: 4px; }
-    .pl-actions { display: flex; gap: 8px; flex-shrink: 0; }
+    .pl-name { font-size: 15px; font-weight: 700; color: var(--text); }
+    .pl-desc { font-size: 12px; color: var(--muted); margin-top: 3px; }
+    .pl-meta { font-size: 11px; color: var(--dim); margin-top: 4px; }
+    .pl-actions { display: flex; gap: 6px; flex-shrink: 0; }
     .btn-sm {
         display: inline-flex; align-items: center; gap: 4px;
-        height: 32px; padding: 0 12px;
-        border-radius: 8px; font-size: 12px; font-weight: 600;
-        text-decoration: none; cursor: pointer; border: none;
-        transition: all .15s;
+        height: 30px; padding: 0 11px;
+        border-radius: var(--radius); font-size: 12px; font-weight: 600;
+        text-decoration: none; cursor: pointer;
+        border: 1px solid transparent; transition: all .15s;
     }
-    .btn-run    { background: #F0FDF4; color: #16A34A; }
-    .btn-run:hover  { background: #DCFCE7; }
-    .btn-edit   { background: #EEF2FF; color: #6366F1; }
-    .btn-edit:hover { background: #E0E7FF; }
-    .btn-export { background: #F0F9FF; color: #0284C7; }
-    .btn-export:hover { background: #E0F2FE; }
-    .btn-del    { background: #FEF2F2; color: #EF4444; }
-    .btn-del:hover  { background: #FEE2E2; }
+    .btn-run    { background: #1B3D35; color: #4EC9B0; border-color: #2D5A4A; }
+    .btn-run:hover  { background: #244F44; }
+    .btn-edit   { background: #1E3A5F; color: #4FC1FF; border-color: #264F78; }
+    .btn-edit:hover { background: #264F78; }
+    .btn-export { background: #1E2D3A; color: #9CDCFE; border-color: #264050; }
+    .btn-export:hover { background: #264050; }
+    .btn-del    { background: #3A1E1E; color: #F48771; border-color: #5A2D2D; }
+    .btn-del:hover  { background: #5A2D2D; }
     .import-label {
         display: inline-flex; align-items: center; gap: 6px;
-        height: 42px; padding: 0 18px;
-        background: #F8FAFC; color: #64748B;
-        border: 1.5px solid #E2E8F0;
-        border-radius: 10px; font-size: 14px; font-weight: 600;
+        height: 40px; padding: 0 16px;
+        background: var(--bg-3); color: var(--muted);
+        border: 1px solid var(--border);
+        border-radius: var(--radius); font-size: 13px; font-weight: 600;
         cursor: pointer; transition: all .15s;
     }
-    .import-label:hover { border-color: #6366F1; color: #6366F1; background: #EEF2FF; }
+    .import-label:hover { border-color: var(--primary-text); color: var(--primary-text); }
     #importFile { display: none; }
 
     /* 실행 모달 */
     .modal-backdrop {
         display: none; position: fixed; inset: 0;
-        background: rgba(0,0,0,.45); z-index: 999;
+        background: rgba(0,0,0,.7); z-index: 999;
         align-items: center; justify-content: center;
     }
     .modal-backdrop.show { display: flex; }
     .modal-box {
-        background: #fff; border-radius: 18px;
+        background: var(--bg-2); border-radius: var(--radius);
+        border: 1px solid var(--border);
         width: 600px; max-height: 80vh;
         display: flex; flex-direction: column;
-        box-shadow: 0 24px 64px rgba(0,0,0,.22);
+        box-shadow: var(--shadow-lg);
         overflow: hidden;
     }
     .modal-header {
-        padding: 20px 24px 16px;
-        border-bottom: 1px solid #F1F5F9;
-        display: flex; align-items: center; gap: 12px;
+        padding: 18px 20px 14px;
+        border-bottom: 1px solid var(--border);
+        display: flex; align-items: center; gap: 10px;
     }
-    .modal-title { font-size: 16px; font-weight: 700; flex: 1; }
+    .modal-title { font-size: 15px; font-weight: 700; flex: 1; color: var(--text); }
     .modal-close {
         background: none; border: none; cursor: pointer;
-        font-size: 20px; color: #94A3B8; padding: 4px;
-        border-radius: 6px; transition: color .15s;
+        font-size: 16px; color: var(--muted); padding: 4px;
+        border-radius: var(--radius); transition: color .15s;
     }
-    .modal-close:hover { color: #EF4444; }
-    .modal-body { flex: 1; overflow-y: auto; padding: 16px 24px; }
+    .modal-close:hover { color: #F14C4C; }
+    .modal-body { flex: 1; overflow-y: auto; padding: 14px 20px; }
     .modal-footer {
-        padding: 14px 24px;
-        border-top: 1px solid #F1F5F9;
+        padding: 12px 20px;
+        border-top: 1px solid var(--border);
         display: flex; gap: 8px; justify-content: flex-end;
     }
     .log-item {
         display: flex; align-items: flex-start; gap: 10px;
-        padding: 10px 12px;
-        border-radius: 8px;
+        padding: 9px 11px;
+        border-radius: var(--radius);
         margin-bottom: 6px;
         font-size: 13px;
     }
-    .log-item.running { background: #F8FAFF; border-left: 3px solid #6366F1; }
-    .log-item.success { background: #F0FDF4; border-left: 3px solid #22C55E; }
-    .log-item.error   { background: #FEF2F2; border-left: 3px solid #EF4444; }
-    .log-status { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
-    .log-msg { flex: 1; line-height: 1.5; }
+    .log-item.running { background: #1E2D3A; border-left: 3px solid #569CD6; }
+    .log-item.success { background: #1B3D35; border-left: 3px solid #4EC9B0; }
+    .log-item.error   { background: #3A1E1E; border-left: 3px solid #F14C4C; }
+    .log-status { font-size: 15px; flex-shrink: 0; margin-top: 1px; }
+    .log-msg { flex: 1; line-height: 1.5; color: var(--text); }
     .log-output {
-        font-family: monospace; font-size: 11px;
-        color: #64748B; margin-top: 4px;
+        font-family: 'Consolas', monospace; font-size: 11px;
+        color: #CE9178; margin-top: 4px;
         white-space: pre-wrap; word-break: break-all;
     }
     .overall-status {
-        padding: 10px 14px;
-        border-radius: 10px;
+        padding: 9px 12px;
+        border-radius: var(--radius);
         font-size: 13px; font-weight: 600;
-        margin-bottom: 12px;
+        margin-bottom: 10px;
     }
-    .overall-status.running { background: #EEF2FF; color: #6366F1; }
-    .overall-status.done    { background: #F0FDF4; color: #16A34A; }
-    .overall-status.error   { background: #FEF2F2; color: #DC2626; }
+    .overall-status.running { background: #1E2D3A; color: #569CD6; border: 1px solid #264F78; }
+    .overall-status.done    { background: #1B3D35; color: #4EC9B0; border: 1px solid #2D5A4A; }
+    .overall-status.error   { background: #3A1E1E; color: #F48771; border: 1px solid #5A2D2D; }
 </style>
 <body>
 <nav>
@@ -217,15 +218,12 @@ function pollLogs(execId) {
         .then(data => {
             renderLogs(data.logs);
             if (data.status !== 'running') {
-                clearInterval(pollInterval);
-                pollInterval = null;
+                clearInterval(pollInterval); pollInterval = null;
                 const os = document.getElementById('overallStatus');
                 if (data.status === 'done') {
-                    os.className = 'overall-status done';
-                    os.textContent = '✅ 완료';
+                    os.className = 'overall-status done'; os.textContent = '✅ 완료';
                 } else {
-                    os.className = 'overall-status error';
-                    os.textContent = '❌ 오류 발생';
+                    os.className = 'overall-status error'; os.textContent = '❌ 오류 발생';
                 }
                 document.getElementById('cancelBtn').style.display = 'none';
                 document.getElementById('closeBtn').style.display = '';
@@ -254,8 +252,7 @@ function renderLogs(logs) {
 function showError(msg) {
     clearInterval(pollInterval);
     const os = document.getElementById('overallStatus');
-    os.className = 'overall-status error';
-    os.textContent = '❌ ' + msg;
+    os.className = 'overall-status error'; os.textContent = '❌ ' + msg;
     document.getElementById('cancelBtn').style.display = 'none';
     document.getElementById('closeBtn').style.display = '';
 }

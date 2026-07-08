@@ -11,41 +11,42 @@ body { overflow: hidden; }
 
 /* ── 왼쪽 팔레트 ── */
 .palette {
-    width: 200px;
-    min-width: 200px;
-    background: #fff;
-    border-right: 1.5px solid #E2E8F0;
+    width: 190px;
+    min-width: 190px;
+    background: #252526;
+    border-right: 1px solid #3E3E42;
     display: flex;
     flex-direction: column;
-    padding: 14px 10px;
-    gap: 6px;
+    padding: 12px 8px;
+    gap: 3px;
     overflow-y: auto;
 }
 .palette-title {
-    font-size: 11px; font-weight: 700; color: #94A3B8;
-    text-transform: uppercase; letter-spacing: .6px;
-    padding: 0 4px;
-    margin-bottom: 4px;
+    font-size: 10px; font-weight: 700; color: #6A6A6A;
+    text-transform: uppercase; letter-spacing: .7px;
+    padding: 0 6px;
+    margin-bottom: 6px;
 }
 .palette-item {
-    display: flex; align-items: center; gap: 9px;
-    padding: 9px 10px;
-    border-radius: 9px;
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 9px;
+    border-radius: 4px;
     cursor: grab;
-    font-size: 13px;
-    color: #334155;
+    font-size: 12px;
+    color: #CCCCCC;
     font-weight: 500;
-    border: 1.5px solid transparent;
-    transition: all .15s;
+    border: 1px solid transparent;
+    transition: all .12s;
     user-select: none;
 }
 .palette-item:hover {
-    background: #F8FAFF;
-    border-color: #E2E8F0;
+    background: #2D2D30;
+    border-color: #454545;
+    color: #D4D4D4;
 }
 .palette-item:active { cursor: grabbing; }
 .palette-dot {
-    width: 10px; height: 10px;
+    width: 9px; height: 9px;
     border-radius: 50%;
     flex-shrink: 0;
 }
@@ -55,19 +56,19 @@ body { overflow: hidden; }
     flex: 1;
     position: relative;
     background:
-        radial-gradient(circle, #CBD5E1 1px, transparent 1px),
-        #F0F4FF;
+        radial-gradient(circle, #3A3A3A 1px, transparent 1px),
+        #1E1E1E;
     background-size: 24px 24px;
     overflow: hidden;
     -webkit-user-select: none;
     user-select: none;
 }
 .canvas-wrap.drag-over {
-    outline: 3px dashed #6366F1;
-    outline-offset: -3px;
+    outline: 2px dashed #0E639C;
+    outline-offset: -2px;
     background:
-        radial-gradient(circle, #A5B4FC 1px, transparent 1px),
-        #EEF2FF;
+        radial-gradient(circle, #264F78 1px, transparent 1px),
+        #1A2633;
     background-size: 24px 24px;
 }
 #canvasArea {
@@ -96,283 +97,278 @@ body { overflow: hidden; }
 .pnode {
     position: absolute;
     min-width: 160px;
-    background: #fff;
-    border-radius: 12px;
-    box-shadow: 0 2px 12px rgba(0,0,0,.10);
-    border: 2px solid #E2E8F0;
+    background: #2D2D30;
+    border-radius: 6px;
+    box-shadow: 0 2px 8px rgba(0,0,0,.5);
+    border: 1px solid #454545;
     cursor: pointer;
     user-select: none;
     transition: box-shadow .15s, border-color .15s;
     z-index: 10;
-    /* 포트가 박스 밖으로 나오도록 */
     overflow: visible;
 }
-.pnode:hover { box-shadow: 0 6px 24px rgba(0,0,0,.15); }
-.pnode.selected { border-color: #6366F1; box-shadow: 0 0 0 3px rgba(99,102,241,.2); }
+.pnode:hover { border-color: #606060; box-shadow: 0 4px 16px rgba(0,0,0,.6); }
+.pnode.selected { border-color: #0E639C; box-shadow: 0 0 0 2px rgba(14,99,156,.4); }
 
 .pnode-header {
     display: flex; align-items: center; gap: 8px;
-    padding: 10px 12px 10px;
+    padding: 9px 11px;
 }
-.pnode-icon { font-size: 18px; }
-.pnode-label { font-size: 13px; font-weight: 700; color: #1E293B; flex: 1; }
+.pnode-icon { font-size: 16px; }
+.pnode-label { font-size: 12px; font-weight: 700; color: #D4D4D4; flex: 1; }
 .pnode-del {
     background: none; border: none; cursor: pointer;
-    font-size: 14px; color: #CBD5E1; padding: 0 2px;
+    font-size: 13px; color: #555; padding: 0 2px;
     line-height: 1; transition: color .15s;
 }
-.pnode-del:hover { color: #EF4444; }
+.pnode-del:hover { color: #F14C4C; }
 
-/* ── 포트: 노드 좌우 바깥에 절대 위치 ── */
+/* ── 포트 ── */
 .pnode-port {
     position: absolute;
-    width: 16px; height: 16px;
+    width: 14px; height: 14px;
     border-radius: 50%;
-    background: #E2E8F0;
-    border: 2.5px solid #fff;
-    box-shadow: 0 0 0 1.5px #CBD5E1;
+    background: #454545;
+    border: 2px solid #2D2D30;
+    box-shadow: 0 0 0 1px #606060;
     transition: background .15s, box-shadow .15s, transform .15s;
     z-index: 20;
-    /* 세로 중앙 */
     top: 50%;
     transform: translateY(-50%);
 }
-
-/* 입력 포트: 왼쪽 바깥 */
-.pnode-port.port-in {
-    left: -10px;
-    cursor: default;
-}
-
-/* 출력 포트: 오른쪽 바깥, grab 커서 */
+.pnode-port.port-in  { left: -9px; cursor: default; }
 .pnode-port.port-out {
-    right: -10px;
-    cursor: grab;
-    background: #C7D2FE;
-    box-shadow: 0 0 0 1.5px #A5B4FC;
+    right: -9px; cursor: grab;
+    background: #264F78;
+    box-shadow: 0 0 0 1px #4FC1FF;
 }
 .pnode-port.port-out:hover {
-    background: #6366F1;
-    box-shadow: 0 0 0 5px rgba(99,102,241,.25);
+    background: #0E639C;
+    box-shadow: 0 0 0 4px rgba(14,99,156,.35);
     transform: translateY(-50%) scale(1.3);
-    cursor: grab;
 }
 .pnode-port.port-out:active { cursor: grabbing; }
-
-/* 연결 중: 연결 가능한 입력 포트 초록 강조 */
 .pnode-port.port-in.connectable {
-    background: #86EFAC;
-    box-shadow: 0 0 0 4px rgba(34,197,94,.3);
+    background: #1B3D35;
+    box-shadow: 0 0 0 3px rgba(78,201,176,.35);
     cursor: crosshair;
     transform: translateY(-50%) scale(1.25);
 }
-/* 마우스가 바로 위에 올라온 입력 포트 */
 .pnode-port.port-in.hover-target {
-    background: #22C55E;
-    box-shadow: 0 0 0 6px rgba(34,197,94,.4);
-    transform: translateY(-50%) scale(1.5);
+    background: #4EC9B0;
+    box-shadow: 0 0 0 5px rgba(78,201,176,.4);
+    transform: translateY(-50%) scale(1.4);
     cursor: crosshair;
 }
 .pnode-port.active {
-    background: #6366F1;
-    box-shadow: 0 0 0 5px rgba(99,102,241,.3);
+    background: #0E639C;
+    box-shadow: 0 0 0 4px rgba(14,99,156,.4);
     transform: translateY(-50%) scale(1.2);
 }
 
 /* ── 연결선 ── */
 .conn-path {
     fill: none;
-    stroke: #94A3B8;
-    stroke-width: 2;
-    stroke-dasharray: none;
+    stroke: #555;
+    stroke-width: 1.5;
     marker-end: url(#arrow);
     transition: stroke .15s;
     pointer-events: stroke;
     cursor: pointer;
 }
-.conn-path:hover { stroke: #EF4444; }
+.conn-path:hover { stroke: #F14C4C; }
 .conn-path-preview {
     fill: none;
-    stroke: #6366F1;
-    stroke-width: 2;
-    stroke-dasharray: 6 4;
+    stroke: #4FC1FF;
+    stroke-width: 1.5;
+    stroke-dasharray: 5 4;
     pointer-events: none;
 }
 
 /* ── 오른쪽 패널 ── */
 .config-panel {
-    width: 280px;
-    min-width: 280px;
-    background: #fff;
-    border-left: 1.5px solid #E2E8F0;
+    width: 270px;
+    min-width: 270px;
+    background: #252526;
+    border-left: 1px solid #3E3E42;
     display: flex;
     flex-direction: column;
     overflow: hidden;
 }
 .config-header {
-    padding: 16px 18px 12px;
-    border-bottom: 1px solid #F1F5F9;
-    font-size: 14px; font-weight: 700; color: #1E293B;
+    padding: 13px 16px 11px;
+    border-bottom: 1px solid #3E3E42;
+    font-size: 13px; font-weight: 700; color: #D4D4D4;
 }
-.config-body { flex: 1; overflow-y: auto; padding: 14px 16px; }
+.config-body { flex: 1; overflow-y: auto; padding: 12px 14px; }
 .config-empty {
     display: flex; flex-direction: column; align-items: center;
     justify-content: center; height: 100%;
-    color: #CBD5E1; font-size: 14px; gap: 10px;
+    color: #4A4A4A; font-size: 13px; gap: 10px;
 }
-.config-empty-icon { font-size: 36px; opacity: .5; }
-.cfg-group { margin-bottom: 14px; }
+.config-empty-icon { font-size: 32px; opacity: .4; }
+.cfg-group { margin-bottom: 12px; }
 .cfg-label {
     display: block;
-    font-size: 12px; font-weight: 600; color: #64748B;
+    font-size: 10px; font-weight: 700; color: #6A6A6A;
     margin-bottom: 5px;
+    text-transform: uppercase; letter-spacing: .4px;
 }
 .cfg-input, .cfg-select, .cfg-textarea {
     width: 100%;
-    padding: 8px 10px;
-    border: 1.5px solid #E2E8F0;
-    border-radius: 8px;
-    font-size: 13px;
+    padding: 7px 9px;
+    border: 1px solid #454545;
+    border-radius: 4px;
+    font-size: 12px;
     font-family: inherit;
-    color: #1E293B;
-    background: #FAFBFF;
+    color: #D4D4D4;
+    background: #3C3C3C;
     outline: none;
     transition: border-color .15s;
 }
 .cfg-input:focus, .cfg-select:focus, .cfg-textarea:focus {
-    border-color: #6366F1;
-    box-shadow: 0 0 0 3px rgba(99,102,241,.1);
+    border-color: #0E639C;
+    box-shadow: 0 0 0 2px rgba(14,99,156,.25);
 }
+.cfg-input::placeholder, .cfg-textarea::placeholder { color: #555; }
+.cfg-select option { background: #3C3C3C; color: #D4D4D4; }
 .cfg-textarea { min-height: 80px; resize: vertical; line-height: 1.6; }
-.cfg-img-wrap {
-    display: flex; flex-direction: column; gap: 6px;
-}
+.cfg-img-wrap { display: flex; flex-direction: column; gap: 6px; }
 .cfg-img-preview {
     width: 100%; max-height: 100px;
     object-fit: contain;
-    border: 1.5px solid #E2E8F0;
-    border-radius: 8px;
-    background: #F8FAFC;
+    border: 1px solid #454545;
+    border-radius: 4px;
+    background: #1E1E1E;
     display: none;
 }
 .cfg-img-preview.visible { display: block; }
 .cfg-upload-btn {
     display: inline-flex; align-items: center; gap: 6px;
-    padding: 7px 12px;
-    background: #F8FAFF; border: 1.5px solid #E2E8F0;
-    border-radius: 8px;
-    font-size: 12px; font-weight: 600; color: #6366F1;
+    padding: 6px 11px;
+    background: #1E3A5F; border: 1px solid #264F78;
+    border-radius: 4px;
+    font-size: 11px; font-weight: 700; color: #4FC1FF;
     cursor: pointer; transition: all .15s;
 }
-.cfg-upload-btn:hover { border-color: #6366F1; background: #EEF2FF; }
+.cfg-upload-btn:hover { background: #264F78; }
 .cfg-upload-input { display: none; }
 .cfg-img-btns { display: flex; gap: 6px; }
 .cfg-img-btns .cfg-upload-btn { flex: 1; justify-content: center; }
 .cfg-capture-btn {
     flex: 1;
     display: inline-flex; align-items: center; justify-content: center; gap: 6px;
-    padding: 7px 12px;
-    background: #F8FAFF; border: 1.5px solid #E2E8F0;
-    border-radius: 8px;
-    font-size: 12px; font-weight: 600; color: #6366F1;
+    padding: 6px 11px;
+    background: #1B3D35; border: 1px solid #2D5A4A;
+    border-radius: 4px;
+    font-size: 11px; font-weight: 700; color: #4EC9B0;
     cursor: pointer; transition: all .15s;
 }
-.cfg-capture-btn:hover { border-color: #6366F1; background: #EEF2FF; }
-.cfg-capture-btn:disabled { opacity: .6; cursor: default; }
+.cfg-capture-btn:hover { background: #244F44; }
+.cfg-capture-btn:disabled { opacity: .5; cursor: default; }
 
 /* ── 하단 툴바 ── */
 .editor-toolbar {
     position: fixed;
-    bottom: 24px;
+    bottom: 20px;
     left: 50%;
     transform: translateX(-50%);
     display: flex;
-    gap: 8px;
-    background: #fff;
-    border-radius: 14px;
-    padding: 10px 14px;
-    box-shadow: 0 8px 32px rgba(0,0,0,.16);
+    gap: 6px;
+    background: #2D2D30;
+    border: 1px solid #454545;
+    border-radius: 8px;
+    padding: 8px 12px;
+    box-shadow: 0 8px 32px rgba(0,0,0,.6);
     z-index: 100;
 }
 .pipeline-name-input {
-    height: 36px;
-    padding: 0 14px;
-    border: 1.5px solid #E2E8F0;
-    border-radius: 8px;
-    font-size: 14px; font-weight: 600;
-    min-width: 220px;
-    outline: none;
-    transition: border-color .15s;
-}
-.pipeline-name-input:focus { border-color: #6366F1; }
-.pipeline-desc-input {
-    height: 36px;
+    height: 34px;
     padding: 0 12px;
-    border: 1.5px solid #E2E8F0;
-    border-radius: 8px;
-    font-size: 13px;
-    min-width: 160px;
+    border: 1px solid #454545;
+    border-radius: 4px;
+    font-size: 13px; font-weight: 600;
+    min-width: 200px;
     outline: none;
-    color: #64748B;
+    background: #3C3C3C;
+    color: #D4D4D4;
     transition: border-color .15s;
 }
-.pipeline-desc-input:focus { border-color: #6366F1; }
+.pipeline-name-input:focus { border-color: #0E639C; }
+.pipeline-name-input::placeholder { color: #555; }
+.pipeline-desc-input {
+    height: 34px;
+    padding: 0 11px;
+    border: 1px solid #454545;
+    border-radius: 4px;
+    font-size: 12px;
+    min-width: 150px;
+    outline: none;
+    background: #3C3C3C;
+    color: #9E9E9E;
+    transition: border-color .15s;
+}
+.pipeline-desc-input:focus { border-color: #0E639C; }
+.pipeline-desc-input::placeholder { color: #555; }
 
 /* ── 실행 모달 ── */
 .modal-backdrop {
     display: none; position: fixed; inset: 0;
-    background: rgba(0,0,0,.45); z-index: 999;
+    background: rgba(0,0,0,.7); z-index: 999;
     align-items: center; justify-content: center;
 }
 .modal-backdrop.show { display: flex; }
 .modal-box {
-    background: #fff; border-radius: 18px;
+    background: #252526;
+    border: 1px solid #454545;
+    border-radius: 6px;
     width: 560px; max-height: 75vh;
     display: flex; flex-direction: column;
-    box-shadow: 0 24px 64px rgba(0,0,0,.22);
+    box-shadow: 0 24px 64px rgba(0,0,0,.7);
     overflow: hidden;
 }
 .modal-header {
-    padding: 18px 22px 14px;
-    border-bottom: 1px solid #F1F5F9;
+    padding: 16px 20px 13px;
+    border-bottom: 1px solid #3E3E42;
     display: flex; align-items: center; gap: 10px;
 }
-.modal-title { font-size: 15px; font-weight: 700; flex: 1; }
+.modal-title { font-size: 14px; font-weight: 700; flex: 1; color: #D4D4D4; }
 .modal-close {
     background: none; border: none; cursor: pointer;
-    font-size: 18px; color: #94A3B8; padding: 4px;
-    border-radius: 6px;
+    font-size: 16px; color: #666; padding: 4px;
+    border-radius: 4px; transition: color .15s;
 }
-.modal-close:hover { color: #EF4444; }
-.modal-body { flex: 1; overflow-y: auto; padding: 14px 22px; }
+.modal-close:hover { color: #F14C4C; }
+.modal-body { flex: 1; overflow-y: auto; padding: 13px 20px; }
 .modal-footer {
-    padding: 12px 22px;
-    border-top: 1px solid #F1F5F9;
+    padding: 11px 20px;
+    border-top: 1px solid #3E3E42;
     display: flex; gap: 8px; justify-content: flex-end;
 }
 .log-item {
     display: flex; gap: 10px;
-    padding: 9px 12px;
-    border-radius: 8px;
-    margin-bottom: 6px;
-    font-size: 13px;
+    padding: 8px 11px;
+    border-radius: 4px;
+    margin-bottom: 5px;
+    font-size: 12px;
 }
-.log-item.running { background: #F8FAFF; border-left: 3px solid #6366F1; }
-.log-item.success { background: #F0FDF4; border-left: 3px solid #22C55E; }
-.log-item.error   { background: #FEF2F2; border-left: 3px solid #EF4444; }
+.log-item.running { background: #1E2D3A; border-left: 2px solid #569CD6; }
+.log-item.success { background: #1B3D35; border-left: 2px solid #4EC9B0; }
+.log-item.error   { background: #3A1E1E; border-left: 2px solid #F14C4C; }
 .log-output {
-    font-family: monospace; font-size: 11px;
-    color: #64748B; margin-top: 4px;
+    font-family: 'Consolas', monospace; font-size: 11px;
+    color: #CE9178; margin-top: 4px;
     white-space: pre-wrap; word-break: break-all;
     max-height: 80px; overflow-y: auto;
 }
 .overall-status {
-    padding: 9px 12px; border-radius: 8px;
-    font-size: 13px; font-weight: 600; margin-bottom: 10px;
+    padding: 8px 11px; border-radius: 4px;
+    font-size: 12px; font-weight: 600; margin-bottom: 10px;
+    border: 1px solid transparent;
 }
-.overall-status.running { background: #EEF2FF; color: #6366F1; }
-.overall-status.done    { background: #F0FDF4; color: #16A34A; }
-.overall-status.error   { background: #FEF2F2; color: #DC2626; }
+.overall-status.running { background: #1E2D3A; color: #569CD6; border-color: #264F78; }
+.overall-status.done    { background: #1B3D35; color: #4EC9B0; border-color: #2D5A4A; }
+.overall-status.error   { background: #3A1E1E; color: #F48771; border-color: #5A2D2D; }
 </style>
 <body>
 <nav>
@@ -412,11 +408,11 @@ body { overflow: hidden; }
                 <defs>
                     <marker id="arrow" markerWidth="8" markerHeight="8"
                             refX="6" refY="3" orient="auto">
-                        <path d="M0,0 L0,6 L8,3 z" fill="#94A3B8"/>
+                        <path d="M0,0 L0,6 L8,3 z" fill="#555"/>
                     </marker>
                     <marker id="arrowGreen" markerWidth="8" markerHeight="8"
                             refX="6" refY="3" orient="auto">
-                        <path d="M0,0 L0,6 L8,3 z" fill="#22C55E"/>
+                        <path d="M0,0 L0,6 L8,3 z" fill="#4EC9B0"/>
                     </marker>
                 </defs>
             </svg>
@@ -818,11 +814,11 @@ function renderConfigPanel(id) {
     });
 
     // ${nodeId.output} 참조 힌트
-    html += `<div style="margin-top:12px;padding:8px 10px;background:#F8FAFF;
-        border-radius:8px;font-size:11px;color:#6366F1;line-height:1.7;">
+    html += `<div style="margin-top:12px;padding:8px 10px;background:#1E2D3A;
+        border:1px solid #264F78;border-radius:4px;font-size:11px;color:#9CDCFE;line-height:1.7;">
         💡 <b>변수 참조:</b><br>
-        이전 노드 출력 참조: <code>\${nodeId.output}</code><br>
-        outputVar 설정 시: <code>\${변수명}</code>
+        이전 노드 출력 참조: <code style="color:#CE9178">\${nodeId.output}</code><br>
+        outputVar 설정 시: <code style="color:#CE9178">\${변수명}</code>
     </div>`;
 
     body.innerHTML = html;
@@ -1018,8 +1014,9 @@ function showToast(msg) {
     const t = document.createElement('div');
     t.textContent = msg;
     t.style.cssText = `position:fixed;bottom:80px;left:50%;transform:translateX(-50%);
-        background:#1E293B;color:#fff;padding:8px 18px;border-radius:9px;
-        font-size:13px;font-weight:600;z-index:9999;opacity:1;transition:opacity .4s`;
+        background:#2D2D30;color:#D4D4D4;border:1px solid #454545;
+        padding:7px 16px;border-radius:4px;
+        font-size:12px;font-weight:600;z-index:9999;opacity:1;transition:opacity .4s`;
     document.body.appendChild(t);
     setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 400); }, 1800);
 }

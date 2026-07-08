@@ -2,116 +2,101 @@
 <html xmlns:th="http://www.thymeleaf.org">
 <head th:replace="fragments/layout :: head('메모')"></head>
 <style>
-    /* ── CARD GRID ── */
     .cards-grid {
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
-        gap: 20px;
+        gap: 16px;
     }
-
     .memo-card {
-        background: #fff;
-        border-radius: 16px;
-        box-shadow: 0 2px 12px rgba(0,0,0,.07);
+        background: var(--card);
+        border-radius: var(--radius);
+        border: 1px solid var(--border);
         overflow: hidden;
         display: flex;
         flex-direction: column;
-        transition: transform .18s, box-shadow .18s;
+        transition: transform .15s, box-shadow .15s, border-color .15s;
     }
     .memo-card:hover {
-        transform: translateY(-3px);
-        box-shadow: 0 10px 32px rgba(0,0,0,.13);
+        transform: translateY(-2px);
+        border-color: #606060;
+        box-shadow: var(--shadow-md);
     }
-
-    /* 상단 색상 띠 */
-    .card-accent { height: 5px; }
-
-    /* 헤더 */
+    .card-accent { height: 3px; }
     .card-header {
-        padding: 18px 20px 14px;
+        padding: 16px 18px 12px;
         display: flex;
         align-items: flex-start;
-        gap: 14px;
+        gap: 12px;
     }
     .card-icon {
-        width: 44px; height: 44px;
-        border-radius: 12px;
+        width: 38px; height: 38px;
+        border-radius: var(--radius);
         display: flex; align-items: center; justify-content: center;
-        font-size: 19px; font-weight: 800;
+        font-size: 16px; font-weight: 800;
         color: #fff;
         flex-shrink: 0;
-        letter-spacing: 0;
     }
     .card-title-wrap { flex: 1; min-width: 0; }
     .card-title {
-        font-size: 16px; font-weight: 700;
-        color: #1E293B;
+        font-size: 15px; font-weight: 700;
+        color: var(--text);
         white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-        line-height: 1.3;
     }
     .card-category {
-        margin-top: 5px;
+        margin-top: 4px;
         display: inline-flex; align-items: center;
-        padding: 2px 9px;
-        border-radius: 99px;
+        padding: 2px 8px;
+        border-radius: 3px;
         font-size: 11px; font-weight: 700;
         letter-spacing: .3px;
     }
-
-    /* 내용 */
-    .card-body { padding: 0 20px 14px; flex: 1; }
+    .card-body { padding: 0 18px 12px; flex: 1; }
     .content-block {
-        background: #F8FAFC;
-        border: 1.5px solid #E8EDF5;
-        border-radius: 10px;
-        padding: 13px 15px;
+        background: #1A1A1A;
+        border: 1px solid #3A3A3A;
+        border-radius: var(--radius);
+        padding: 11px 13px;
         font-family: 'Consolas', 'D2Coding', 'Courier New', monospace;
-        font-size: 13px;
+        font-size: 12.5px;
         line-height: 1.85;
-        color: #334155;
+        color: #CE9178;
         white-space: pre-wrap;
         word-break: break-all;
         margin: 0;
-        max-height: 180px;
+        max-height: 160px;
         overflow-y: auto;
     }
     .content-block::-webkit-scrollbar { width: 4px; }
-    .content-block::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 4px; }
-
-    /* 푸터 */
+    .content-block::-webkit-scrollbar-thumb { background: #555; border-radius: 4px; }
     .card-footer {
-        padding: 12px 20px;
-        border-top: 1px solid #F1F5F9;
+        padding: 10px 18px;
+        border-top: 1px solid var(--border);
         display: flex;
         align-items: center;
-        gap: 8px;
+        gap: 6px;
     }
-    .card-date { font-size: 11px; color: #94A3B8; margin-right: auto; }
-
-    /* 복사 버튼 */
+    .card-date { font-size: 11px; color: var(--dim); margin-right: auto; }
     .btn-copy {
         display: inline-flex; align-items: center; gap: 5px;
-        height: 32px; padding: 0 13px;
-        background: #10B981; color: #fff;
-        border: none; border-radius: 8px;
-        font-size: 12px; font-weight: 700;
+        height: 28px; padding: 0 11px;
+        background: #1B3D35; color: #4EC9B0;
+        border: 1px solid #2D5A4A; border-radius: var(--radius);
+        font-size: 12px; font-weight: 600;
         cursor: pointer; transition: all .15s;
     }
-    .btn-copy:hover { background: #059669; }
-    .btn-copy.copied { background: #64748B; }
-
-    /* 수정/삭제 */
+    .btn-copy:hover { background: #244F44; }
+    .btn-copy.copied { background: var(--bg-3); color: var(--muted); border-color: var(--border); }
     .btn-sm {
         display: inline-flex; align-items: center;
-        height: 32px; padding: 0 12px;
-        border-radius: 8px; font-size: 12px; font-weight: 600;
-        text-decoration: none; cursor: pointer; border: none;
+        height: 28px; padding: 0 10px;
+        border-radius: var(--radius); font-size: 12px; font-weight: 600;
+        text-decoration: none; cursor: pointer; border: 1px solid transparent;
         transition: all .15s;
     }
-    .btn-edit   { background: #EEF2FF; color: #6366F1; }
-    .btn-edit:hover { background: #E0E7FF; }
-    .btn-del    { background: #FEF2F2; color: #EF4444; }
-    .btn-del:hover  { background: #FEE2E2; }
+    .btn-edit   { background: #1E3A5F; color: #4FC1FF; border-color: #264F78; }
+    .btn-edit:hover { background: #264F78; }
+    .btn-del    { background: #3A1E1E; color: #F48771; border-color: #5A2D2D; }
+    .btn-del:hover  { background: #5A2D2D; }
 </style>
 <body>
 <nav>
@@ -150,27 +135,23 @@
     </div>
 
     <div class="cards-grid" th:if="${!memos.isEmpty()}">
-        <!--
-            색상 팔레트 (accent / icon bg / badge bg / badge text)
-            index % 8 로 순환
-        -->
         <th:block th:each="memo, stat : ${memos}">
             <th:block th:with="
                 ci=${stat.index % 8},
-                accent=${ci==0?'linear-gradient(90deg,#6366F1,#8B5CF6)':
-                         ci==1?'linear-gradient(90deg,#EF4444,#F97316)':
-                         ci==2?'linear-gradient(90deg,#10B981,#06B6D4)':
-                         ci==3?'linear-gradient(90deg,#F59E0B,#EAB308)':
-                         ci==4?'linear-gradient(90deg,#8B5CF6,#EC4899)':
-                         ci==5?'linear-gradient(90deg,#06B6D4,#3B82F6)':
-                         ci==6?'linear-gradient(90deg,#F97316,#EF4444)':
-                               'linear-gradient(90deg,#64748B,#475569)'},
-                iconBg=${ci==0?'#6366F1':ci==1?'#EF4444':ci==2?'#10B981':ci==3?'#F59E0B':
-                          ci==4?'#8B5CF6':ci==5?'#06B6D4':ci==6?'#F97316':'#64748B'},
-                badgeBg=${ci==0?'#EEF2FF':ci==1?'#FEF2F2':ci==2?'#ECFDF5':ci==3?'#FFFBEB':
-                           ci==4?'#F5F3FF':ci==5?'#ECFEFF':ci==6?'#FFF7ED':'#F8FAFC'},
-                badgeColor=${ci==0?'#6366F1':ci==1?'#EF4444':ci==2?'#10B981':ci==3?'#D97706':
-                              ci==4?'#8B5CF6':ci==5?'#0891B2':ci==6?'#EA580C':'#64748B'},
+                accent=${ci==0?'linear-gradient(90deg,#569CD6,#4EC9B0)':
+                         ci==1?'linear-gradient(90deg,#F14C4C,#CE9178)':
+                         ci==2?'linear-gradient(90deg,#4EC9B0,#6A9955)':
+                         ci==3?'linear-gradient(90deg,#CCA700,#DCDCAA)':
+                         ci==4?'linear-gradient(90deg,#C586C0,#569CD6)':
+                         ci==5?'linear-gradient(90deg,#4FC1FF,#569CD6)':
+                         ci==6?'linear-gradient(90deg,#CE9178,#F14C4C)':
+                               'linear-gradient(90deg,#808080,#9E9E9E)'},
+                iconBg=${ci==0?'#0E639C':ci==1?'#B00000':ci==2?'#1B6B50':ci==3?'#7D6608':
+                          ci==4?'#7A3B7A':ci==5?'#0D6E9A':ci==6?'#8B4500':'#4A4A4A'},
+                badgeBg=${ci==0?'#1E3A5F':ci==1?'#3A1515':ci==2?'#1B3D35':ci==3?'#3A3000':
+                           ci==4?'#3A1E3A':ci==5?'#1E3344':ci==6?'#3A2200':'#2D2D30'},
+                badgeColor=${ci==0?'#4FC1FF':ci==1?'#F48771':ci==2?'#4EC9B0':ci==3?'#DCDCAA':
+                              ci==4?'#C586C0':ci==5?'#9CDCFE':ci==6?'#CE9178':'#9E9E9E'},
                 initial=${#strings.substring(memo.title,0,1).toUpperCase()}
             ">
                 <div class="memo-card">
@@ -218,25 +199,20 @@
 function copyContent(btn) {
     const id = btn.getAttribute('data-target').replace(/^'|'$/g, '');
     const text = document.getElementById(id).innerText;
-
-    // navigator.clipboard 미지원(JavaFX WebView) 시 execCommand 방식으로 폴백
     const tryClipboard = navigator.clipboard
         ? navigator.clipboard.writeText(text).then(() => showCopied(btn)).catch(() => fallbackCopy(btn, text))
         : fallbackCopy(btn, text);
 }
-
 function fallbackCopy(btn, text) {
     const ta = document.createElement('textarea');
     ta.value = text;
     ta.style.cssText = 'position:fixed;opacity:0;top:0;left:0';
     document.body.appendChild(ta);
-    ta.focus();
-    ta.select();
+    ta.focus(); ta.select();
     document.execCommand('copy');
     document.body.removeChild(ta);
     showCopied(btn);
 }
-
 function showCopied(btn) {
     const orig = btn.innerHTML;
     btn.innerHTML = '✅ 복사됨';

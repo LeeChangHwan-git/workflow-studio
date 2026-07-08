@@ -3,59 +3,58 @@
 <head th:replace="fragments/layout :: head('북마크')"></head>
 <style>
     .bk-card {
-        background: #fff;
-        border-radius: 14px;
-        box-shadow: 0 2px 12px rgba(0,0,0,.07);
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
         display: flex;
         align-items: center;
-        gap: 16px;
-        padding: 16px 20px;
-        margin-bottom: 10px;
-        transition: transform .18s, box-shadow .18s;
+        gap: 14px;
+        padding: 14px 18px;
+        margin-bottom: 8px;
+        transition: border-color .15s, background .15s;
         text-decoration: none;
     }
-    .bk-card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,.12); }
-
+    .bk-card:hover { border-color: #606060; background: var(--bg-3); }
     .bk-favicon {
-        width: 42px; height: 42px;
-        border-radius: 10px;
-        background: linear-gradient(135deg, #6366F1, #8B5CF6);
+        width: 38px; height: 38px;
+        border-radius: var(--radius);
+        background: linear-gradient(135deg, #0E639C, #0D7377);
         display: flex; align-items: center; justify-content: center;
-        font-size: 18px; color: #fff; font-weight: 800;
+        font-size: 16px; color: #fff; font-weight: 800;
         flex-shrink: 0;
     }
     .bk-info { flex: 1; min-width: 0; }
     .bk-name {
-        font-size: 15px; font-weight: 700; color: #1E293B;
+        font-size: 14px; font-weight: 700; color: var(--text);
         white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
     .bk-url {
-        font-size: 12px; color: #94A3B8; margin-top: 2px;
+        font-size: 12px; color: var(--dim); margin-top: 2px;
         white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
     .bk-desc {
-        font-size: 12px; color: #64748B; margin-top: 4px;
+        font-size: 12px; color: var(--muted); margin-top: 3px;
         white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
-    .bk-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+    .bk-right { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
     .bk-badge {
-        padding: 3px 10px;
-        background: #EEF2FF; color: #6366F1;
-        border-radius: 99px; font-size: 11px; font-weight: 700;
+        padding: 2px 9px;
+        background: #1E3A5F; color: #4FC1FF;
+        border-radius: 3px; font-size: 11px; font-weight: 700;
     }
     .btn-sm {
         display: inline-flex; align-items: center;
-        height: 32px; padding: 0 12px;
-        border-radius: 8px; font-size: 12px; font-weight: 600;
-        text-decoration: none; cursor: pointer; border: none;
-        transition: all .15s;
+        height: 28px; padding: 0 10px;
+        border-radius: var(--radius); font-size: 12px; font-weight: 600;
+        text-decoration: none; cursor: pointer;
+        border: 1px solid transparent; transition: all .15s;
     }
-    .btn-open   { background: #F0FDF4; color: #16A34A; }
-    .btn-open:hover { background: #DCFCE7; }
-    .btn-edit   { background: #EEF2FF; color: #6366F1; }
-    .btn-edit:hover { background: #E0E7FF; }
-    .btn-del    { background: #FEF2F2; color: #EF4444; }
-    .btn-del:hover  { background: #FEE2E2; }
+    .btn-open   { background: #1B3D35; color: #4EC9B0; border-color: #2D5A4A; }
+    .btn-open:hover { background: #244F44; }
+    .btn-edit   { background: #1E3A5F; color: #4FC1FF; border-color: #264F78; }
+    .btn-edit:hover { background: #264F78; }
+    .btn-del    { background: #3A1E1E; color: #F48771; border-color: #5A2D2D; }
+    .btn-del:hover  { background: #5A2D2D; }
 </style>
 <body>
 <nav>
