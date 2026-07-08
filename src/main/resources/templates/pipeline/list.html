@@ -150,9 +150,7 @@
                 <div class="pl-name" th:text="${pl.name}"></div>
                 <div class="pl-desc" th:if="${pl.description != null and !pl.description.isEmpty()}"
                      th:text="${pl.description}"></div>
-                <div class="pl-meta"
-                     th:text="${pl.nodes != null ? pl.nodes.size() : 0} + '개 노드 · '
-                               + (pl.updatedAt != null ? #temporals.format(pl.updatedAt,'yyyy.MM.dd HH:mm') : '')">
+                <div class="pl-meta" th:text="${(pl.nodes != null ? pl.nodes.size() : 0) + '개 노드 · ' + (pl.updatedAt != null ? #temporals.format(pl.updatedAt,'yyyy.MM.dd HH:mm') : '')}">
                 </div>
             </div>
             <div class="pl-actions">

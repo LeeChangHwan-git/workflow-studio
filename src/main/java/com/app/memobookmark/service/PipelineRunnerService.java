@@ -206,10 +206,12 @@ public class PipelineRunnerService {
                 java.awt.datatransfer.Clipboard cb =
                         Toolkit.getDefaultToolkit().getSystemClipboard();
                 cb.setContents(new java.awt.datatransfer.StringSelection(text), null);
-                robot.keyPress(KeyEvent.VK_CONTROL);
+                boolean isWindows = System.getProperty("os.name").toLowerCase().contains("win");
+                int modifier = isWindows ? KeyEvent.VK_CONTROL : KeyEvent.VK_META;
+                robot.keyPress(modifier);
                 robot.keyPress(KeyEvent.VK_V);
                 robot.keyRelease(KeyEvent.VK_V);
-                robot.keyRelease(KeyEvent.VK_CONTROL);
+                robot.keyRelease(modifier);
                 Thread.sleep(200);
                 yield "텍스트 입력 완료: " + text.substring(0, Math.min(text.length(), 30));
             }

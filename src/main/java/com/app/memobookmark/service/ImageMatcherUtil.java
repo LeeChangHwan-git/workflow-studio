@@ -33,11 +33,14 @@ public class ImageMatcherUtil {
         Robot robot = new Robot();
         Rectangle screenBounds = getAllScreenBounds();
 
-        BufferedImage screen = robot.createScreenCapture(screenBounds);
+        BufferedImage screen = captureAllScreens(robot, screenBounds);
         BufferedImage template = ImageIO.read(templateFile);
         if (template == null) throw new IOException("이미지 파일을 읽을 수 없습니다: " + templateFile);
 
-        return findImage(screen, template, threshold);
+        Point found = findImage(screen, template, threshold);
+        if (found == null) return null;
+        // findImage는 캡처 이미지 내 상대 좌표를 반환하므로, 실제 화면 좌표로 변환
+        return new Point(found.x + screenBounds.x, found.y + screenBounds.y);
     }
 
     public static Point findImage(BufferedImage screen, BufferedImage template, double threshold) {
@@ -184,18 +187,36 @@ public class ImageMatcherUtil {
         return r * r + g * g + b * b;
     }
 
-    /** 전체 화면 스크린샷을 파일로 저장하고 경로 반환 */
+    /** 전체 화면 스크린샷 반환 */
     public static BufferedImage captureScreen() throws AWTException {
         Robot robot = new Robot();
-        return robot.createScreenCapture(getAllScreenBounds());
+        Rectangle allBounds = getAllScreenBounds();
+        return captureAllScreens(robot, allBounds);
     }
 
     /** 연결된 모든 모니터를 합친 가상 영역 반환 */
-    private static Rectangle getAllScreenBounds() {
+    static Rectangle getAllScreenBounds() {
         Rectangle bounds = new Rectangle();
         for (GraphicsDevice gd : GraphicsEnvironment.getLocalGraphicsEnvironment().getScreenDevices()) {
             bounds = bounds.union(gd.getDefaultConfiguration().getBounds());
         }
         return bounds;
+    }
+
+    /**
+     * 각 모니터를 개별 캡처 후 allBounds 크기의 이미지에 합친다.
+     * createScreenCapture(allBounds) 한 번으로 찍으면 외부 모니터 영역이
+     * 깨지는 macOS 렌더링 문제를 방지한다.
+     */
+    public static BufferedImage captureAllScreens(Robot robot, Rectangle allBounds) throws AWTException {
+        BufferedImage combined = new BufferedImage(allBounds.width, allBounds.height, BufferedImage.TYPE_INT_RGB);
+        Graphics2D g = combined.createGraphics();
+        for (GraphicsDevice gd : GraphicsEnvironment.getLocalGraphicsEnvironment().getScreenDevices()) {
+            Rectangle sb = gd.getDefaultConfiguration().getBounds();
+            BufferedImage part = robot.createScreenCapture(sb);
+            g.drawImage(part, sb.x - allBounds.x, sb.y - allBounds.y, null);
+        }
+        g.dispose();
+        return combined;
     }
 }
