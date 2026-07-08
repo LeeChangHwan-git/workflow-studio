@@ -59,9 +59,16 @@ body { overflow: hidden; }
         #F0F4FF;
     background-size: 24px 24px;
     overflow: hidden;
-    /* 드래그 중 텍스트 선택 방지 */
     -webkit-user-select: none;
     user-select: none;
+}
+.canvas-wrap.drag-over {
+    outline: 3px dashed #6366F1;
+    outline-offset: -3px;
+    background:
+        radial-gradient(circle, #A5B4FC 1px, transparent 1px),
+        #EEF2FF;
+    background-size: 24px 24px;
 }
 #canvasArea {
     position: absolute;
@@ -380,7 +387,7 @@ body { overflow: hidden; }
 <div class="editor-wrap">
     <!-- 왼쪽 팔레트 -->
     <div class="palette">
-        <div class="palette-title">노드 추가</div>
+        <div class="palette-title">드래그하여 추가</div>
         <div class="palette-item"
              th:each="nt : ${nodeTypes}"
              th:data-type="${nt.id()}"
@@ -388,8 +395,7 @@ body { overflow: hidden; }
              th:data-label="${nt.label()}"
              th:data-color="${nt.color()}"
              draggable="true"
-             ondragstart="onPaletteDragStart(event)"
-             onclick="addNodeFromPalette(this)">
+             ondragstart="onPaletteDragStart(event)">
             <div class="palette-dot" th:style="'background:' + ${nt.color()}"></div>
             <span th:text="${nt.icon()}"></span>
             <span th:text="${nt.label()}"></span>
@@ -398,7 +404,8 @@ body { overflow: hidden; }
 
     <!-- 중앙 캔버스 -->
     <div class="canvas-wrap" id="canvasWrap"
-         ondragover="event.preventDefault()"
+         ondragover="event.preventDefault(); this.classList.add('drag-over')"
+         ondragleave="this.classList.remove('drag-over')"
          ondrop="onCanvasDrop(event)">
         <div id="canvasArea">
             <svg id="svgLayer">
@@ -741,19 +748,14 @@ function onPaletteDragStart(e) {
 }
 function onCanvasDrop(e) {
     e.preventDefault();
+    canvasWrap.classList.remove('drag-over');
     if (!dragType) return;
     const wr = canvasWrap.getBoundingClientRect();
     const x = e.clientX - wr.left - 80;
     const y = e.clientY - wr.top  - 30;
-    addNode(dragType, Math.max(0, x), Math.max(0, y), null);
-    dragType = null;
-}
-function addNodeFromPalette(el) {
-    const type = el.dataset.type;
-    const x = 80 + Object.keys(nodes).length * 30;
-    const y = 80 + (Object.keys(nodes).length % 5) * 20;
-    const id = addNode(type, x, y, null);
+    const id = addNode(dragType, Math.max(0, x), Math.max(0, y), null);
     if (id) selectNode(id);
+    dragType = null;
 }
 
 // ── 설정 패널 렌더링 ─────────────────────────────────────────────
