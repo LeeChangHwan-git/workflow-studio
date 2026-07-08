@@ -26,6 +26,17 @@ public class NodeTypeRegistry {
 
     private static final List<NodeTypeInfo> TYPES = List.of(
 
+        new NodeTypeInfo("HTTP_REQUEST", "HTTP 요청", "🔗", "#0EA5E9", List.of(
+            new NodeParam("method", "메소드", "select", "GET",
+                List.of("GET", "POST", "PUT", "DELETE", "PATCH")),
+            new NodeParam("url", "URL", "text", "https://", null),
+            new NodeParam("headers", "헤더 (Key: Value, 줄바꿈 구분)", "textarea", "", null),
+            new NodeParam("bodyType", "바디 타입", "select", "없음",
+                List.of("없음", "JSON", "Form", "Raw")),
+            new NodeParam("body", "요청 바디", "textarea", "", null),
+            new NodeParam("outputVar", "출력 변수명", "text", "httpResult", null)
+        )),
+
         new NodeTypeInfo("OPEN_URL", "사이트 열기", "🌐", "#4A90D9", List.of(
             new NodeParam("url", "URL", "text", "https://", null),
             new NodeParam("browser", "브라우저", "select", "기본",

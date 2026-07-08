@@ -4,6 +4,7 @@ import com.app.memobookmark.model.*;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.RestTemplate;
 
 import javax.imageio.ImageIO;
@@ -135,6 +136,50 @@ public class PipelineRunnerService {
         AppSettings settings = settingsService.load();
 
         return switch (node.getType()) {
+
+            case "HTTP_REQUEST" -> {
+                String method   = str(cfg, "method", "GET");
+                String url      = resolveVars(str(cfg, "url", ""), ctx);
+                String hdrsRaw  = str(cfg, "headers", "");
+                String bodyType = str(cfg, "bodyType", "없음");
+                String bodyRaw  = resolveVars(str(cfg, "body", ""), ctx);
+
+                HttpHeaders hdrs = new HttpHeaders();
+                if (hdrsRaw != null && !hdrsRaw.isBlank()) {
+                    for (String line : hdrsRaw.split("\\r?\\n")) {
+                        int ci = line.indexOf(':');
+                        if (ci > 0) hdrs.set(line.substring(0, ci).trim(), line.substring(ci + 1).trim());
+                    }
+                }
+
+                HttpEntity<String> entity;
+                switch (bodyType) {
+                    case "JSON" -> { hdrs.setContentType(MediaType.APPLICATION_JSON); entity = new HttpEntity<>(bodyRaw, hdrs); }
+                    case "Form" -> { hdrs.setContentType(MediaType.APPLICATION_FORM_URLENCODED); entity = new HttpEntity<>(bodyRaw, hdrs); }
+                    case "Raw"  -> { entity = new HttpEntity<>(bodyRaw, hdrs); }
+                    default     -> { entity = new HttpEntity<>(hdrs); }
+                }
+
+                String responseBody;
+                int statusCode;
+                try {
+                    ResponseEntity<String> resp = restTemplate.exchange(
+                            url, HttpMethod.valueOf(method), entity, String.class);
+                    statusCode   = resp.getStatusCode().value();
+                    responseBody = resp.getBody() != null ? resp.getBody() : "";
+                } catch (HttpStatusCodeException ex) {
+                    statusCode   = ex.getStatusCode().value();
+                    responseBody = ex.getResponseBodyAsString();
+                }
+
+                // JSON이면 pretty-print, 아니면 그대로
+                String pretty;
+                try { pretty = objectMapper.writerWithDefaultPrettyPrinter()
+                        .writeValueAsString(objectMapper.readTree(responseBody)); }
+                catch (Exception e) { pretty = responseBody; }
+
+                yield "HTTP " + statusCode + "\n" + pretty;
+            }
 
             case "OPEN_URL" -> {
                 String url = resolveVars(str(cfg, "url"), ctx);
