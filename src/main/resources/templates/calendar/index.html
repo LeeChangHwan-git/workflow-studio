@@ -331,11 +331,11 @@
             ${ev.title ? `<div class="event-item-title">${escHtml(ev.title)}</div>` : ''}
             <div class="event-item-content">${escHtml(ev.content || '')}</div>
             <div class="event-item-actions">
-              <button class="btn-ev btn-ev-edit" onclick="showEditForm('${ev.id}','${escJs(ev.title)}','${escJs(ev.content)}','${dateStr}')">수정</button>
-              <form action="/calendar/${ev.id}/delete" method="post" style="display:inline;" onsubmit="return confirm('삭제하시겠습니까?')">
+              <a class="btn-ev btn-ev-edit" onclick="showEditForm('${ev.id}','${escJs(ev.title)}','${escJs(ev.content)}','${dateStr}')">수정</a>
+              <form action="/calendar/${ev.id}/delete" method="post" style="display:inline;">
                 <input type="hidden" name="year"  value="${CUR_YEAR}">
                 <input type="hidden" name="month" value="${CUR_MONTH}">
-                <button type="submit" class="btn-ev btn-ev-del">삭제</button>
+                <a class="btn-ev btn-ev-del" onclick="if(confirm('삭제하시겠습니까?')) this.closest('form').submit()">삭제</a>
               </form>
             </div>
           </div>`).join('');
@@ -349,7 +349,7 @@
           <input type="hidden" name="month" value="${CUR_MONTH}">
           <input type="text" name="title" placeholder="제목 (선택)"/>
           <textarea name="content" placeholder="내용을 입력하세요" required></textarea>
-          <button type="submit" class="btn-add-submit">저장</button>
+          <a class="btn-add-submit" onclick="this.closest('form').submit()">저장</a>
         </form>
       </div>`;
 
@@ -372,8 +372,8 @@
         <input type="text" name="title" value="${escAttr(title)}" placeholder="제목 (선택)"/>
         <textarea name="content" required>${escHtml(content)}</textarea>
         <div class="edit-form-actions">
-          <button type="submit" class="btn btn-primary" style="height:28px;padding:0 12px;font-size:12px;">저장</button>
-          <button type="button" class="btn btn-ghost" style="height:28px;padding:0 12px;font-size:12px;" onclick="renderDayPanel('${dateStr}')">취소</button>
+          <a class="btn btn-primary" style="height:28px;padding:0 12px;font-size:12px;" onclick="this.closest('form').submit()">저장</a>
+          <a class="btn btn-ghost" style="height:28px;padding:0 12px;font-size:12px;" onclick="renderDayPanel('${dateStr}')">취소</a>
         </div>
       </form>`;
   }

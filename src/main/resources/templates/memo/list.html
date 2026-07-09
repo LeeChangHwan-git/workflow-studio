@@ -124,7 +124,7 @@
         <form method="get" th:action="@{/memos}" style="display:flex;gap:8px;flex:1;">
             <input class="search-input" type="text" name="search"
                    placeholder="시스템명, 내용으로 검색..." th:value="${search}"/>
-            <button type="submit" class="btn btn-primary">검색</button>
+            <a class="btn btn-primary" onclick="this.closest('form').submit()">검색</a>
             <a th:href="@{/memos}" class="btn btn-ghost">전체</a>
         </form>
     </div>
@@ -178,15 +178,15 @@
                     <div class="card-footer">
                         <span class="card-date"
                               th:text="${#temporals.format(memo.updatedAt,'yyyy.MM.dd HH:mm')}"></span>
-                        <button class="btn-copy"
+                        <a class="btn-copy"
                                 th:data-target="'c-' + ${memo.id}"
                                 onclick="copyContent(this)">
                             📋 복사
-                        </button>
+                        </a>
                         <a th:href="@{/memos/{id}/edit(id=${memo.id})}" class="btn-sm btn-edit">✏ 수정</a>
                         <form th:action="@{/memos/{id}/delete(id=${memo.id})}" method="post"
-                              style="display:inline;" onsubmit="return confirm('삭제하시겠습니까?')">
-                            <button type="submit" class="btn-sm btn-del">🗑 삭제</button>
+                              style="display:inline;">
+                            <a class="btn-sm btn-del" onclick="if(confirm('삭제하시겠습니까?')) this.closest('form').submit()">🗑 삭제</a>
                         </form>
                     </div>
                 </div>

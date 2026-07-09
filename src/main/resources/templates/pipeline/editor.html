@@ -455,9 +455,9 @@ body { overflow: hidden; }
     <input class="pipeline-desc-input" id="pipelineDesc"
            type="text" placeholder="설명 (선택)"
            th:value="${pipeline.description != null ? pipeline.description : ''}">
-    <button class="btn btn-primary" onclick="savePipeline()">💾 저장</button>
-    <button class="btn btn-success" onclick="runPipeline()">▶ 실행</button>
-    <button class="btn btn-danger-soft" onclick="clearCanvas()">🗑 전체삭제</button>
+    <a class="btn btn-primary" onclick="savePipeline()">💾 저장</a>
+    <a class="btn btn-success" onclick="runPipeline()">▶ 실행</a>
+    <a class="btn btn-danger-soft" onclick="clearCanvas()">🗑 전체삭제</a>
 </div>
 
 <!-- 실행 모달 -->
@@ -466,15 +466,15 @@ body { overflow: hidden; }
         <div class="modal-header">
             <span>⚡</span>
             <div class="modal-title">파이프라인 실행</div>
-            <button class="modal-close" onclick="closeRunModal()">✕</button>
+            <a class="modal-close" onclick="closeRunModal()">✕</a>
         </div>
         <div class="modal-body">
             <div class="overall-status running" id="overallStatus">⏳ 실행 중...</div>
             <div id="logContainer"></div>
         </div>
         <div class="modal-footer">
-            <button class="btn btn-ghost" id="cancelBtn" onclick="cancelRun()">중단</button>
-            <button class="btn btn-primary" id="closeBtn" style="display:none" onclick="closeRunModal()">닫기</button>
+            <a class="btn btn-ghost" id="cancelBtn" onclick="cancelRun()">중단</a>
+            <a class="btn btn-primary" id="closeBtn" style="display:none" onclick="closeRunModal()">닫기</a>
         </div>
     </div>
 </div>

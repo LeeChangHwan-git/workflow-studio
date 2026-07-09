@@ -83,7 +83,7 @@
         <form method="get" th:action="@{/bookmarks}" style="display:flex;gap:8px;flex:1;">
             <input class="search-input" type="text" name="search"
                    placeholder="이름, URL, 설명으로 검색..." th:value="${search}"/>
-            <button type="submit" class="btn btn-primary">검색</button>
+            <a class="btn btn-primary" onclick="this.closest('form').submit()">검색</a>
             <a th:href="@{/bookmarks}" class="btn btn-ghost">전체</a>
         </form>
     </div>
@@ -110,8 +110,8 @@
                 <a th:href="@{/bookmarks/{id}/open(id=${bk.id})}" class="btn-sm btn-open">↗ 열기</a>
                 <a th:href="@{/bookmarks/{id}/edit(id=${bk.id})}" class="btn-sm btn-edit">✏ 수정</a>
                 <form th:action="@{/bookmarks/{id}/delete(id=${bk.id})}" method="post"
-                      style="display:inline;" onsubmit="return confirm('삭제하시겠습니까?')">
-                    <button type="submit" class="btn-sm btn-del">🗑</button>
+                      style="display:inline;">
+                    <a class="btn-sm btn-del" onclick="if(confirm('삭제하시겠습니까?')) this.closest('form').submit()">🗑</a>
                 </form>
             </div>
         </div>

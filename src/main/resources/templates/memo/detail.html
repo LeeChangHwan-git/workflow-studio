@@ -15,8 +15,8 @@
         <h2 th:text="${memo.title}"></h2>
         <div class="actions">
             <a th:href="@{/memos/{id}/edit(id=${memo.id})}" class="btn btn-primary">수정</a>
-            <form th:action="@{/memos/{id}/delete(id=${memo.id})}" method="post" style="display:inline;" onsubmit="return confirm('삭제하시겠습니까?')">
-                <button type="submit" class="btn btn-danger">삭제</button>
+            <form th:action="@{/memos/{id}/delete(id=${memo.id})}" method="post" style="display:inline;">
+                <a class="btn btn-danger" onclick="if(confirm('삭제하시겠습니까?')) this.closest('form').submit()">삭제</a>
             </form>
             <a th:href="@{/memos}" class="btn btn-secondary">목록</a>
         </div>

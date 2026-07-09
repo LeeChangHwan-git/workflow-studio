@@ -156,16 +156,16 @@
                 </div>
             </div>
             <div class="pl-actions">
-                <button class="btn-sm btn-run"
+                <a class="btn-sm btn-run"
                         th:data-id="${pl.id}"
                         th:data-name="${pl.name}"
-                        onclick="startRun(this.dataset.id, this.dataset.name)">▶ 실행</button>
+                        onclick="startRun(this.dataset.id, this.dataset.name)">▶ 실행</a>
                 <a th:href="@{/pipelines/{id}(id=${pl.id})}" class="btn-sm btn-edit">✏ 편집</a>
                 <a th:href="@{/api/pipelines/{id}/export(id=${pl.id})}" class="btn-sm btn-export"
                    target="_blank">📤 내보내기</a>
-                <button class="btn-sm btn-del"
+                <a class="btn-sm btn-del"
                         th:data-id="${pl.id}"
-                        onclick="deletePipeline(this.dataset.id, this)">🗑</button>
+                        onclick="deletePipeline(this.dataset.id, this)">🗑</a>
             </div>
         </div>
     </div>
@@ -177,15 +177,15 @@
         <div class="modal-header">
             <span>⚡</span>
             <div class="modal-title" id="runModalTitle">파이프라인 실행 중...</div>
-            <button class="modal-close" onclick="closeModal()">✕</button>
+            <a class="modal-close" onclick="closeModal()">✕</a>
         </div>
         <div class="modal-body">
             <div class="overall-status running" id="overallStatus">⏳ 실행 중...</div>
             <div id="logContainer"></div>
         </div>
         <div class="modal-footer">
-            <button class="btn btn-ghost" id="cancelBtn" onclick="cancelRun()">중단</button>
-            <button class="btn btn-primary" id="closeBtn" onclick="closeModal()" style="display:none">닫기</button>
+            <a class="btn btn-ghost" id="cancelBtn" onclick="cancelRun()">중단</a>
+            <a class="btn btn-primary" id="closeBtn" onclick="closeModal()" style="display:none">닫기</a>
         </div>
     </div>
 </div>

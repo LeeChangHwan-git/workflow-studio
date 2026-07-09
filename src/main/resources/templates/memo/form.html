@@ -39,7 +39,7 @@
                           th:text="${memo.content}"></textarea>
             </div>
             <div class="form-actions">
-                <button type="submit" class="btn btn-primary btn-lg">저장</button>
+                <a class="btn btn-primary btn-lg" onclick="this.closest('form').submit()">저장</a>
                 <a th:href="@{/memos}" class="btn btn-ghost btn-lg">취소</a>
             </div>
         </form>
