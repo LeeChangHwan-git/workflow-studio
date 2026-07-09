@@ -120,18 +120,23 @@
             text-decoration: none;
             transition: all .15s;
             white-space: nowrap;
+            /* WebKit(JavaFX WebView) UA 스타일이 color:ButtonText를 강제 적용하는 현상 방지 */
+            -webkit-appearance: none;
+            appearance: none;
+            color: var(--text);
         }
-        .btn-primary   { background: var(--primary);   color: #fff; }
-        .btn-primary:hover { background: var(--primary-hover); }
-        .btn-danger    { background: var(--danger);    color: #fff; }
-        .btn-danger:hover { background: var(--danger-hover); }
-        .btn-success   { background: var(--success);   color: #1E1E1E; }
-        .btn-success:hover { background: var(--success-hover); }
+        .btn-primary   { background: var(--primary);   color: #ffffff; }
+        .btn-primary:hover { background: var(--primary-hover); color: #ffffff; }
+        .btn-danger    { background: var(--danger);    color: #ffffff; }
+        .btn-danger:hover { background: var(--danger-hover); color: #ffffff; }
+        .btn-success   { background: var(--success);   color: #0D2219; }
+        .btn-success:hover { background: var(--success-hover); color: #0D2219; }
         .btn-ghost {
-            background: transparent; color: var(--muted);
+            background: transparent;
+            color: var(--text);
             border: 1px solid var(--border);
         }
-        .btn-ghost:hover { color: var(--text); border-color: #606060; background: var(--bg-3); }
+        .btn-ghost:hover { color: #ffffff; border-color: #6A6A6A; background: var(--bg-3); }
         .btn-lg { height: 42px; padding: 0 22px; font-size: 14px; border-radius: var(--radius); }
 
         /* ── FORM CARD ── */

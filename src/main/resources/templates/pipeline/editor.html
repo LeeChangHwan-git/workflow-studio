@@ -269,6 +269,19 @@ body { overflow: hidden; }
 .cfg-capture-btn:hover { background: #244F44; }
 .cfg-capture-btn:disabled { opacity: .5; cursor: default; }
 
+/* 에디터 내 버튼 WebKit appearance 초기화 */
+.cfg-upload-btn, .cfg-capture-btn {
+    -webkit-appearance: none; appearance: none;
+}
+/* 전체삭제 전용 (ghost보다 명확한 danger 색조) */
+.btn-danger-soft {
+    background: #3A1E1E;
+    color: #F48771;
+    border: 1px solid #5A2D2D;
+    -webkit-appearance: none; appearance: none;
+}
+.btn-danger-soft:hover { background: #5A2D2D; color: #F48771; }
+
 /* ── 하단 툴바 ── */
 .editor-toolbar {
     position: fixed;
@@ -449,7 +462,7 @@ body { overflow: hidden; }
            th:value="${pipeline.description != null ? pipeline.description : ''}">
     <button class="btn btn-primary" onclick="savePipeline()">💾 저장</button>
     <button class="btn btn-success" onclick="runPipeline()">▶ 실행</button>
-    <button class="btn btn-ghost" onclick="clearCanvas()">🗑 전체삭제</button>
+    <button class="btn btn-danger-soft" onclick="clearCanvas()">🗑 전체삭제</button>
 </div>
 
 <!-- 실행 모달 -->
