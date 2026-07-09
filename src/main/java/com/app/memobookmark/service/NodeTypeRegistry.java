@@ -80,6 +80,18 @@ public class NodeTypeRegistry {
             new NodeParam("model", "모델", "select", "claude-sonnet-4-6",
                 List.of("claude-sonnet-4-6", "claude-haiku-4-5-20251001", "claude-opus-4-8")),
             new NodeParam("outputVar", "출력 변수명", "text", "aiResult", null)
+        )),
+
+        new NodeTypeInfo("AI_AGENT", "AI 에이전트", "🧠", "#7C3AED", List.of(
+            new NodeParam("model", "AI 모델", "select", "claude-sonnet-4-6",
+                List.of("claude-sonnet-4-6", "claude-haiku-4-5-20251001", "claude-opus-4-8")),
+            new NodeParam("systemPrompt", "에이전트 역할 (System Prompt)", "textarea",
+                "당신은 유능한 AI 에이전트입니다. 제공된 도구를 활용하여 사용자의 요청을 정확하게 완수하세요.", null),
+            new NodeParam("userInput", "사용자 입력 (${변수} 참조 가능)", "textarea", "", null),
+            new NodeParam("tools", "사용 도구", "select", "전체 (HTTP + 앱 검색)",
+                List.of("없음", "HTTP 요청", "앱 검색 (메모/북마크)", "전체 (HTTP + 앱 검색)")),
+            new NodeParam("maxIter", "최대 도구 호출 횟수", "number", "5", null),
+            new NodeParam("outputVar", "출력 변수명", "text", "agentResult", null)
         ))
     );
 
