@@ -399,10 +399,7 @@ body { overflow: hidden; }
     </div>
 
     <!-- 중앙 캔버스 -->
-    <div class="canvas-wrap" id="canvasWrap"
-         ondragover="event.preventDefault(); this.classList.add('drag-over')"
-         ondragleave="this.classList.remove('drag-over')"
-         ondrop="onCanvasDrop(event)">
+    <div class="canvas-wrap" id="canvasWrap">
         <div id="canvasArea">
             <svg id="svgLayer">
                 <defs>
@@ -739,10 +736,35 @@ function makeDraggable(el, id) {
 
 // ── 팔레트 드래그 앤 드롭 ────────────────────────────────────────
 let dragType = null;
+
 function onPaletteDragStart(e) {
     dragType = e.currentTarget.dataset.type;
+    e.dataTransfer.effectAllowed = 'copy';
+    // 드래그 고스트 이미지를 투명하게 설정 (선택적)
+    const ghost = e.currentTarget.cloneNode(true);
+    ghost.style.cssText = 'position:fixed;top:-9999px;background:#2D2D30;color:#D4D4D4;padding:6px 10px;border-radius:4px;border:1px solid #454545;font-size:12px;';
+    document.body.appendChild(ghost);
+    e.dataTransfer.setDragImage(ghost, 60, 16);
+    setTimeout(() => ghost.remove(), 0);
 }
-function onCanvasDrop(e) {
+
+// canvasWrap 전체(자식 포함)에서 dragover/dragleave/drop 처리
+// 인라인 ondragover 대신 JS addEventListener를 써야 자식 요소 위에서도 drop이 허용됨
+canvasWrap.addEventListener('dragover', e => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'copy';
+    canvasWrap.classList.add('drag-over');
+});
+
+// relatedTarget이 canvasWrap 밖으로 나갈 때만 클래스 제거
+// (자식→자식 이동 시 발생하는 spurious dragleave 무시)
+canvasWrap.addEventListener('dragleave', e => {
+    if (!canvasWrap.contains(e.relatedTarget)) {
+        canvasWrap.classList.remove('drag-over');
+    }
+});
+
+canvasWrap.addEventListener('drop', e => {
     e.preventDefault();
     canvasWrap.classList.remove('drag-over');
     if (!dragType) return;
@@ -752,7 +774,7 @@ function onCanvasDrop(e) {
     const id = addNode(dragType, Math.max(0, x), Math.max(0, y), null);
     if (id) selectNode(id);
     dragType = null;
-}
+});
 
 // ── 설정 패널 렌더링 ─────────────────────────────────────────────
 function renderConfigPanel(id) {
