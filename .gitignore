@@ -11,5 +11,10 @@
 /dist/*.zip
 /dist/libs/
 
+# 파이프라인 에디터 프론트엔드
+/frontend/pipeline-editor/node_modules/
+/frontend/pipeline-editor/dist/
+/src/main/resources/static/pipeline-editor/
+
 # Windows 절대경로가 실수로 추적되는 것 방지
 C:/

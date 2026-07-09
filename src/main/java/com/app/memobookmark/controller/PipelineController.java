@@ -1,7 +1,6 @@
 package com.app.memobookmark.controller;
 
 import com.app.memobookmark.model.Pipeline;
-import com.app.memobookmark.service.NodeTypeRegistry;
 import com.app.memobookmark.service.PipelineService;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -12,11 +11,9 @@ import org.springframework.web.bind.annotation.*;
 public class PipelineController {
 
     private final PipelineService pipelineService;
-    private final NodeTypeRegistry nodeTypeRegistry;
 
-    public PipelineController(PipelineService pipelineService, NodeTypeRegistry nodeTypeRegistry) {
+    public PipelineController(PipelineService pipelineService) {
         this.pipelineService = pipelineService;
-        this.nodeTypeRegistry = nodeTypeRegistry;
     }
 
     @GetMapping
@@ -28,7 +25,6 @@ public class PipelineController {
     @GetMapping("/new")
     public String newEditor(Model model) {
         model.addAttribute("pipeline", new Pipeline());
-        model.addAttribute("nodeTypes", nodeTypeRegistry.getAll());
         model.addAttribute("isNew", true);
         return "pipeline/editor";
     }
@@ -38,7 +34,6 @@ public class PipelineController {
         Pipeline pipeline = pipelineService.findById(id);
         if (pipeline == null) return "redirect:/pipelines";
         model.addAttribute("pipeline", pipeline);
-        model.addAttribute("nodeTypes", nodeTypeRegistry.getAll());
         model.addAttribute("isNew", false);
         return "pipeline/editor";
     }

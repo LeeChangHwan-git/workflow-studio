@@ -61,6 +61,28 @@ tasks.named('test') {
     useJUnitPlatform()
 }
 
+// ── 파이프라인 에디터 프론트엔드 (React + React Flow) 빌드 연동 ──
+def frontendDir = file('frontend/pipeline-editor')
+def npmExecutable = org.gradle.internal.os.OperatingSystem.current().isWindows() ? 'npm.cmd' : 'npm'
+
+tasks.register('npmInstall', Exec) {
+    workingDir frontendDir
+    commandLine npmExecutable, 'install'
+    inputs.file("${frontendDir}/package.json")
+    outputs.dir("${frontendDir}/node_modules")
+}
+
+tasks.register('npmBuildFrontend', Exec) {
+    dependsOn npmInstall
+    workingDir frontendDir
+    commandLine npmExecutable, 'run', 'build'
+    inputs.dir("${frontendDir}/src")
+    inputs.file("${frontendDir}/vite.config.ts")
+    outputs.dir('src/main/resources/static/pipeline-editor')
+}
+
+processResources.dependsOn npmBuildFrontend
+
 // bootJar: Start-Class 를 Launcher 로 설정
 springBoot {
     mainClass = 'com.app.memobookmark.Launcher'

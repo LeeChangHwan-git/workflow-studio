@@ -1,0 +1,182 @@
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body {
+  font-family: -apple-system, 'Segoe UI', Roboto, sans-serif;
+  background: #1E1E1E;
+  color: #D4D4D4;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+#root { flex: 1; min-height: 0; }
+button { font-family: inherit; }
+
+.editor-wrap { display: flex; height: 100%; }
+
+/* ── 팔레트 ── */
+.palette {
+  width: 190px;
+  min-width: 190px;
+  background: #252526;
+  border-right: 1px solid #3E3E42;
+  display: flex;
+  flex-direction: column;
+  padding: 12px 8px;
+  gap: 3px;
+  overflow-y: auto;
+}
+.palette-title {
+  font-size: 10px; font-weight: 700; color: #6A6A6A;
+  text-transform: uppercase; letter-spacing: .7px;
+  padding: 0 6px; margin-bottom: 6px;
+}
+.palette-search {
+  margin: 0 2px 8px;
+  padding: 6px 9px;
+  border: 1px solid #454545;
+  border-radius: 4px;
+  font-size: 12px;
+  font-family: inherit;
+  color: #D4D4D4;
+  background: #3C3C3C;
+  outline: none;
+  transition: border-color .15s;
+}
+.palette-search:focus { border-color: #0E639C; box-shadow: 0 0 0 2px rgba(14,99,156,.25); }
+.palette-search::placeholder { color: #666; }
+.palette-empty {
+  padding: 16px 8px;
+  text-align: center;
+  font-size: 11px;
+  color: #666;
+}
+.palette-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 9px; border-radius: 4px; cursor: grab;
+  font-size: 12px; color: #CCCCCC; font-weight: 500;
+  border: 1px solid transparent; transition: all .12s; user-select: none;
+}
+.palette-item:hover { background: #2D2D30; border-color: #454545; color: #D4D4D4; }
+.palette-item:active { cursor: grabbing; }
+.palette-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+
+/* ── 캔버스 ── */
+.canvas-wrap { flex: 1; position: relative; }
+.canvas-wrap.drag-over::after {
+  content: '';
+  position: absolute; inset: 0;
+  outline: 2px dashed #0E639C; outline-offset: -2px;
+  background: rgba(38,79,120,0.15);
+  pointer-events: none; z-index: 5;
+}
+.react-flow { background: #1E1E1E; }
+
+/* ── 팔레트 드래그 고스트 ── */
+.drag-ghost {
+  position: fixed; pointer-events: none; z-index: 9999;
+  background: #2D2D30; border: 1px solid #606060; border-radius: 4px;
+  padding: 5px 12px; font-size: 12px; font-weight: 600; color: #D4D4D4;
+  opacity: 0.9; white-space: nowrap; box-shadow: 0 4px 12px rgba(0,0,0,.6);
+}
+
+/* ── 노드 카드 ── */
+.pnode {
+  min-width: 160px;
+  background: #2D2D30;
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(0,0,0,.5);
+  border: 1px solid #454545;
+  transition: box-shadow .15s, border-color .15s;
+}
+.pnode:hover { border-color: #606060; box-shadow: 0 4px 16px rgba(0,0,0,.6); }
+.pnode.selected { border-color: #0E639C; box-shadow: 0 0 0 2px rgba(14,99,156,.4); }
+.pnode-header { display: flex; align-items: center; gap: 8px; padding: 9px 11px; }
+.pnode-icon { font-size: 16px; }
+.pnode-label { font-size: 12px; font-weight: 700; color: #D4D4D4; flex: 1; }
+.pnode-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.pnode-del {
+  background: none; border: none; cursor: pointer;
+  font-size: 13px; color: #555; padding: 0 2px; line-height: 1; transition: color .15s;
+}
+.pnode-del:hover { color: #F14C4C; }
+.pnode-handle-in.react-flow__handle { background: #454545; border: 2px solid #2D2D30; box-shadow: 0 0 0 1px #606060; width: 12px; height: 12px; }
+.pnode-handle-out.react-flow__handle { background: #264F78; border: 2px solid #2D2D30; box-shadow: 0 0 0 1px #4FC1FF; width: 12px; height: 12px; }
+.pnode-handle-out.react-flow__handle:hover { background: #0E639C; }
+
+/* ── 설정 패널 ── */
+.config-panel {
+  width: 270px; min-width: 270px;
+  background: #252526; border-left: 1px solid #3E3E42;
+  display: flex; flex-direction: column; overflow: hidden;
+}
+.config-header { padding: 13px 16px 11px; border-bottom: 1px solid #3E3E42; font-size: 13px; font-weight: 700; color: #D4D4D4; }
+.config-body { flex: 1; overflow-y: auto; padding: 12px 14px; }
+.config-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: #4A4A4A; font-size: 13px; gap: 10px; }
+.config-empty-icon { font-size: 32px; opacity: .4; }
+.cfg-group { margin-bottom: 12px; }
+.cfg-label { display: block; font-size: 10px; font-weight: 700; color: #6A6A6A; margin-bottom: 5px; text-transform: uppercase; letter-spacing: .4px; }
+.cfg-input, .cfg-select, .cfg-textarea {
+  width: 100%; padding: 7px 9px; border: 1px solid #454545; border-radius: 4px;
+  font-size: 12px; font-family: inherit; color: #D4D4D4; background: #3C3C3C; outline: none;
+  transition: border-color .15s;
+}
+.cfg-input:focus, .cfg-select:focus, .cfg-textarea:focus { border-color: #0E639C; box-shadow: 0 0 0 2px rgba(14,99,156,.25); }
+.cfg-textarea { min-height: 80px; resize: vertical; line-height: 1.6; }
+.cfg-img-wrap { display: flex; flex-direction: column; gap: 6px; }
+.cfg-img-preview { width: 100%; max-height: 100px; object-fit: contain; border: 1px solid #454545; border-radius: 4px; background: #1E1E1E; }
+.cfg-img-btns { display: flex; gap: 6px; }
+.cfg-upload-btn, .cfg-capture-btn {
+  flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  padding: 6px 11px; border-radius: 4px; font-size: 11px; font-weight: 700; cursor: pointer; transition: all .15s;
+}
+.cfg-upload-btn { background: #1E3A5F; border: 1px solid #264F78; color: #4FC1FF; }
+.cfg-upload-btn:hover { background: #264F78; }
+.cfg-capture-btn { background: #1B3D35; border: 1px solid #2D5A4A; color: #4EC9B0; }
+.cfg-capture-btn:hover { background: #244F44; }
+.cfg-upload-btn:disabled, .cfg-capture-btn:disabled { opacity: .5; cursor: default; }
+
+/* ── 버튼 ── */
+.btn {
+  height: 34px; padding: 0 13px; border-radius: 4px; font-size: 12px; font-weight: 700;
+  background: #3C3C3C; border: 1px solid #454545; color: #D4D4D4; cursor: pointer; transition: all .15s;
+}
+.btn:hover { background: #454545; }
+.btn:disabled { opacity: .5; cursor: default; }
+.btn-danger-soft { background: #3A1E1E; color: #F48771; border: 1px solid #5A2D2D; }
+.btn-danger-soft:hover { background: #5A2D2D; }
+
+/* ── 하단 툴바 ── */
+.editor-toolbar {
+  position: fixed; bottom: 20px; left: calc(50% + 105px); transform: translateX(-50%);
+  display: flex; gap: 6px; background: #2D2D30; border: 1px solid #454545; border-radius: 8px;
+  padding: 8px 12px; box-shadow: 0 8px 32px rgba(0,0,0,.6); z-index: 100;
+}
+.pipeline-name-input, .pipeline-desc-input {
+  height: 34px; padding: 0 12px; border: 1px solid #454545; border-radius: 4px;
+  font-size: 13px; outline: none; background: #3C3C3C; color: #D4D4D4; transition: border-color .15s;
+}
+.pipeline-name-input { font-weight: 600; min-width: 200px; }
+.pipeline-desc-input { font-size: 12px; min-width: 150px; color: #9E9E9E; }
+.pipeline-name-input:focus, .pipeline-desc-input:focus { border-color: #0E639C; }
+
+/* ── 실행 모달 ── */
+.modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.7); z-index: 999; display: flex; align-items: center; justify-content: center; }
+.modal-box {
+  background: #252526; border: 1px solid #454545; border-radius: 6px; width: 560px; max-height: 75vh;
+  display: flex; flex-direction: column; box-shadow: 0 24px 64px rgba(0,0,0,.7); overflow: hidden;
+}
+.modal-header { padding: 16px 20px 13px; border-bottom: 1px solid #3E3E42; display: flex; align-items: center; gap: 10px; }
+.modal-title { font-size: 14px; font-weight: 700; flex: 1; color: #D4D4D4; }
+.modal-close { background: none; border: none; cursor: pointer; font-size: 16px; color: #666; padding: 4px; border-radius: 4px; transition: color .15s; }
+.modal-close:hover { color: #F14C4C; }
+.modal-body { flex: 1; overflow-y: auto; padding: 13px 20px; }
+.modal-footer { padding: 11px 20px; border-top: 1px solid #3E3E42; display: flex; gap: 8px; justify-content: flex-end; }
+.log-item { display: flex; gap: 10px; padding: 8px 11px; border-radius: 4px; margin-bottom: 5px; font-size: 12px; }
+.log-item.running { background: #1E2D3A; border-left: 2px solid #569CD6; }
+.log-item.success { background: #1B3D35; border-left: 2px solid #4EC9B0; }
+.log-item.error { background: #3A1E1E; border-left: 2px solid #F14C4C; }
+.log-output { font-family: 'Consolas', monospace; font-size: 11px; color: #CE9178; margin-top: 4px; white-space: pre-wrap; word-break: break-all; max-height: 80px; overflow-y: auto; }
+.overall-status { padding: 8px 11px; border-radius: 4px; font-size: 12px; font-weight: 600; margin-bottom: 10px; border: 1px solid transparent; }
+.overall-status.running { background: #1E2D3A; color: #569CD6; border-color: #264F78; }
+.overall-status.done { background: #1B3D35; color: #4EC9B0; border-color: #2D5A4A; }
+.overall-status.error { background: #3A1E1E; color: #F48771; border-color: #5A2D2D; }
