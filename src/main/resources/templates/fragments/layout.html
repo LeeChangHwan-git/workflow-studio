@@ -226,28 +226,50 @@
         ::-webkit-scrollbar-thumb:hover { background: #777; }
     </style>
     <script>
-    /* JavaFX WebView WebKit UA 스타일(color:ButtonText)이 CSS를 무력화하는 문제 해결.
-       DOMContentLoaded 후 JS로 직접 inline style을 주입해 최종 우선순위를 확보. */
-    document.addEventListener('DOMContentLoaded', function () {
-        var rules = [
-            ['.btn-primary',     '#ffffff'],
-            ['.btn-success',     '#0D2219'],
-            ['.btn-ghost',       '#D4D4D4'],
-            ['.btn-danger',      '#ffffff'],
-            ['.btn-danger-soft', '#F48771'],
-            ['.btn-run',         '#4EC9B0'],
-            ['.btn-edit',        '#4FC1FF'],
-            ['.btn-export',      '#9CDCFE'],
-            ['.btn-del',         '#F48771'],
-            ['.btn-open',        '#4EC9B0'],
-            ['.btn-sm',          '#D4D4D4'],
-        ];
-        rules.forEach(function (r) {
-            document.querySelectorAll(r[0]).forEach(function (el) {
-                el.style.setProperty('color', r[1], 'important');
+    /* JavaFX 21 WebKit은 <button> UA 스타일(color:ButtonText)을 CSS·!important·JS setProperty
+       이후에도 플랫폼 수준으로 덮어씀. <span>은 button UA 규칙을 받지 않으므로,
+       button 안의 콘텐츠를 <span style="color:...">으로 감싸 색상을 확정한다. */
+    (function fixBtnColors() {
+        var colorMap = {
+            'btn-primary':     '#ffffff',
+            'btn-success':     '#0D2219',
+            'btn-ghost':       '#D4D4D4',
+            'btn-danger':      '#ffffff',
+            'btn-danger-soft': '#F48771',
+            'btn-run':         '#4EC9B0',
+            'btn-edit':        '#4FC1FF',
+            'btn-export':      '#9CDCFE',
+            'btn-del':         '#F48771',
+            'btn-open':        '#4EC9B0',
+        };
+
+        function applyFix() {
+            document.querySelectorAll('button').forEach(function (btn) {
+                if (btn.dataset.btnFixed) return;      // 중복 방지
+                btn.dataset.btnFixed = '1';
+
+                var color = '#D4D4D4';
+                Object.keys(colorMap).forEach(function (cls) {
+                    if (btn.classList.contains(cls)) color = colorMap[cls];
+                });
+
+                // 기존 innerHTML을 span으로 감싸 button UA 색상 규칙 차단
+                var span = document.createElement('span');
+                span.style.cssText = 'color:' + color + ';pointer-events:none';
+                span.innerHTML = btn.innerHTML;
+                btn.innerHTML = '';
+                btn.appendChild(span);
             });
-        });
-    });
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', applyFix);
+        } else {
+            applyFix();
+        }
+        // load 이후에도 한 번 더 (동적으로 추가되는 버튼 대비)
+        window.addEventListener('load', applyFix);
+    })();
     </script>
 </head>
 </html>
