@@ -5,6 +5,8 @@ public class AppSettings {
     private String claudeModel = "claude-sonnet-4-6";
     private double imageMatchThreshold = 0.90;
     private int imageMatchRetryMs = 500;
+    private String outlineUrl = "";
+    private String outlineToken = "";
 
     public AppSettings() {}
 
@@ -16,4 +18,8 @@ public class AppSettings {
     public void setImageMatchThreshold(double imageMatchThreshold) { this.imageMatchThreshold = imageMatchThreshold; }
     public int getImageMatchRetryMs() { return imageMatchRetryMs; }
     public void setImageMatchRetryMs(int imageMatchRetryMs) { this.imageMatchRetryMs = imageMatchRetryMs; }
+    public String getOutlineUrl() { return outlineUrl; }
+    public void setOutlineUrl(String outlineUrl) { this.outlineUrl = outlineUrl; }
+    public String getOutlineToken() { return outlineToken; }
+    public void setOutlineToken(String outlineToken) { this.outlineToken = outlineToken; }
 }

@@ -70,6 +70,26 @@
 
         <hr class="settings-divider">
 
+        <div class="settings-section-title">📋 Outline 설정</div>
+
+        <div class="form-group">
+            <label class="form-label">Outline URL</label>
+            <input class="form-control" type="text" id="outlineUrl"
+                   placeholder="https://outline.yourcompany.com"
+                   th:value="${settings.outlineUrl}">
+            <div class="settings-hint">회사 Outline 인스턴스의 기본 URL. 예: https://outline.yourcompany.com</div>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">Outline API 토큰</label>
+            <input class="form-control" type="password" id="outlineToken"
+                   placeholder="ol_api_..."
+                   th:value="${settings.outlineToken}">
+            <div class="settings-hint">Outline 설정 → API → Personal access token에서 발급하세요.</div>
+        </div>
+
+        <hr class="settings-divider">
+
         <div class="settings-section-title">🖱️ 이미지 매칭 설정</div>
 
         <div class="form-group">
@@ -105,7 +125,9 @@ async function saveSettings() {
         claudeApiKey: document.getElementById('claudeApiKey').value,
         claudeModel:  document.getElementById('claudeModel').value,
         imageMatchThreshold: parseFloat(document.getElementById('imageMatchThreshold').value) || 0.90,
-        imageMatchRetryMs:   parseInt(document.getElementById('imageMatchRetryMs').value) || 500
+        imageMatchRetryMs:   parseInt(document.getElementById('imageMatchRetryMs').value) || 500,
+        outlineUrl:   document.getElementById('outlineUrl').value,
+        outlineToken: document.getElementById('outlineToken').value
     };
     const r = await fetch('/api/settings', {
         method: 'PUT',

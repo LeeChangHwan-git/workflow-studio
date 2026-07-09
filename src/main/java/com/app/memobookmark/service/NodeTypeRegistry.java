@@ -82,6 +82,16 @@ public class NodeTypeRegistry {
             new NodeParam("outputVar", "출력 변수명", "text", "aiResult", null)
         )),
 
+        new NodeTypeInfo("OUTLINE", "아웃라인", "📋", "#0EA5E9", List.of(
+            new NodeParam("operation", "작업", "select", "문서 목록",
+                List.of("컬렉션 목록", "문서 목록", "문서 검색", "문서 내보내기(MD)")),
+            new NodeParam("collectionId", "컬렉션 ID (${변수} 참조)", "text", "", null),
+            new NodeParam("documentId",   "문서 ID (${변수} 참조)",   "text", "", null),
+            new NodeParam("query",        "검색어 (${변수} 참조)",     "text", "", null),
+            new NodeParam("limit",        "최대 개수",                  "number", "50", null),
+            new NodeParam("outputVar",    "출력 변수명",                "text", "outlineResult", null)
+        )),
+
         new NodeTypeInfo("AI_AGENT", "AI 에이전트", "🧠", "#7C3AED", List.of(
             new NodeParam("model", "AI 모델", "select", "claude-sonnet-4-6",
                 List.of("claude-sonnet-4-6", "claude-haiku-4-5-20251001", "claude-opus-4-8")),
