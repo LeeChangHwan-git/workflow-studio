@@ -120,21 +120,20 @@
             text-decoration: none;
             transition: all .15s;
             white-space: nowrap;
-            /* !important로 JavaFX WebView UA 스타일시트(color:ButtonText) 무력화 */
-            color: #D4D4D4 !important;
+            color: #D4D4D4;
         }
-        .btn-primary   { background: #0E639C; color: #ffffff !important; }
-        .btn-primary:hover { background: #1177BB; color: #ffffff !important; }
-        .btn-danger    { background: #F14C4C; color: #ffffff !important; }
-        .btn-danger:hover { background: #CD3131; color: #ffffff !important; }
-        .btn-success   { background: #4EC9B0; color: #0D2219 !important; }
-        .btn-success:hover { background: #3DAF9A; color: #0D2219 !important; }
+        .btn-primary   { background: #0E639C; color: #ffffff; }
+        .btn-primary:hover { background: #1177BB; }
+        .btn-danger    { background: #F14C4C; color: #ffffff; }
+        .btn-danger:hover { background: #CD3131; }
+        .btn-success   { background: #4EC9B0; color: #0D2219; }
+        .btn-success:hover { background: #3DAF9A; }
         .btn-ghost {
             background: transparent;
-            color: #D4D4D4 !important;
+            color: #D4D4D4;
             border: 1px solid #454545;
         }
-        .btn-ghost:hover { color: #ffffff !important; border-color: #6A6A6A; background: #2D2D30; }
+        .btn-ghost:hover { color: #ffffff; border-color: #6A6A6A; background: #2D2D30; }
         .btn-lg { height: 42px; padding: 0 22px; font-size: 14px; border-radius: var(--radius); }
 
         /* ── FORM CARD ── */
@@ -226,5 +225,29 @@
         ::-webkit-scrollbar-thumb { background: #555; border-radius: 4px; }
         ::-webkit-scrollbar-thumb:hover { background: #777; }
     </style>
+    <script>
+    /* JavaFX WebView WebKit UA 스타일(color:ButtonText)이 CSS를 무력화하는 문제 해결.
+       DOMContentLoaded 후 JS로 직접 inline style을 주입해 최종 우선순위를 확보. */
+    document.addEventListener('DOMContentLoaded', function () {
+        var rules = [
+            ['.btn-primary',     '#ffffff'],
+            ['.btn-success',     '#0D2219'],
+            ['.btn-ghost',       '#D4D4D4'],
+            ['.btn-danger',      '#ffffff'],
+            ['.btn-danger-soft', '#F48771'],
+            ['.btn-run',         '#4EC9B0'],
+            ['.btn-edit',        '#4FC1FF'],
+            ['.btn-export',      '#9CDCFE'],
+            ['.btn-del',         '#F48771'],
+            ['.btn-open',        '#4EC9B0'],
+            ['.btn-sm',          '#D4D4D4'],
+        ];
+        rules.forEach(function (r) {
+            document.querySelectorAll(r[0]).forEach(function (el) {
+                el.style.setProperty('color', r[1], 'important');
+            });
+        });
+    });
+    </script>
 </head>
 </html>
