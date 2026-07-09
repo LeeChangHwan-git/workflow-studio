@@ -269,18 +269,13 @@ body { overflow: hidden; }
 .cfg-capture-btn:hover { background: #244F44; }
 .cfg-capture-btn:disabled { opacity: .5; cursor: default; }
 
-/* 에디터 내 버튼 WebKit appearance 초기화 */
-.cfg-upload-btn, .cfg-capture-btn {
-    -webkit-appearance: none; appearance: none;
-}
 /* 전체삭제 전용 (ghost보다 명확한 danger 색조) */
 .btn-danger-soft {
     background: #3A1E1E;
-    color: #F48771;
+    color: #F48771 !important;
     border: 1px solid #5A2D2D;
-    -webkit-appearance: none; appearance: none;
 }
-.btn-danger-soft:hover { background: #5A2D2D; color: #F48771; }
+.btn-danger-soft:hover { background: #5A2D2D; color: #F48771 !important; }
 
 /* ── 하단 툴바 ── */
 .editor-toolbar {
