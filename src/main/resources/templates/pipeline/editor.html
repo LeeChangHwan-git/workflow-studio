@@ -79,9 +79,10 @@ body { overflow: hidden; }
 #svgLayer {
     position: absolute;
     inset: 0;
-    /* 연결선 클릭은 허용, 나머지는 노드 레이어로 통과 */
     pointer-events: none;
     overflow: visible;
+    /* 노드(z-index:10)·포트(노드 스태킹 컨텍스트 안)보다 위에 그려져야 화살표가 가려지지 않음 */
+    z-index: 15;
 }
 #svgLayer path.conn-path {
     pointer-events: stroke;
@@ -169,18 +170,19 @@ body { overflow: hidden; }
 /* ── 연결선 ── */
 .conn-path {
     fill: none;
-    stroke: #555;
-    stroke-width: 1.5;
+    stroke: #7A7A7A;
+    stroke-width: 2;
     marker-end: url(#arrow);
     transition: stroke .15s;
     pointer-events: stroke;
     cursor: pointer;
 }
-.conn-path:hover { stroke: #F14C4C; }
+.conn-path:hover { stroke: #F14C4C; marker-end: url(#arrowHover); }
 .conn-path-preview {
     fill: none;
     stroke: #4FC1FF;
-    stroke-width: 1.5;
+    stroke-width: 2;
+    marker-end: url(#arrowPreview);
     stroke-dasharray: 5 4;
     pointer-events: none;
 }
@@ -401,13 +403,22 @@ body { overflow: hidden; }
         <div id="canvasArea">
             <svg id="svgLayer">
                 <defs>
-                    <marker id="arrow" markerWidth="8" markerHeight="8"
-                            refX="6" refY="3" orient="auto">
-                        <path d="M0,0 L0,6 L8,3 z" fill="#555"/>
+                    <!-- markerUnits="userSpaceOnUse": 픽셀 단위로 크기 고정, strokeWidth 배율 무시 -->
+                    <!-- refX=tip: 화살촉 끝이 정확히 path 종점에 위치 -->
+                    <marker id="arrow" markerWidth="12" markerHeight="12"
+                            refX="10" refY="6" orient="auto"
+                            markerUnits="userSpaceOnUse">
+                        <path d="M0,1.5 L10,6 L0,10.5 z" fill="#7A7A7A"/>
                     </marker>
-                    <marker id="arrowGreen" markerWidth="8" markerHeight="8"
-                            refX="6" refY="3" orient="auto">
-                        <path d="M0,0 L0,6 L8,3 z" fill="#4EC9B0"/>
+                    <marker id="arrowHover" markerWidth="12" markerHeight="12"
+                            refX="10" refY="6" orient="auto"
+                            markerUnits="userSpaceOnUse">
+                        <path d="M0,1.5 L10,6 L0,10.5 z" fill="#F14C4C"/>
+                    </marker>
+                    <marker id="arrowPreview" markerWidth="12" markerHeight="12"
+                            refX="10" refY="6" orient="auto"
+                            markerUnits="userSpaceOnUse">
+                        <path d="M0,1.5 L10,6 L0,10.5 z" fill="#4FC1FF"/>
                     </marker>
                 </defs>
             </svg>
@@ -602,8 +613,8 @@ document.addEventListener('mousemove', e => {
     const fromPort = nodes[connectingFrom].portOut;
     const fr = fromPort.getBoundingClientRect();
     const wr = canvasWrap.getBoundingClientRect();
-    const x1 = fr.left - wr.left + fr.width  / 2;
-    const y1 = fr.top  - wr.top  + fr.height / 2;
+    const x1 = fr.right - wr.left;
+    const y1 = fr.top   - wr.top  + fr.height / 2;
     const x2 = e.clientX - wr.left;
     const y2 = e.clientY - wr.top;
     previewPath.setAttribute('d', bezier(x1, y1, x2, y2));
@@ -687,10 +698,11 @@ function redrawConnections() {
         if (!fromNode || !toNode) return;
         const fr = fromNode.portOut.getBoundingClientRect();
         const tr = toNode.portIn.getBoundingClientRect();
-        const x1 = fr.left - wr.left + fr.width  / 2;
-        const y1 = fr.top  - wr.top  + fr.height / 2;
-        const x2 = tr.left - wr.left + tr.width  / 2;
-        const y2 = tr.top  - wr.top  + tr.height / 2;
+        // 출력 포트 오른쪽 끝 → 입력 포트 왼쪽 끝: 화살촉이 포트 원 밖에서 끝나 가려지지 않음
+        const x1 = fr.right - wr.left;
+        const y1 = fr.top   - wr.top  + fr.height / 2;
+        const x2 = tr.left  - wr.left;
+        const y2 = tr.top   - wr.top  + tr.height / 2;
         c.el.setAttribute('d', bezier(x1, y1, x2, y2));
     });
 }
