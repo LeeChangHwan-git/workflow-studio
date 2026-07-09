@@ -1,6 +1,6 @@
 # 기능2 — 파이프라인 자동화
 
-## 구현 상태: ✅ 완료 (2026-06-24, 업데이트 2026-07-08)
+## 구현 상태: ✅ 완료 (2026-06-24, 업데이트 2026-07-10)
 
 ## 한 줄 요약
 
@@ -33,16 +33,49 @@ n8n 스타일 시각적 노드 에디터로 파이프라인을 만들고, 브라
 
 ## 지원 노드 타입
 
-| 타입 | 아이콘 | 파라미터 | 설명 |
-|------|--------|----------|------|
-| `OPEN_URL` | 🌐 | url, browser | 지정 브라우저로 URL 열기 |
-| `WAIT_IMAGE` | ⏳ | imagePath, timeoutSec | 이미지가 화면에 나타날 때까지 대기 |
-| `CLICK_IMAGE` | 🖱️ | imagePath, timeoutSec, offsetX, offsetY | 이미지를 찾아 중심(+오프셋) 클릭 |
-| `TYPE_TEXT` | ⌨️ | text | 클립보드 경유 텍스트 입력 (한글 지원) |
-| `KEY_PRESS` | 🔑 | key | 특수키 입력 (ENTER/TAB/ESC 등) |
-| `DELAY` | ⏱️ | seconds | N초 대기 |
-| `SCREENSHOT` | 📸 | outputVar | 전체 화면 캡처 후 변수 저장 |
-| `CALL_AI` | 🤖 | prompt, model, outputVar | Claude API 질의 |
+| 타입 | 아이콘 | 색상 | 주요 파라미터 | 설명 |
+|------|--------|------|--------------|------|
+| `HTTP_REQUEST` | 🔗 | 파랑 | method, url, headers, bodyType, body, outputVar | REST API 호출 |
+| `OPEN_URL` | 🌐 | 파랑 | url, browser | 지정 브라우저로 URL 열기 |
+| `WAIT_IMAGE` | ⏳ | 주황 | imagePath, timeoutSec | 이미지가 화면에 나타날 때까지 대기 |
+| `CLICK_IMAGE` | 🖱️ | 빨강 | imagePath, timeoutSec, offsetX, offsetY | 이미지를 찾아 중심(+오프셋) 클릭 |
+| `TYPE_TEXT` | ⌨️ | 초록 | text | 클립보드 경유 텍스트 입력 (한글 지원) |
+| `KEY_PRESS` | 🔑 | 보라 | key | 특수키 입력 (ENTER/TAB/ESC 등) |
+| `DELAY` | ⏱️ | 회색 | seconds | N초 대기 |
+| `SCREENSHOT` | 📸 | 청록 | outputVar | 전체 화면 캡처 후 변수 저장 |
+| `CALL_AI` | 🤖 | 보라 | prompt, model, outputVar | Claude API 단순 질의 (도구 없음) |
+| `OUTLINE` | 📋 | 하늘 | operation, collectionId, documentId, query, limit, outputVar | Outline Wiki API 조회 (→ 아래 상세) |
+| `AI_AGENT` | 🧠 | 진보라 | model, systemPrompt, userInput, tools, maxIter, outputVar | 도구 사용 가능한 Claude 에이전트 |
+
+### OUTLINE 노드 상세
+
+Outline Wiki REST API를 호출해 결과를 Markdown 문자열로 변수에 저장한다.
+
+**사전 설정 (설정 화면)**: `outlineUrl`, `outlineToken` 필드 필수.
+
+| operation | 필수 파라미터 | 반환 형식 |
+|-----------|--------------|----------|
+| 컬렉션 목록 | — | `## 컬렉션 목록\n- ID: name\n...` |
+| 문서 목록 | collectionId | `## 문서 목록 (컬렉션 {id})\n- ID: title\n...` |
+| 문서 검색 | query | `## 검색 결과: {query}\n- ID: title\n  > context\n...` |
+| 문서 내보내기(MD) | documentId | Outline 문서 원문 Markdown |
+
+- `collectionId`, `documentId`, `query` 모두 `${변수명}` 참조 가능
+- `limit` 기본값 50 (컬렉션/문서 목록 적용)
+- 결과는 `outputVar` 로 지정한 변수명에 저장 → 다음 `CALL_AI` / `AI_AGENT` 노드에서 `${변수명}` 으로 참조
+
+### AI_AGENT 노드 상세
+
+Claude API를 도구(Tool Use) 포함 모드로 호출해 자율적으로 작업을 수행한다.
+
+| 파라미터 | 설명 |
+|---------|------|
+| model | 사용할 Claude 모델 |
+| systemPrompt | 에이전트 역할 정의 |
+| userInput | 사용자 입력 (`${변수}` 참조 가능) |
+| tools | `없음` / `HTTP 요청` / `앱 검색 (메모/북마크)` / `전체 (HTTP + 앱 검색)` |
+| maxIter | 최대 도구 호출 횟수 (기본 5회, 루프 방지) |
+| outputVar | 최종 결과 저장 변수명 |
 
 ---
 
@@ -157,12 +190,16 @@ pipeline-{id}.zip
   "claudeApiKey": "sk-ant-...",
   "claudeModel": "claude-sonnet-4-6",
   "imageMatchThreshold": 0.90,
-  "imageMatchRetryMs": 500
+  "imageMatchRetryMs": 500,
+  "outlineUrl": "http://localhost:3000",
+  "outlineToken": "ol_api_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
 }
 ```
 
 - `imageMatchThreshold`: 픽셀 일치율 임계값 (0.1~1.0). 높을수록 엄격.
 - `imageMatchRetryMs`: WAIT_IMAGE 재시도 간격 (ms).
+- `outlineUrl`: Outline 인스턴스 베이스 URL (끝 슬래시 없어도 됨). 로컬 Docker = `http://localhost:3000`.
+- `outlineToken`: Outline API 토큰. 형식 규칙: `ol_api_` + **정확히 38자** 영숫자 (`[\w]{38}`). 토큰 발급 방법은 `feature-3-outline.md` 참조.
 
 ---
 
@@ -189,17 +226,51 @@ pipeline-{id}.zip
 
 ---
 
+## React 프론트엔드 빌드 (파이프라인 에디터)
+
+파이프라인 에디터는 React 18 + TypeScript + Vite로 구현되며, 빌드 결과물을 Spring Boot static 디렉토리에 배치해 서빙한다.
+
+```
+frontend/pipeline-editor/        # React 소스
+  src/
+    App.tsx                      # 메인 컴포넌트 (캔버스, 팔레트, 파라미터 패널)
+    api.ts                       # REST API 호출 래퍼
+    types.ts                     # Pipeline, Node, Connection 타입
+    components/                  # NodeCard, ParamPanel, Arrow 등
+    usePaletteDrag.ts            # 드래그앤드롭 Hook
+  vite.config.ts                 # outDir → ../../src/main/resources/static/pipeline-editor
+```
+
+```
+# 최초 빌드 (Node.js 필요)
+cd frontend/pipeline-editor
+npm install
+npm run build
+
+# 이후 Gradle 빌드가 자동으로 npm run build 호출
+./gradlew bootJar                      # 전체 빌드 (npm 포함)
+./gradlew bootJar -x npmBuildFrontend  # 프론트 빌드 스킵 (빠른 Java만 재빌드)
+```
+
+**빌드 결과물 위치**: `src/main/resources/static/pipeline-editor/app.js`, `app.css`
+
+---
+
 ## 주요 구현 파일
 
 | 파일 | 역할 |
 |------|------|
-| `service/NodeTypeRegistry.java` | 8종 노드 타입 정의. 파라미터 스키마 포함. |
+| `service/NodeTypeRegistry.java` | 11종 노드 타입 정의. 파라미터 스키마 포함. |
 | `service/PipelineService.java` | JSON CRUD + ZIP import/export |
-| `service/PipelineRunnerService.java` | 실행 엔진. 위상정렬 → 순서 보장. |
+| `service/PipelineRunnerService.java` | 실행 엔진. 위상정렬 → 순서 보장. OUTLINE/AI_AGENT 포함. |
+| `service/AppSettingsService.java` | `data/settings.json` 읽기/쓰기 (outlineUrl, outlineToken 포함) |
 | `service/ImageMatcherUtil.java` | 화면 픽셀 비교 이미지 탐색 (특징 픽셀 샘플링 + 병렬 스캔) |
 | `service/ScreenCaptureService.java` | 앱 창 숨김 → 화면 스냅샷 → 드래그 영역 선택 (인앱 캡처) |
 | `controller/PipelineApiController.java` | REST API 전체 |
-| `templates/pipeline/editor.html` | 노드 에디터 UI (순수 JS, 외부 라이브러리 없음) |
+| `controller/OutlineMockController.java` | Outline Mock 서버 (`/outline-mock/api/*`) — 테스트 전용 |
+| `model/AppSettings.java` | 설정 모델 (`outlineUrl`, `outlineToken` 필드 포함) |
+| `frontend/pipeline-editor/` | React 18 + TS + Vite 에디터 소스 |
+| `templates/pipeline/editor.html` | React 앱 진입 HTML (빌드된 app.js 로드) |
 
 ---
 

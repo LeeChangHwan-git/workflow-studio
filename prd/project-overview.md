@@ -59,11 +59,21 @@ LocalDate / LocalDateTime은 `jackson-datatype-jsr310` 모듈로 처리.
 
 ## 현재 구현된 기능
 
-### 0. 파이프라인 자동화 ✅ (2026-06-24 구현 완료)
+### 0. 파이프라인 자동화 ✅ (2026-06-24 구현, 2026-07-10 업데이트)
 
 → 상세 문서: `prd/feature-2-pipeline.md`
 
-n8n 스타일 시각적 노드 에디터. 브라우저/화면 자동화 + AI 질의를 파이프라인으로 구성.
+n8n 스타일 시각적 노드 에디터. 브라우저/화면 자동화 + AI 질의 + Outline Wiki 조회를 파이프라인으로 구성.  
+에디터 UI는 React 18 + TypeScript + Vite로 재구현됨(`frontend/pipeline-editor/`).
+
+지원 노드: `OPEN_URL`, `WAIT_IMAGE`, `CLICK_IMAGE`, `TYPE_TEXT`, `KEY_PRESS`, `DELAY`, `SCREENSHOT`, `HTTP_REQUEST`, `CALL_AI`, `OUTLINE`, `AI_AGENT` (11종)
+
+#### Outline Wiki 연동 ✅ (2026-07-10 구현)
+
+→ 상세 문서: `prd/feature-3-outline.md`
+
+`OUTLINE` 노드로 사내 Outline Wiki API를 호출해 컬렉션/문서를 조회하고 Markdown으로 변환 후 다음 AI 노드에 전달.  
+로컬 테스트용 Docker Compose 환경 포함 (`outline-local/docker-compose.yml`).
 
 ### 1. 메모 관리
 - 시스템명(제목) + 카테고리 + 내용(자유 텍스트)으로 구성
@@ -110,14 +120,31 @@ JDK 17이 기본인 경우 `실행.bat`에서 `javaw` 대신 JDK 21 전체 경�
 
 ---
 
-## 파이프라인 데이터 경로 (신규)
+## 파이프라인 데이터 경로
 
 ```
 {app.storage.path}/
-├── settings.json          # Claude API 키, 이미지 매칭 설정
+├── settings.json          # Claude API 키, 이미지 매칭 설정, Outline URL/Token
 └── pipelines/
     ├── {uuid}.json        # 파이프라인 정의 (노드 + 연결)
     └── images/            # 노드에 사용되는 이미지 파일
+```
+
+## 로컬 Outline 테스트 환경
+
+```
+outline-local/
+├── docker-compose.yml     # Outline + PostgreSQL + Redis + MinIO + MailHog
+└── create_docs.py         # 테스트 문서 5개 생성 스크립트
+```
+
+```bash
+# Outline 환경 시작
+cd outline-local && docker compose up -d
+
+# 테스트 문서 생성 (토큰 발급 후)
+echo "ol_api_YOUR_TOKEN" > /tmp/outline_token.txt
+python3 outline-local/create_docs.py
 ```
 
 ---
