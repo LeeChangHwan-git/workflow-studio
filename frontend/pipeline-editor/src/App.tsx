@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   addEdge,
   MarkerType,
@@ -8,13 +8,13 @@ import {
   type Edge,
 } from '@xyflow/react'
 import { api } from './api'
-import type { NodeTypeInfo, PipelineDto } from './types'
+import type { NodeTypeInfo, PipelineDto, RunLog } from './types'
 import type { PipelineFlowNode } from './components/PipelineNodeCard'
 import { Palette } from './components/Palette'
 import { PipelineCanvas } from './components/PipelineCanvas'
 import { ConfigPanel } from './components/ConfigPanel'
 import { Toolbar } from './components/Toolbar'
-import { RunModal } from './components/RunModal'
+import { BottomPanel } from './components/BottomPanel'
 import { usePaletteDrag } from './usePaletteDrag'
 
 function defaultConfig(nodeType: NodeTypeInfo): Record<string, unknown> {
@@ -37,11 +37,26 @@ export default function App({ initialPipelineId }: Props) {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
-  const [runModalOpen, setRunModalOpen] = useState(false)
+
+  // ── 실행 상태 ──
+  const [runLogs, setRunLogs] = useState<RunLog[]>([])
+  const [runStatus, setRunStatus] = useState<'idle' | 'running' | 'done' | 'error'>('idle')
+  const [bottomPanelOpen, setBottomPanelOpen] = useState(false)
+  const execIntervalRef = useRef<number | null>(null)
 
   const [nodes, setNodes, onNodesChange] = useNodesState<PipelineFlowNode>([])
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([])
   const canvasWrapperRef = useRef<HTMLDivElement>(null)
+
+  // nodeId → RunLog 맵 (PipelineNodeCard에서 상태 표시용)
+  const runStatusMap = useMemo(() => {
+    const map = new Map<string, RunLog>()
+    for (const log of runLogs) map.set(log.nodeId, log)
+    return map
+  }, [runLogs])
+
+  // 선택된 노드의 실행 로그
+  const selectedNodeLog = selectedNodeId ? runStatusMap.get(selectedNodeId) : undefined
 
   useEffect(() => {
     let cancelled = false
@@ -58,20 +73,23 @@ export default function App({ initialPipelineId }: Props) {
       }
       setLoading(false)
 
-      // ?autorun=true 로 진입 시 자동으로 실행 모달 열기
       if (initialPipelineId && new URLSearchParams(window.location.search).get('autorun') === 'true') {
-        // URL에서 파라미터 제거 (뒤로가기 시 재실행 방지)
         window.history.replaceState(null, '', `/pipelines/${initialPipelineId}`)
-        setRunModalOpen(true)
+        startExecution(initialPipelineId)
       }
     }
 
     load()
-    return () => {
-      cancelled = true
-    }
+    return () => { cancelled = true }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialPipelineId])
+
+  // 정리
+  useEffect(() => {
+    return () => {
+      if (execIntervalRef.current) window.clearInterval(execIntervalRef.current)
+    }
+  }, [])
 
   function applyPipeline(pipeline: PipelineDto, types: NodeTypeInfo[]) {
     setName(pipeline.name || '새 파이프라인')
@@ -93,6 +111,35 @@ export default function App({ initialPipelineId }: Props) {
         markerEnd: { type: MarkerType.ArrowClosed },
       })),
     )
+  }
+
+  async function startExecution(id: string) {
+    if (execIntervalRef.current) {
+      window.clearInterval(execIntervalRef.current)
+      execIntervalRef.current = null
+    }
+    setRunLogs([])
+    setRunStatus('running')
+    setBottomPanelOpen(true)
+
+    try {
+      const res = await api.runPipeline(id)
+      if (!res.executionId) {
+        setRunStatus('error')
+        return
+      }
+      execIntervalRef.current = window.setInterval(async () => {
+        const state = await api.getExecution(res.executionId!)
+        setRunLogs(state.logs)
+        if (state.status !== 'running') {
+          setRunStatus(state.status as 'done' | 'error')
+          window.clearInterval(execIntervalRef.current!)
+          execIntervalRef.current = null
+        }
+      }, 1000)
+    } catch {
+      setRunStatus('error')
+    }
   }
 
   const handleAddNode = useCallback(
@@ -182,8 +229,8 @@ export default function App({ initialPipelineId }: Props) {
   const handleRun = useCallback(async () => {
     const id = await handleSave()
     setPipelineId(id)
-    setRunModalOpen(true)
-  }, [handleSave])
+    await startExecution(id)
+  }, [handleSave])  // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleExport = useCallback(() => {
     if (!pipelineId) return
@@ -202,34 +249,54 @@ export default function App({ initialPipelineId }: Props) {
     setSelectedNodeId(null)
   }, [setNodes, setEdges])
 
+  const handleSelectNodeFromPanel = useCallback((nodeId: string) => {
+    setSelectedNodeId(nodeId)
+  }, [])
+
   if (loading) return null
 
   const selectedNode = nodes.find((n) => n.id === selectedNodeId) ?? null
 
   return (
     <div className="editor-wrap">
-      <Palette nodeTypes={nodeTypes} onStartDrag={startDrag} />
-      <PipelineCanvas
-        nodes={nodes}
-        edges={edges}
-        wrapperRef={canvasWrapperRef}
-        dragOver={dragging && overCanvas}
-        onNodesChange={onNodesChange}
-        onEdgesChange={onEdgesChange}
-        onConnect={handleConnect}
-        onSelectNode={setSelectedNodeId}
-        onDeleteNode={handleDeleteNode}
-      />
-      {dragging && ghostPos && nodeTypeInfo && (
-        <div className="drag-ghost" style={{ left: ghostPos.x + 12, top: ghostPos.y + 8 }}>
-          {nodeTypeInfo.icon} {nodeTypeInfo.label}
-        </div>
+      <div className="editor-main">
+        <Palette nodeTypes={nodeTypes} onStartDrag={startDrag} />
+        <PipelineCanvas
+          nodes={nodes}
+          edges={edges}
+          wrapperRef={canvasWrapperRef}
+          dragOver={dragging && overCanvas}
+          runStatusMap={runStatusMap}
+          onNodesChange={onNodesChange}
+          onEdgesChange={onEdgesChange}
+          onConnect={handleConnect}
+          onSelectNode={setSelectedNodeId}
+          onDeleteNode={handleDeleteNode}
+        />
+        {dragging && ghostPos && nodeTypeInfo && (
+          <div className="drag-ghost" style={{ left: ghostPos.x + 12, top: ghostPos.y + 8 }}>
+            {nodeTypeInfo.icon} {nodeTypeInfo.label}
+          </div>
+        )}
+        <ConfigPanel
+          nodeType={selectedNode?.data.nodeType ?? null}
+          config={selectedNode?.data.config ?? {}}
+          onChange={handleConfigChange}
+          runLog={selectedNodeLog}
+        />
+      </div>
+
+      {/* 하단 실행 결과 패널 */}
+      {bottomPanelOpen && (
+        <BottomPanel
+          logs={runLogs}
+          status={runStatus}
+          nodeTypes={nodeTypes}
+          onSelectNode={handleSelectNodeFromPanel}
+          onClose={() => setBottomPanelOpen(false)}
+        />
       )}
-      <ConfigPanel
-        nodeType={selectedNode?.data.nodeType ?? null}
-        config={selectedNode?.data.config ?? {}}
-        onChange={handleConfigChange}
-      />
+
       <Toolbar
         name={name}
         description={description}
@@ -242,15 +309,8 @@ export default function App({ initialPipelineId }: Props) {
         onDeleteAll={handleDeleteAll}
         saving={saving}
         canExport={!!pipelineId}
+        bottomPanelOpen={bottomPanelOpen}
       />
-      {pipelineId && (
-        <RunModal
-          pipelineId={pipelineId}
-          open={runModalOpen}
-          onClose={() => setRunModalOpen(false)}
-          nodeTypes={nodeTypes}
-        />
-      )}
     </div>
   )
 }

@@ -1,14 +1,30 @@
-import { useRef, useState } from 'react'
-import type { NodeParam, NodeTypeInfo } from '../types'
+import { useEffect, useRef, useState } from 'react'
+import type { NodeParam, NodeTypeInfo, RunLog } from '../types'
 import { api } from '../api'
+import { OutputRenderer } from './OutputRenderer'
 
 interface Props {
   nodeType: NodeTypeInfo | null
   config: Record<string, unknown>
   onChange: (key: string, value: unknown) => void
+  runLog?: RunLog
 }
 
-export function ConfigPanel({ nodeType, config, onChange }: Props) {
+type PanelTab = 'config' | 'result'
+
+export function ConfigPanel({ nodeType, config, onChange, runLog }: Props) {
+  const [tab, setTab] = useState<PanelTab>('config')
+  const prevNodeId = useRef<string | null>(null)
+
+  // 선택 노드가 바뀌면 'config' 탭으로 리셋
+  useEffect(() => {
+    const cur = nodeType?.id ?? null
+    if (cur !== prevNodeId.current) {
+      prevNodeId.current = cur
+      setTab('config')
+    }
+  }, [nodeType?.id])
+
   if (!nodeType) {
     return (
       <div className="config-panel">
@@ -20,19 +36,80 @@ export function ConfigPanel({ nodeType, config, onChange }: Props) {
     )
   }
 
+  const hasResult = !!(runLog?.output)
+
   return (
     <div className="config-panel">
+      {/* 헤더 */}
       <div className="config-header">{nodeType.icon} {nodeType.label}</div>
-      <div className="config-body">
-        {nodeType.params.map((param) => (
-          <ParamField
-            key={param.name}
-            param={param}
-            value={config[param.name] ?? param.defaultValue ?? ''}
-            onChange={(v) => onChange(param.name, v)}
-          />
-        ))}
+
+      {/* 탭 */}
+      <div className="config-tabs">
+        <button
+          type="button"
+          className={`config-tab${tab === 'config' ? ' active' : ''}`}
+          onClick={() => setTab('config')}
+        >
+          설정
+        </button>
+        <button
+          type="button"
+          className={`config-tab${tab === 'result' ? ' active' : ''}`}
+          onClick={() => setTab('result')}
+        >
+          결과
+          {hasResult && (
+            <span className={`config-tab-dot ${runLog!.status}`} />
+          )}
+        </button>
       </div>
+
+      {/* 설정 탭 */}
+      {tab === 'config' && (
+        <div className="config-body">
+          {nodeType.params.map((param) => (
+            <ParamField
+              key={param.name}
+              param={param}
+              value={config[param.name] ?? param.defaultValue ?? ''}
+              onChange={(v) => onChange(param.name, v)}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* 결과 탭 */}
+      {tab === 'result' && (
+        <div className="config-result-body">
+          {!runLog ? (
+            <div className="config-result-empty">
+              <div className="config-empty-icon">🚀</div>
+              <div>아직 실행 결과가 없습니다.<br />파이프라인을 실행해보세요.</div>
+            </div>
+          ) : runLog.status === 'running' ? (
+            <div className="config-result-empty">
+              <div className="config-empty-icon">⏳</div>
+              <div>실행 중...</div>
+            </div>
+          ) : runLog.status === 'error' ? (
+            <div className="config-result-error">
+              <div className="config-result-error-title">❌ 실행 오류</div>
+              <div className="config-result-error-msg">{runLog.message}</div>
+              {runLog.output && (
+                <pre className="config-result-error-output">{runLog.output}</pre>
+              )}
+            </div>
+          ) : runLog.output ? (
+            <div className="config-result-output">
+              <OutputRenderer text={runLog.output} outputVar={runLog.outputVar} />
+            </div>
+          ) : (
+            <div className="config-result-empty">
+              <div>출력 데이터가 없습니다.</div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }

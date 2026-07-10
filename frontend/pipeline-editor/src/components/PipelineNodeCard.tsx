@@ -2,20 +2,36 @@ import { Handle, Position, type NodeProps } from '@xyflow/react'
 import type { Node } from '@xyflow/react'
 import type { PipelineNodeData } from '../types'
 import { useNodeActions } from '../NodeActionsContext'
+import { useRunStatus } from '../RunStatusContext'
 
 export type PipelineFlowNode = Node<PipelineNodeData, 'pipelineNode'>
 
+const STATUS_ICON: Record<string, string> = {
+  running: '●',
+  success: '✓',
+  error:   '✕',
+}
+
 export function PipelineNodeCard({ id, data, selected }: NodeProps<PipelineFlowNode>) {
   const { onDeleteNode } = useNodeActions()
+  const runStatusMap = useRunStatus()
+  const runLog = runStatusMap.get(id)
+  const runStatus = runLog?.status  // 'running' | 'success' | 'error' | undefined
+
   const { nodeType } = data
 
   return (
-    <div className={`pnode${selected ? ' selected' : ''}`}>
+    <div className={`pnode${selected ? ' selected' : ''}${runStatus ? ` run-${runStatus}` : ''}`}>
       <Handle type="target" position={Position.Left} className="pnode-handle pnode-handle-in" />
 
       {/* n8n 스타일: 카테고리 컬러 헤더 */}
       <div className="pnode-cat-bar" style={{ background: nodeType.color }}>
         <span className="pnode-cat-label">{nodeType.category ?? nodeType.id}</span>
+        {runStatus && (
+          <span className={`pnode-run-icon ${runStatus}`} title={runLog?.message}>
+            {STATUS_ICON[runStatus]}
+          </span>
+        )}
         <button
           type="button"
           className="pnode-del"

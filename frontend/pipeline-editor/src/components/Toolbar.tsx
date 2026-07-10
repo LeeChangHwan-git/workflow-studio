@@ -12,6 +12,7 @@ interface Props {
   onDeleteAll: () => void
   saving: boolean
   canExport: boolean
+  bottomPanelOpen?: boolean
 }
 
 export function Toolbar({
@@ -26,11 +27,12 @@ export function Toolbar({
   onDeleteAll,
   saving,
   canExport,
+  bottomPanelOpen,
 }: Props) {
   const importInputRef = useRef<HTMLInputElement>(null)
 
   return (
-    <div className="editor-toolbar">
+    <div className="editor-toolbar" style={{ bottom: bottomPanelOpen ? 220 : 20 }}>
       <input
         className="pipeline-name-input"
         placeholder="파이프라인 이름"
