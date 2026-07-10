@@ -67,7 +67,7 @@ function JsonViewer({ json, outputVar }: { json: unknown; outputVar?: string }) 
           ? <span className="json-path-copied">✓ 복사됨: {buildFullPath(copiedPath!)}</span>
           : displayPath !== null
             ? <span className="json-path-active">{displayPath}<span className="json-path-tip"> 클릭하여 복사</span></span>
-            : <span className="json-path-hint">값에 마우스를 올리고 클릭하면 경로가 복사됩니다</span>
+            : <span className="json-path-hint">마우스 올리기: 경로 표시 · 클릭: 복사</span>
         }
       </div>
       <div className="json-tree">

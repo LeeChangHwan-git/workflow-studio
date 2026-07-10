@@ -321,16 +321,18 @@ button { font-family: inherit; }
 .json-prefix-line { font-size: 11px; color: #6A9955; font-family: 'Consolas', monospace; margin-bottom: 6px; }
 .json-viewer { font-family: 'Consolas', 'Courier New', monospace; font-size: 12px; }
 .json-path-bar {
-  display: flex; align-items: center; min-height: 26px;
+  display: flex; align-items: center;
+  height: 26px; flex-shrink: 0; overflow: hidden;
   background: #252526; border: 1px solid #3E3E42; border-radius: 4px;
-  padding: 4px 10px; margin-bottom: 8px;
+  padding: 0 10px; margin-bottom: 8px;
   font-size: 11px; font-family: 'Consolas', monospace;
+  white-space: nowrap;
 }
 .json-path-bar.copied { border-color: #2D5A4A; background: #1B3D35; transition: all .2s; }
-.json-path-active { color: #9CDCFE; font-weight: 700; }
-.json-path-tip { color: #444; font-size: 10px; font-weight: 400; margin-left: 8px; }
-.json-path-hint { color: #444; font-style: italic; }
-.json-path-copied { color: #4EC9B0; font-weight: 700; }
+.json-path-active { color: #9CDCFE; font-weight: 700; overflow: hidden; text-overflow: ellipsis; }
+.json-path-tip { color: #444; font-size: 10px; font-weight: 400; margin-left: 8px; flex-shrink: 0; }
+.json-path-hint { color: #444; font-style: italic; overflow: hidden; text-overflow: ellipsis; }
+.json-path-copied { color: #4EC9B0; font-weight: 700; overflow: hidden; text-overflow: ellipsis; }
 .json-tree { padding: 4px 0; line-height: 1.8; }
 .json-key { color: #9CDCFE; cursor: pointer; border-radius: 2px; }
 .json-key:hover { background: #264F78; }

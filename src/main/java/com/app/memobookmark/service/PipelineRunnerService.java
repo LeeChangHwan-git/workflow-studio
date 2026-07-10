@@ -819,11 +819,70 @@ public class PipelineRunnerService {
 
     private String resolveVars(String text, Map<String, Object> ctx) {
         if (text == null) return null;
-        String result = text;
-        for (Map.Entry<String, Object> entry : ctx.entrySet()) {
-            result = result.replace("${" + entry.getKey() + "}", String.valueOf(entry.getValue()));
+        java.util.regex.Matcher m = java.util.regex.Pattern
+                .compile("\\$\\{([^}]+)\\}").matcher(text);
+        StringBuilder sb = new StringBuilder();
+        while (m.find()) {
+            String expr = m.group(1);
+            String val  = resolveExpr(expr, ctx);
+            m.appendReplacement(sb, java.util.regex.Matcher.quoteReplacement(
+                    val != null ? val : m.group(0)));
         }
-        return result;
+        m.appendTail(sb);
+        return sb.toString();
+    }
+
+    /** ${varName} 또는 ${varName.key[0].nested} 형태 해석 */
+    private String resolveExpr(String expr, Map<String, Object> ctx) {
+        // 1) 정확히 일치하는 키
+        if (ctx.containsKey(expr)) return String.valueOf(ctx.get(expr));
+
+        // 2) dot / bracket 으로 시작하는 경로 탐색
+        for (Map.Entry<String, Object> entry : ctx.entrySet()) {
+            String key = entry.getKey();
+            if (!expr.startsWith(key + ".") && !expr.startsWith(key + "[")) continue;
+            String remainder = expr.substring(key.length());
+            String raw = String.valueOf(entry.getValue());
+            // HTTP 응답 prefix("HTTP 200\n...") 제거
+            String json = raw.replaceFirst("(?s)^HTTP \\d+[^\\n]*\\n+", "").trim();
+            try {
+                Object parsed = objectMapper.readValue(json, Object.class);
+                Object result = jsonPath(parsed, remainder);
+                if (result != null) return result instanceof String s ? s : objectMapper.writeValueAsString(result);
+            } catch (Exception ignore) {}
+        }
+        return null;
+    }
+
+    /** ".key", "[0]", ".key[0].nested" 형태 경로로 JSON 객체 탐색 */
+    @SuppressWarnings("unchecked")
+    private Object jsonPath(Object node, String path) {
+        if (path == null || path.isEmpty()) return node;
+        if (path.startsWith(".")) {
+            String rest = path.substring(1);
+            int dot     = rest.indexOf('.');
+            int bracket = rest.indexOf('[');
+            int end = (dot < 0 && bracket < 0) ? rest.length()
+                    : (dot < 0) ? bracket
+                    : (bracket < 0) ? dot
+                    : Math.min(dot, bracket);
+            String key       = rest.substring(0, end);
+            String remaining = rest.substring(end);
+            if (node instanceof java.util.Map<?,?> map) {
+                Object child = map.get(key);
+                return child == null ? null : jsonPath(child, remaining);
+            }
+        } else if (path.startsWith("[")) {
+            int close = path.indexOf(']');
+            if (close < 0) return null;
+            String remaining = path.substring(close + 1);
+            try {
+                int idx = Integer.parseInt(path.substring(1, close));
+                if (node instanceof java.util.List<?> list && idx >= 0 && idx < list.size())
+                    return jsonPath(list.get(idx), remaining);
+            } catch (NumberFormatException ignore) {}
+        }
+        return null;
     }
 
     private String str(Map<String, Object> cfg, String key) {
