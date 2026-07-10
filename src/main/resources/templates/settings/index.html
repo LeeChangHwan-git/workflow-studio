@@ -70,6 +70,18 @@
 
         <hr class="settings-divider">
 
+        <div class="settings-section-title">✨ Gemini AI 설정 (무료)</div>
+
+        <div class="form-group">
+            <label class="form-label">Gemini API 키</label>
+            <input class="form-control" type="password" id="geminiApiKey"
+                   placeholder="AIza..."
+                   th:value="${settings.geminiApiKey}">
+            <div class="settings-hint">Google AI Studio (aistudio.google.com)에서 무료로 발급. AI 질의 노드에서 Gemini 서비스 선택 시 사용됩니다.</div>
+        </div>
+
+        <hr class="settings-divider">
+
         <div class="settings-section-title">📋 Outline 설정</div>
 
         <div class="form-group">
@@ -124,6 +136,7 @@ async function saveSettings() {
     const payload = {
         claudeApiKey: document.getElementById('claudeApiKey').value,
         claudeModel:  document.getElementById('claudeModel').value,
+        geminiApiKey: document.getElementById('geminiApiKey').value,
         imageMatchThreshold: parseFloat(document.getElementById('imageMatchThreshold').value) || 0.90,
         imageMatchRetryMs:   parseInt(document.getElementById('imageMatchRetryMs').value) || 500,
         outlineUrl:   document.getElementById('outlineUrl').value,

@@ -3,6 +3,7 @@ package com.app.memobookmark.model;
 public class AppSettings {
     private String claudeApiKey = "";
     private String claudeModel = "claude-sonnet-4-6";
+    private String geminiApiKey = "";
     private double imageMatchThreshold = 0.90;
     private int imageMatchRetryMs = 500;
     private String outlineUrl = "";
@@ -14,6 +15,8 @@ public class AppSettings {
     public void setClaudeApiKey(String claudeApiKey) { this.claudeApiKey = claudeApiKey; }
     public String getClaudeModel() { return claudeModel; }
     public void setClaudeModel(String claudeModel) { this.claudeModel = claudeModel; }
+    public String getGeminiApiKey() { return geminiApiKey; }
+    public void setGeminiApiKey(String geminiApiKey) { this.geminiApiKey = geminiApiKey; }
     public double getImageMatchThreshold() { return imageMatchThreshold; }
     public void setImageMatchThreshold(double imageMatchThreshold) { this.imageMatchThreshold = imageMatchThreshold; }
     public int getImageMatchRetryMs() { return imageMatchRetryMs; }

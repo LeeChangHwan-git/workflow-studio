@@ -52,11 +52,16 @@ public class NodeTypeRegistry {
 
         // ── AI ───────────────────────────────────────────────────────
         new NodeTypeInfo("CALL_AI", "AI 질의", "🤖", "#9B59B6", "AI", List.of(
-            new NodeParam("prompt", "프롬프트 (${nodeId.output} 참조 가능)", "textarea",
-                "다음 내용을 분석해줘: ${이전노드.output}", null),
-            new NodeParam("model", "모델", "select", "claude-sonnet-4-6",
-                List.of("claude-sonnet-4-6", "claude-haiku-4-5-20251001", "claude-opus-4-8")),
-            new NodeParam("outputVar", "출력 변수명", "text", "aiResult", null)
+            new NodeParam("aiService", "AI 서비스", "select", "Claude (Anthropic)",
+                List.of("Claude (Anthropic)", "Gemini (Google)", "커스텀 (OpenAI 호환)")),
+            new NodeParam("apiKey",       "API 키 (비워두면 앱 설정값 사용)", "password", "", null),
+            new NodeParam("model",        "모델 (예: claude-sonnet-4-6 / gemini-2.0-flash / gpt-4o-mini)", "text", "", null),
+            new NodeParam("endpointUrl",  "엔드포인트 URL (커스텀 전용)", "text", "", null),
+            new NodeParam("systemPrompt", "시스템 프롬프트 (역할/지시사항)", "textarea", "", null),
+            new NodeParam("userInput",    "사용자 입력 (${변수} 참조 가능)", "textarea", "", null),
+            new NodeParam("outputFormat", "출력 형식", "select", "자유 텍스트",
+                List.of("자유 텍스트", "마크다운", "JSON")),
+            new NodeParam("outputVar",    "출력 변수명", "text", "aiResult", null)
         )),
 
         new NodeTypeInfo("AI_AGENT", "AI 에이전트", "🧠", "#7C3AED", "AI", List.of(
@@ -122,13 +127,15 @@ public class NodeTypeRegistry {
 
         // ── 파일 출력 ────────────────────────────────────────────────
         new NodeTypeInfo("SAVE_MD", "MD 파일 저장", "💾", "#F59E0B", "파일 출력", List.of(
-            new NodeParam("content",   "내용 (${변수} 참조)", "textarea", "", null),
-            new NodeParam("outputDir", "저장 폴더 경로",      "text",     "~/Desktop", null),
-            new NodeParam("saveMode",  "저장 방식",           "select",   "단일 파일",
+            new NodeParam("content",     "내용 (${변수} 참조)", "textarea", "", null),
+            new NodeParam("outputDir",   "저장 폴더 경로",      "text",     "~/Desktop", null),
+            new NodeParam("saveMode",    "저장 방식",           "select",   "단일 파일",
                 List.of("단일 파일", "섹션별 분할 (## 기준)", "구분자로 분할 (---)")),
-            new NodeParam("filename",  "파일명 패턴 (단일: output.md │ 분할: ${heading}.md 또는 doc_${index}.md)",
+            new NodeParam("filename",    "파일명 패턴 (단일: output.md │ 분할: ${heading}.md 또는 doc_${index}.md)",
                 "text", "output.md", null),
-            new NodeParam("outputVar", "출력 변수명 (저장 경로 목록)", "text", "savedFiles", null)
+            new NodeParam("fileExists",  "동일 파일명 존재 시", "select",   "덮어쓰기",
+                List.of("덮어쓰기", "뒤에 추가", "오류 발생")),
+            new NodeParam("outputVar",   "출력 변수명 (저장 경로 목록)", "text", "savedFiles", null)
         )),
 
         // ── 레거시 (팔레트 미노출, 기존 파이프라인 호환용) ─────────

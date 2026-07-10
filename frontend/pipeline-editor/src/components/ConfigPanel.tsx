@@ -166,6 +166,32 @@ function ParamField({
           onChange={(e) => onChange(e.target.value)}
         />
       )}
+      {param.type === 'password' && (
+        <PasswordField value={String(value ?? '')} onChange={(v) => onChange(v)} />
+      )}
+    </div>
+  )
+}
+
+function PasswordField({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const [show, setShow] = useState(false)
+  return (
+    <div className="cfg-password-wrap">
+      <input
+        className="cfg-input cfg-password-input"
+        type={show ? 'text' : 'password'}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder="비워두면 앱 설정값 사용"
+      />
+      <button
+        type="button"
+        className="cfg-password-toggle"
+        onClick={() => setShow((s) => !s)}
+        title={show ? '숨기기' : '보기'}
+      >
+        {show ? '🙈' : '👁️'}
+      </button>
     </div>
   )
 }

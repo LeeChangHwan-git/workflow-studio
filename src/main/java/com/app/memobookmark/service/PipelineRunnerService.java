@@ -31,7 +31,9 @@ public class PipelineRunnerService {
     private final ObjectMapper objectMapper;
     private final RestTemplate restTemplate = new RestTemplate();
 
-    private static final String CLAUDE_API = "https://api.anthropic.com/v1/messages";
+    private static final String CLAUDE_API  = "https://api.anthropic.com/v1/messages";
+    private static final String GEMINI_API  =
+            "https://generativelanguage.googleapis.com/v1beta/models/%s:generateContent?key=%s";
 
     // executionId -> execution state
     private final Map<String, ExecutionState> executions = new ConcurrentHashMap<>();
@@ -322,14 +324,16 @@ public class PipelineRunnerService {
                 String dir = rawDir.replace("~", System.getProperty("user.home"));
                 Files.createDirectories(Path.of(dir));
 
+                String fileExists = str(cfg, "fileExists", "덮어쓰기");
+
                 List<String> savedPaths;
                 savedPaths = switch (saveMode) {
-                    case "섹션별 분할 (## 기준)" -> saveSections(rawContent, dir, pattern);
-                    case "구분자로 분할 (---)"   -> saveSeparated(rawContent, dir, pattern);
+                    case "섹션별 분할 (## 기준)" -> saveSections(rawContent, dir, pattern, fileExists);
+                    case "구분자로 분할 (---)"   -> saveSeparated(rawContent, dir, pattern, fileExists);
                     default                       -> {
                         String fname = pattern.replace("${index}", "1");
                         Path dest = Path.of(dir, fname);
-                        Files.writeString(dest, rawContent, java.nio.charset.StandardCharsets.UTF_8);
+                        writeMdFile(dest, rawContent, fileExists);
                         yield List.of(dest.toAbsolutePath().toString());
                     }
                 };
@@ -347,38 +351,56 @@ public class PipelineRunnerService {
             case "OUTLINE"             -> executeOutline(str(cfg, "operation", "문서 목록"), cfg, ctx);
 
             case "CALL_AI" -> {
-                String apiKey = settings.getClaudeApiKey();
-                if (apiKey == null || apiKey.isBlank())
-                    throw new Exception("Claude API 키가 설정되지 않았습니다. 설정 메뉴에서 입력하세요.");
-                String prompt = resolveVars(str(cfg, "prompt", ""), ctx);
-                String model = str(cfg, "model", settings.getClaudeModel());
+                String aiService    = str(cfg, "aiService", "Claude (Anthropic)");
+                String nodeApiKey   = str(cfg, "apiKey", "");
+                String model        = str(cfg, "model", "");
+                String endpointUrl  = str(cfg, "endpointUrl", "");
+                String systemPrompt = resolveVars(str(cfg, "systemPrompt", ""), ctx);
+                String userInput    = resolveVars(str(cfg, "userInput", ""), ctx);
+                // 구버전 호환: prompt 필드
+                if (userInput.isBlank()) userInput = resolveVars(str(cfg, "prompt", ""), ctx);
+                String outputFormat = str(cfg, "outputFormat", "자유 텍스트");
+                String outputVar    = str(cfg, "outputVar", "aiResult");
 
-                HttpHeaders headers = new HttpHeaders();
-                headers.set("x-api-key", apiKey);
-                headers.set("anthropic-version", "2023-06-01");
-                headers.setContentType(MediaType.APPLICATION_JSON);
+                String finalInput = userInput;
+                if ("마크다운".equals(outputFormat))
+                    finalInput += "\n\n응답은 반드시 마크다운 형식으로 작성해주세요.";
+                else if ("JSON".equals(outputFormat))
+                    finalInput += "\n\n응답은 반드시 유효한 JSON만 출력하세요. 설명 텍스트 없이 JSON만 출력하세요.";
 
-                Map<String, Object> body = Map.of(
-                        "model", model,
-                        "max_tokens", 2048,
-                        "messages", List.of(Map.of("role", "user", "content", prompt))
-                );
-                HttpEntity<Map<String, Object>> req = new HttpEntity<>(body, headers);
-                @SuppressWarnings("unchecked")
-                Map<String, Object> resp = restTemplate.postForObject(
-                        CLAUDE_API, req, Map.class);
-                if (resp == null) throw new Exception("API 응답 없음");
-                @SuppressWarnings("unchecked")
-                List<Map<String, Object>> content = (List<Map<String, Object>>) resp.get("content");
-                yield (String) content.get(0).get("text");
+                String aiResult;
+                if (aiService.startsWith("Gemini")) {
+                    String key = nodeApiKey.isBlank() ? settings.getGeminiApiKey() : nodeApiKey;
+                    if (key == null || key.isBlank())
+                        throw new Exception("Gemini API 키가 없습니다. 앱 설정 또는 노드에 입력하세요.");
+                    String mdl = model.isBlank() ? "gemini-2.0-flash" : model;
+                    aiResult = callGemini(key, mdl, systemPrompt, finalInput);
+                } else if (aiService.startsWith("커스텀")) {
+                    if (endpointUrl.isBlank())
+                        throw new Exception("커스텀 엔드포인트 URL이 비어있습니다.");
+                    String mdl = model.isBlank() ? "gpt-4o-mini" : model;
+                    aiResult = callCustomAi(endpointUrl, nodeApiKey, mdl, systemPrompt, finalInput);
+                } else {
+                    // Claude (Anthropic)
+                    String key = nodeApiKey.isBlank() ? settings.getClaudeApiKey() : nodeApiKey;
+                    if (key == null || key.isBlank())
+                        throw new Exception("Claude API 키가 없습니다. 앱 설정 또는 노드에 입력하세요.");
+                    String mdl = model.isBlank() ? settings.getClaudeModel() : model;
+                    aiResult = callClaude(key, mdl, systemPrompt, finalInput);
+                }
+
+                ctx.put(outputVar, aiResult);
+                yield aiResult;
             }
 
             case "AI_AGENT" -> {
-                String apiKey = settings.getClaudeApiKey();
+                String nodeApiKey2 = str(cfg, "apiKey", "");
+                String apiKey = nodeApiKey2.isBlank() ? settings.getClaudeApiKey() : nodeApiKey2;
                 if (apiKey == null || apiKey.isBlank())
-                    throw new Exception("Claude API 키가 설정되지 않았습니다. 설정 메뉴에서 입력하세요.");
+                    throw new Exception("Claude API 키가 없습니다. 앱 설정 또는 노드에 입력하세요.");
 
                 String model       = str(cfg, "model", settings.getClaudeModel());
+                if (model.isBlank()) model = settings.getClaudeModel();
                 String sysPrompt   = resolveVars(str(cfg, "systemPrompt",
                         "당신은 유능한 AI 에이전트입니다. 제공된 도구를 활용해 사용자의 요청을 정확하게 완수하세요."), ctx);
                 String userInput   = resolveVars(str(cfg, "userInput", ""), ctx);
@@ -486,7 +508,7 @@ public class PipelineRunnerService {
     // ── MD 파일 저장 헬퍼 ──────────────────────────────────────────
 
     /** ## 헤딩 기준으로 섹션 분할 후 각각 저장 */
-    private List<String> saveSections(String content, String dir, String pattern) throws Exception {
+    private List<String> saveSections(String content, String dir, String pattern, String fileExists) throws Exception {
         List<String[]> sections = new ArrayList<>(); // {heading, body}
         StringBuilder current = null;
         // 전체에서 첫 번째 # 헤딩을 기본 heading으로 사용 (preamble용)
@@ -513,21 +535,21 @@ public class PipelineRunnerService {
         for (int i = 0; i < sections.size(); i++) {
             String[] sec = sections.get(i);
             String fname = resolveFilePattern(pattern, mdSafeFilename(sec[0]), i + 1);
-            // 중복 파일명 충돌 방지
+            // 같은 실행 내 중복 파일명 방지 (_N 접미사)
             if (usedNames.contains(fname)) {
                 String base = fname.endsWith(".md") ? fname.substring(0, fname.length() - 3) : fname;
                 fname = base + "_" + (i + 1) + ".md";
             }
             usedNames.add(fname);
             Path dest = Path.of(dir, fname);
-            Files.writeString(dest, sec[1], java.nio.charset.StandardCharsets.UTF_8);
+            writeMdFile(dest, sec[1], fileExists);
             paths.add(dest.toAbsolutePath().toString());
         }
         return paths;
     }
 
     /** --- 구분자 기준으로 분할 후 각각 저장 */
-    private List<String> saveSeparated(String content, String dir, String pattern) throws Exception {
+    private List<String> saveSeparated(String content, String dir, String pattern, String fileExists) throws Exception {
         String[] parts = content.split("\\n---+\\n");
         List<String> paths = new ArrayList<>();
         Set<String> usedNames = new HashSet<>();
@@ -542,12 +564,34 @@ public class PipelineRunnerService {
             }
             usedNames.add(fname);
             Path dest = Path.of(dir, fname);
-            Files.writeString(dest, trimmed, java.nio.charset.StandardCharsets.UTF_8);
+            writeMdFile(dest, trimmed, fileExists);
             paths.add(dest.toAbsolutePath().toString());
             idx++;
         }
         if (paths.isEmpty()) throw new Exception("--- 구분자를 찾지 못했습니다. 내용에 '---' 행이 있는지 확인하세요.");
         return paths;
+    }
+
+    /** 파일 존재 시 동작 (덮어쓰기 / 뒤에 추가 / 오류 발생) */
+    private void writeMdFile(Path dest, String content, String fileExists) throws Exception {
+        switch (fileExists) {
+            case "오류 발생" -> {
+                if (Files.exists(dest))
+                    throw new Exception("파일이 이미 존재합니다: " + dest.toAbsolutePath());
+                Files.writeString(dest, content, java.nio.charset.StandardCharsets.UTF_8);
+            }
+            case "뒤에 추가" -> {
+                if (Files.exists(dest)) {
+                    Files.writeString(dest, "\n\n---\n\n" + content,
+                            java.nio.charset.StandardCharsets.UTF_8,
+                            java.nio.file.StandardOpenOption.APPEND);
+                } else {
+                    Files.writeString(dest, content, java.nio.charset.StandardCharsets.UTF_8);
+                }
+            }
+            default -> // 덮어쓰기
+                Files.writeString(dest, content, java.nio.charset.StandardCharsets.UTF_8);
+        }
     }
 
     private String resolveFilePattern(String pattern, String heading, int index) {
@@ -813,6 +857,83 @@ public class PipelineRunnerService {
             }
         }
         return result;
+    }
+
+    // ── AI 호출 헬퍼 ──────────────────────────────────────────────
+
+    private String callClaude(String apiKey, String model, String systemPrompt, String userInput) throws Exception {
+        HttpHeaders hdrs = new HttpHeaders();
+        hdrs.set("x-api-key", apiKey);
+        hdrs.set("anthropic-version", "2023-06-01");
+        hdrs.setContentType(MediaType.APPLICATION_JSON);
+
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("model", model);
+        body.put("max_tokens", 4096);
+        if (systemPrompt != null && !systemPrompt.isBlank())
+            body.put("system", systemPrompt);
+        body.put("messages", List.of(Map.of("role", "user", "content", userInput)));
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> resp = restTemplate.postForObject(
+                CLAUDE_API, new HttpEntity<>(body, hdrs), Map.class);
+        if (resp == null) throw new Exception("Claude API 응답 없음");
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> content = (List<Map<String, Object>>) resp.get("content");
+        return (String) content.get(0).get("text");
+    }
+
+    private String callGemini(String apiKey, String model, String systemPrompt, String userInput) throws Exception {
+        HttpHeaders hdrs = new HttpHeaders();
+        hdrs.setContentType(MediaType.APPLICATION_JSON);
+
+        Map<String, Object> body = new LinkedHashMap<>();
+        if (systemPrompt != null && !systemPrompt.isBlank())
+            body.put("systemInstruction", Map.of("parts", List.of(Map.of("text", systemPrompt))));
+        body.put("contents", List.of(Map.of(
+                "role", "user",
+                "parts", List.of(Map.of("text", userInput))
+        )));
+
+        String url = String.format(GEMINI_API, model, apiKey);
+        @SuppressWarnings("unchecked")
+        Map<String, Object> resp = restTemplate.postForObject(url, new HttpEntity<>(body, hdrs), Map.class);
+        if (resp == null) throw new Exception("Gemini API 응답 없음");
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> candidates = (List<Map<String, Object>>) resp.get("candidates");
+        if (candidates == null || candidates.isEmpty())
+            throw new Exception("Gemini 응답에 결과가 없습니다");
+        @SuppressWarnings("unchecked")
+        Map<String, Object> gemContent = (Map<String, Object>) candidates.get(0).get("content");
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> parts = (List<Map<String, Object>>) gemContent.get("parts");
+        return (String) parts.get(0).get("text");
+    }
+
+    private String callCustomAi(String endpointUrl, String apiKey, String model,
+                                String systemPrompt, String userInput) throws Exception {
+        HttpHeaders hdrs = new HttpHeaders();
+        hdrs.setContentType(MediaType.APPLICATION_JSON);
+        if (apiKey != null && !apiKey.isBlank())
+            hdrs.set("Authorization", "Bearer " + apiKey);
+
+        List<Map<String, Object>> messages = new ArrayList<>();
+        if (systemPrompt != null && !systemPrompt.isBlank())
+            messages.add(Map.of("role", "system", "content", systemPrompt));
+        messages.add(Map.of("role", "user", "content", userInput));
+
+        Map<String, Object> body = Map.of("model", model, "messages", messages);
+        @SuppressWarnings("unchecked")
+        Map<String, Object> resp = restTemplate.postForObject(
+                endpointUrl, new HttpEntity<>(body, hdrs), Map.class);
+        if (resp == null) throw new Exception("커스텀 AI API 응답 없음");
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> choices = (List<Map<String, Object>>) resp.get("choices");
+        if (choices == null || choices.isEmpty())
+            throw new Exception("커스텀 AI 응답에 choices 필드가 없습니다");
+        @SuppressWarnings("unchecked")
+        Map<String, Object> msg = (Map<String, Object>) choices.get(0).get("message");
+        return (String) msg.get("content");
     }
 
     // ── 유틸 ────────────────────────────────────────────────────

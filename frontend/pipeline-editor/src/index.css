@@ -193,6 +193,14 @@ button { font-family: inherit; }
 }
 .cfg-input:focus, .cfg-select:focus, .cfg-textarea:focus { border-color: #0E639C; box-shadow: 0 0 0 2px rgba(14,99,156,.25); }
 .cfg-textarea { min-height: 80px; resize: vertical; line-height: 1.6; }
+.cfg-password-wrap { display: flex; gap: 4px; }
+.cfg-password-input { flex: 1; min-width: 0; }
+.cfg-password-toggle {
+  padding: 0 8px; border: 1px solid #454545; border-radius: 4px;
+  background: #3C3C3C; color: #D4D4D4; cursor: pointer; font-size: 13px;
+  transition: background .15s;
+}
+.cfg-password-toggle:hover { background: #505050; }
 .cfg-img-wrap { display: flex; flex-direction: column; gap: 6px; }
 .cfg-img-preview { width: 100%; max-height: 100px; object-fit: contain; border: 1px solid #454545; border-radius: 4px; background: #1E1E1E; }
 .cfg-img-btns { display: flex; gap: 6px; }

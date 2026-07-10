@@ -1,7 +1,7 @@
 export interface NodeParam {
   name: string
   label: string
-  type: 'text' | 'textarea' | 'select' | 'number' | 'image'
+  type: 'text' | 'textarea' | 'select' | 'number' | 'image' | 'password'
   defaultValue: unknown
   options: string[] | null
 }
