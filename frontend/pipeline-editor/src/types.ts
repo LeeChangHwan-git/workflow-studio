@@ -11,6 +11,7 @@ export interface NodeTypeInfo {
   label: string
   icon: string
   color: string
+  category?: string | null  // 팔레트 그룹명 (null = 레거시, 팔레트 미노출)
   params: NodeParam[]
 }
 

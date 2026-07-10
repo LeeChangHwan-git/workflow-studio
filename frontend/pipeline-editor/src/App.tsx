@@ -237,7 +237,12 @@ export default function App({ initialPipelineId }: Props) {
         canExport={!!pipelineId}
       />
       {pipelineId && (
-        <RunModal pipelineId={pipelineId} open={runModalOpen} onClose={() => setRunModalOpen(false)} />
+        <RunModal
+          pipelineId={pipelineId}
+          open={runModalOpen}
+          onClose={() => setRunModalOpen(false)}
+          nodeTypes={nodeTypes}
+        />
       )}
     </div>
   )

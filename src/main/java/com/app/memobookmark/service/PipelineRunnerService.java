@@ -308,84 +308,12 @@ public class PipelineRunnerService {
                 yield path;
             }
 
-            case "OUTLINE" -> {
-                AppSettings settings2 = settingsService.load();
-                String baseUrl = settings2.getOutlineUrl();
-                String token   = settings2.getOutlineToken();
-                if (baseUrl == null || baseUrl.isBlank())
-                    throw new Exception("Outline URL이 설정되지 않았습니다. 설정 메뉴에서 입력하세요.");
-                if (token == null || token.isBlank())
-                    throw new Exception("Outline API 토큰이 설정되지 않았습니다. 설정 메뉴에서 입력하세요.");
-
-                String operation = str(cfg, "operation", "문서 목록");
-                String collId    = resolveVars(str(cfg, "collectionId", ""), ctx);
-                String docId     = resolveVars(str(cfg, "documentId",   ""), ctx);
-                String query     = resolveVars(str(cfg, "query",         ""), ctx);
-                int    limit     = intVal(cfg, "limit", 50);
-
-                HttpHeaders oHdrs = new HttpHeaders();
-                oHdrs.set("Authorization", "Bearer " + token);
-                oHdrs.setContentType(MediaType.APPLICATION_JSON);
-                String apiBase = baseUrl.replaceAll("/+$", "") + "/api";
-
-                @SuppressWarnings("unchecked")
-                String outlineResult = switch (operation) {
-                    case "컬렉션 목록" -> {
-                        Map<String, Object> body = Map.of("limit", limit);
-                        Map<String, Object> resp = restTemplate.postForObject(
-                                apiBase + "/collections.list",
-                                new HttpEntity<>(body, oHdrs), Map.class);
-                        List<Map<String, Object>> data = (List<Map<String, Object>>) resp.get("data");
-                        StringBuilder sb = new StringBuilder("# 아웃라인 컬렉션 목록\n\n");
-                        for (Map<String, Object> col : data)
-                            sb.append("- **").append(col.get("name")).append("**")
-                              .append("  *(ID: `").append(col.get("id")).append("`)*\n");
-                        yield sb.toString();
-                    }
-                    case "문서 목록" -> {
-                        Map<String, Object> body = new LinkedHashMap<>();
-                        body.put("limit", limit);
-                        if (!collId.isBlank()) body.put("collectionId", collId);
-                        Map<String, Object> resp = restTemplate.postForObject(
-                                apiBase + "/documents.list",
-                                new HttpEntity<>(body, oHdrs), Map.class);
-                        List<Map<String, Object>> data = (List<Map<String, Object>>) resp.get("data");
-                        StringBuilder sb = new StringBuilder("# 아웃라인 문서 목록\n\n");
-                        for (Map<String, Object> doc : data)
-                            sb.append("- ").append(doc.get("title"))
-                              .append("  *(ID: `").append(doc.get("id")).append("`)*\n");
-                        yield sb.toString();
-                    }
-                    case "문서 검색" -> {
-                        if (query.isBlank()) throw new Exception("검색어(query)가 비어있습니다.");
-                        Map<String, Object> body = Map.of("query", query, "limit", limit);
-                        Map<String, Object> resp = restTemplate.postForObject(
-                                apiBase + "/documents.search",
-                                new HttpEntity<>(body, oHdrs), Map.class);
-                        List<Map<String, Object>> data = (List<Map<String, Object>>) resp.get("data");
-                        StringBuilder sb = new StringBuilder("# 검색 결과: \"" + query + "\"\n\n");
-                        for (Map<String, Object> item : data) {
-                            Map<String, Object> doc = (Map<String, Object>) item.get("document");
-                            sb.append("## ").append(doc.get("title")).append("\n");
-                            sb.append("ID: `").append(doc.get("id")).append("`\n");
-                            if (item.get("context") != null)
-                                sb.append("> ").append(item.get("context")).append("\n");
-                            sb.append("\n");
-                        }
-                        yield sb.toString();
-                    }
-                    case "문서 내보내기(MD)" -> {
-                        if (docId.isBlank()) throw new Exception("문서 ID(documentId)가 비어있습니다.");
-                        Map<String, Object> body = Map.of("id", docId);
-                        Map<String, Object> resp = restTemplate.postForObject(
-                                apiBase + "/documents.export",
-                                new HttpEntity<>(body, oHdrs), Map.class);
-                        yield (String) resp.get("data");
-                    }
-                    default -> throw new Exception("알 수 없는 Outline 작업: " + operation);
-                };
-                yield outlineResult;
-            }
+            case "OUTLINE_COLLECTIONS" -> executeOutline("컬렉션 목록",      cfg, ctx);
+            case "OUTLINE_DOCS"        -> executeOutline("문서 목록",         cfg, ctx);
+            case "OUTLINE_SEARCH"      -> executeOutline("문서 검색",         cfg, ctx);
+            case "OUTLINE_EXPORT"      -> executeOutline("문서 내보내기(MD)", cfg, ctx);
+            // 레거시 노드 타입 호환
+            case "OUTLINE"             -> executeOutline(str(cfg, "operation", "문서 목록"), cfg, ctx);
 
             case "CALL_AI" -> {
                 String apiKey = settings.getClaudeApiKey();
@@ -521,6 +449,81 @@ public class PipelineRunnerService {
             }
 
             default -> throw new Exception("알 수 없는 노드 타입: " + node.getType());
+        };
+    }
+
+    // ── Outline API 공통 실행 ───────────────────────────────────────
+
+    @SuppressWarnings("unchecked")
+    private String executeOutline(String operation, Map<String, Object> cfg, Map<String, Object> ctx) throws Exception {
+        AppSettings s = settingsService.load();
+        String baseUrl = s.getOutlineUrl();
+        String token   = s.getOutlineToken();
+        if (baseUrl == null || baseUrl.isBlank())
+            throw new Exception("Outline URL이 설정되지 않았습니다. 설정 메뉴에서 입력하세요.");
+        if (token == null || token.isBlank())
+            throw new Exception("Outline API 토큰이 설정되지 않았습니다. 설정 메뉴에서 입력하세요.");
+
+        String collId = resolveVars(str(cfg, "collectionId", ""), ctx);
+        String docId  = resolveVars(str(cfg, "documentId",   ""), ctx);
+        String query  = resolveVars(str(cfg, "query",        ""), ctx);
+        int    limit  = intVal(cfg, "limit", 50);
+
+        HttpHeaders hdrs = new HttpHeaders();
+        hdrs.set("Authorization", "Bearer " + token);
+        hdrs.setContentType(MediaType.APPLICATION_JSON);
+        String apiBase = baseUrl.replaceAll("/+$", "") + "/api";
+
+        return switch (operation) {
+            case "컬렉션 목록" -> {
+                Map<String, Object> body = Map.of("limit", limit);
+                Map<String, Object> resp = restTemplate.postForObject(
+                        apiBase + "/collections.list", new HttpEntity<>(body, hdrs), Map.class);
+                List<Map<String, Object>> data = (List<Map<String, Object>>) resp.get("data");
+                StringBuilder sb = new StringBuilder("# 아웃라인 컬렉션 목록\n\n");
+                for (Map<String, Object> col : data)
+                    sb.append("- **").append(col.get("name")).append("**")
+                      .append("  *(ID: `").append(col.get("id")).append("`)*\n");
+                yield sb.toString();
+            }
+            case "문서 목록" -> {
+                Map<String, Object> body = new LinkedHashMap<>();
+                body.put("limit", limit);
+                if (collId != null && !collId.isBlank()) body.put("collectionId", collId);
+                Map<String, Object> resp = restTemplate.postForObject(
+                        apiBase + "/documents.list", new HttpEntity<>(body, hdrs), Map.class);
+                List<Map<String, Object>> data = (List<Map<String, Object>>) resp.get("data");
+                StringBuilder sb = new StringBuilder("# 아웃라인 문서 목록\n\n");
+                for (Map<String, Object> doc : data)
+                    sb.append("- ").append(doc.get("title"))
+                      .append("  *(ID: `").append(doc.get("id")).append("`)*\n");
+                yield sb.toString();
+            }
+            case "문서 검색" -> {
+                if (query == null || query.isBlank()) throw new Exception("검색어(query)가 비어있습니다.");
+                Map<String, Object> body = Map.of("query", query, "limit", limit);
+                Map<String, Object> resp = restTemplate.postForObject(
+                        apiBase + "/documents.search", new HttpEntity<>(body, hdrs), Map.class);
+                List<Map<String, Object>> data = (List<Map<String, Object>>) resp.get("data");
+                StringBuilder sb = new StringBuilder("# 검색 결과: \"" + query + "\"\n\n");
+                for (Map<String, Object> item : data) {
+                    Map<String, Object> doc = (Map<String, Object>) item.get("document");
+                    sb.append("## ").append(doc.get("title")).append("\n");
+                    sb.append("ID: `").append(doc.get("id")).append("`\n");
+                    if (item.get("context") != null)
+                        sb.append("> ").append(item.get("context")).append("\n");
+                    sb.append("\n");
+                }
+                yield sb.toString();
+            }
+            case "문서 내보내기(MD)" -> {
+                if (docId == null || docId.isBlank()) throw new Exception("문서 ID(documentId)가 비어있습니다.");
+                Map<String, Object> body = Map.of("id", docId);
+                Map<String, Object> resp = restTemplate.postForObject(
+                        apiBase + "/documents.export", new HttpEntity<>(body, hdrs), Map.class);
+                yield (String) resp.get("data");
+            }
+            default -> throw new Exception("알 수 없는 Outline 작업: " + operation);
         };
     }
 

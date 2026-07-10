@@ -12,10 +12,10 @@ export function PipelineNodeCard({ id, data, selected }: NodeProps<PipelineFlowN
   return (
     <div className={`pnode${selected ? ' selected' : ''}`}>
       <Handle type="target" position={Position.Left} className="pnode-handle pnode-handle-in" />
-      <div className="pnode-header">
-        <span className="pnode-dot" style={{ background: nodeType.color }} />
-        <span className="pnode-icon">{nodeType.icon}</span>
-        <span className="pnode-label">{nodeType.label}</span>
+
+      {/* n8n 스타일: 카테고리 컬러 헤더 */}
+      <div className="pnode-cat-bar" style={{ background: nodeType.color }}>
+        <span className="pnode-cat-label">{nodeType.category ?? nodeType.id}</span>
         <button
           type="button"
           className="pnode-del"
@@ -28,6 +28,13 @@ export function PipelineNodeCard({ id, data, selected }: NodeProps<PipelineFlowN
           ✕
         </button>
       </div>
+
+      {/* 오퍼레이션 이름 */}
+      <div className="pnode-body">
+        <span className="pnode-icon">{nodeType.icon}</span>
+        <span className="pnode-label">{nodeType.label}</span>
+      </div>
+
       <Handle type="source" position={Position.Right} className="pnode-handle pnode-handle-out" />
     </div>
   )
