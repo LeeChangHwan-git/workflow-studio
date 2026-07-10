@@ -221,31 +221,59 @@ function SmartRenderer({ text, outputVar }: { text: string; outputVar?: string }
 
 function JsonViewer({ json, outputVar }: { json: unknown; outputVar?: string }) {
   const [hoverPath, setHoverPath] = useState<string | null>(null)
+  const [copiedPath, setCopiedPath] = useState<string | null>(null)
   const varName = outputVar ?? 'result'
+
+  const buildFullPath = (p: string) =>
+    `\${${varName}${p ? '.' + p : ''}}`
+
+  const handleCopy = (p: string) => {
+    const text = buildFullPath(p)
+    const fallback = () => {
+      const el = document.createElement('textarea')
+      el.value = text
+      document.body.appendChild(el)
+      el.select()
+      document.execCommand('copy')
+      document.body.removeChild(el)
+    }
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(text).catch(fallback)
+    } else {
+      fallback()
+    }
+    setCopiedPath(p)
+    setTimeout(() => setCopiedPath(null), 1200)
+  }
+
+  const isCopied = copiedPath !== null
+  const displayPath = hoverPath !== null ? buildFullPath(hoverPath) : null
 
   return (
     <div className="json-viewer">
-      <div className="json-path-bar">
-        {hoverPath !== null
-          ? <span className="json-path-active">${'{'}{ varName }{hoverPath ? '.' + hoverPath : ''}{'}'}
-            </span>
-          : <span className="json-path-hint">값에 마우스를 올리면 경로가 표시됩니다</span>
+      <div className={`json-path-bar${isCopied ? ' copied' : ''}`}>
+        {isCopied
+          ? <span className="json-path-copied">✓ 복사됨: {buildFullPath(copiedPath!)}</span>
+          : displayPath !== null
+            ? <span className="json-path-active">{displayPath}<span className="json-path-tip"> 클릭하여 복사</span></span>
+            : <span className="json-path-hint">값에 마우스를 올리고 클릭하면 경로가 복사됩니다</span>
         }
       </div>
       <div className="json-tree">
-        <JsonNode value={json} path="" depth={0} onHover={setHoverPath} />
+        <JsonNode value={json} path="" depth={0} onHover={setHoverPath} onCopy={handleCopy} />
       </div>
     </div>
   )
 }
 
 function JsonNode({
-  value, path, depth, onHover,
+  value, path, depth, onHover, onCopy,
 }: {
   value: unknown
   path: string
   depth: number
   onHover: (p: string | null) => void
+  onCopy: (p: string) => void
 }) {
   if (Array.isArray(value)) {
     if (value.length === 0) return <span className="json-punct">{'[]'}</span>
@@ -256,7 +284,7 @@ function JsonNode({
           const childPath = path ? `${path}[${idx}]` : `[${idx}]`
           return (
             <div key={idx} style={{ paddingLeft: '1em' }}>
-              <JsonNode value={item} path={childPath} depth={depth + 1} onHover={onHover} />
+              <JsonNode value={item} path={childPath} depth={depth + 1} onHover={onHover} onCopy={onCopy} />
               {idx < value.length - 1 && <span className="json-punct">,</span>}
             </div>
           )
@@ -282,9 +310,10 @@ function JsonNode({
                 className="json-key"
                 onMouseEnter={() => onHover(childPath)}
                 onMouseLeave={() => onHover(null)}
+                onClick={() => onCopy(childPath)}
               >"{k}"</span>
               <span className="json-punct">: </span>
-              <JsonNode value={v} path={childPath} depth={depth + 1} onHover={onHover} />
+              <JsonNode value={v} path={childPath} depth={depth + 1} onHover={onHover} onCopy={onCopy} />
               {idx < entries.length - 1 && <span className="json-punct">,</span>}
             </div>
           )
@@ -312,6 +341,7 @@ function JsonNode({
       className={`json-val ${cls}`}
       onMouseEnter={() => onHover(path)}
       onMouseLeave={() => onHover(null)}
+      onClick={() => onCopy(path)}
     >{display}</span>
   )
 }

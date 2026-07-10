@@ -287,13 +287,18 @@ button { font-family: inherit; }
   padding: 4px 10px; margin-bottom: 8px;
   font-size: 11px; font-family: 'Consolas', monospace;
 }
+.json-path-bar.copied { border-color: #2D5A4A; background: #1B3D35; transition: all .2s; }
 .json-path-active { color: #9CDCFE; font-weight: 700; }
+.json-path-tip { color: #444; font-size: 10px; font-weight: 400; margin-left: 8px; }
 .json-path-hint { color: #444; font-style: italic; }
+.json-path-copied { color: #4EC9B0; font-weight: 700; }
 .json-tree { padding: 4px 0; line-height: 1.8; }
 .json-key { color: #9CDCFE; cursor: pointer; border-radius: 2px; }
 .json-key:hover { background: #264F78; }
-.json-val { border-radius: 2px; cursor: default; }
-.json-val:hover { filter: brightness(1.3); }
+.json-key:active { background: #1B4A7A; }
+.json-val { border-radius: 2px; cursor: pointer; }
+.json-val:hover { filter: brightness(1.25); background: #2A2A2A; }
+.json-val:active { filter: brightness(1.5); }
 .json-str { color: #CE9178; }
 .json-num { color: #B5CEA8; }
 .json-bool { color: #569CD6; }
