@@ -373,7 +373,7 @@ public class PipelineRunnerService {
                     String key = nodeApiKey.isBlank() ? settings.getGeminiApiKey() : nodeApiKey;
                     if (key == null || key.isBlank())
                         throw new Exception("Gemini API 키가 없습니다. 앱 설정 또는 노드에 입력하세요.");
-                    String mdl = model.isBlank() ? "gemini-2.0-flash" : model;
+                    String mdl = model.isBlank() ? "gemini-2.5-flash" : model;
                     aiResult = callGemini(key, mdl, systemPrompt, finalInput);
                 } else if (aiService.startsWith("커스텀")) {
                     if (endpointUrl.isBlank())

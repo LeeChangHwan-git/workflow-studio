@@ -55,11 +55,16 @@ data/
 각 JSON 파일은 해당 모델 객체의 List를 직렬화한 배열.  
 LocalDate / LocalDateTime은 `jackson-datatype-jsr310` 모듈로 처리.
 
+> ⚠️ **`/data/`, `/dist/data/`는 `.gitignore` 대상 — Git에 포함되지 않는다.**
+> 다른 컴퓨터에서 `git clone`/`git pull`만 하면 메모/북마크/달력/파이프라인/설정(API 키 등)이
+> 전부 비어있는 상태로 시작한다. 자세한 내용과 대응법은
+> `prd/feature-2-pipeline.md`의 "다른 컴퓨터에서 git clone/pull 후 반드시 알아야 할 것" 참고.
+
 ---
 
 ## 현재 구현된 기능
 
-### 0. 파이프라인 자동화 ✅ (2026-06-24 구현, 2026-07-10 업데이트)
+### 0. 파이프라인 자동화 ✅ (2026-06-24 구현, 2026-07-10 / 2026-07-11 업데이트)
 
 → 상세 문서: `prd/feature-2-pipeline.md`
 

@@ -55,7 +55,7 @@ public class NodeTypeRegistry {
             new NodeParam("aiService", "AI 서비스", "select", "Claude (Anthropic)",
                 List.of("Claude (Anthropic)", "Gemini (Google)", "커스텀 (OpenAI 호환)")),
             new NodeParam("apiKey",       "API 키 (비워두면 앱 설정값 사용)", "password", "", null),
-            new NodeParam("model",        "모델 (예: claude-sonnet-4-6 / gemini-2.0-flash / gpt-4o-mini)", "text", "", null),
+            new NodeParam("model",        "모델 (예: claude-sonnet-4-6 / gemini-2.5-flash / gpt-4o-mini)", "text", "", null),
             new NodeParam("endpointUrl",  "엔드포인트 URL (커스텀 전용)", "text", "", null),
             new NodeParam("systemPrompt", "시스템 프롬프트 (역할/지시사항)", "textarea", "", null),
             new NodeParam("userInput",    "사용자 입력 (${변수} 참조 가능)", "textarea", "", null),

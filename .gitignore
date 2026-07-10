@@ -10,6 +10,7 @@
 /dist/*.jar
 /dist/*.zip
 /dist/libs/
+/dist/data/
 
 # 파이프라인 에디터 프론트엔드
 /frontend/pipeline-editor/node_modules/

@@ -1,6 +1,6 @@
 # 기능2 — 파이프라인 자동화
 
-## 구현 상태: ✅ 완료 (2026-06-24, 업데이트 2026-07-10)
+## 구현 상태: ✅ 완료 (2026-06-24, 업데이트 2026-07-10, 2026-07-11)
 
 ## 한 줄 요약
 
@@ -107,15 +107,40 @@ n8n 스타일 시각적 노드 에디터로 파이프라인을 만들고, HTTP �
 | 서비스 | 비었을 때 사용되는 모델 | 추천 모델 |
 |--------|----------------------|----------|
 | Claude (Anthropic) | 앱 설정의 `claudeModel` | `claude-sonnet-4-6` |
-| Gemini (Google) | `gemini-2.0-flash` | `gemini-2.0-flash`, `gemini-1.5-flash` |
+| Gemini (Google) | `gemini-2.5-flash` (2026-07-11부터, 이전 기본값 `gemini-2.0-flash`는 폐기됨) | `gemini-2.5-flash` |
 | 커스텀 | `gpt-4o-mini` | 서버에 따라 다름 |
 
 ### Gemini 무료 티어 사용 방법
 
 1. [Google AI Studio](https://aistudio.google.com) 접속 → API Key 발급 (무료)
 2. 앱 **설정** → **Gemini AI 설정** → API 키 입력 저장
-3. `CALL_AI` 노드 → `aiService`: `Gemini (Google)` 선택, 모델: `gemini-2.0-flash`
+3. `CALL_AI` 노드 → `aiService`: `Gemini (Google)` 선택, 모델: `gemini-2.5-flash`
 4. 또는 노드의 `apiKey` 필드에 직접 입력 (앱 설정 없이도 사용 가능)
+
+> ⚠️ **AI_AGENT 노드는 Gemini를 지원하지 않는다.** `model` select 옵션이 `claude-*`
+> 뿐이라 Gemini는 선택 자체가 불가능하다 (Claude 전용, [알려진 한계](#알려진-한계--향후-개선) 참고).
+> Gemini를 쓰려면 반드시 `CALL_AI` 노드를 사용할 것.
+
+### ⚠️ Gemini 모델명 폐기(deprecation) 대응 (2026-07-11 확인)
+
+Google이 구형 모델 alias를 주기적으로 폐기한다. 폐기된 모델로 호출하면 다음과 같이 실패한다.
+
+```
+[CALL_AI] 오류: 404 Not Found: "{ "error": { "code": 404,
+  "message": "This model models/gemini-2.0-flash is no longer available. ...",
+  "status": "NOT_FOUND" } }"
+```
+
+실제로 2026-07-11 테스트에서 앱의 기존 기본값이었던 `gemini-2.0-flash`가 이 오류로 실패했고,
+`gemini-2.5-flash`로 교체 후 정상 동작을 확인했다 (`PipelineRunnerService.callGemini`의
+기본 모델 fallback, `NodeTypeRegistry`의 CALL_AI 힌트 텍스트 모두 수정).
+
+이런 오류를 만나면 현재 사용 가능한 모델 목록을 직접 조회해서 최신 모델명으로 교체한다.
+
+```bash
+curl "https://generativelanguage.googleapis.com/v1beta/models?key=YOUR_KEY" \
+  | grep -o '"name": "models/[a-zA-Z0-9.-]*"'
+```
 
 ### 커스텀 엔드포인트 (OpenAI 호환)
 
@@ -327,6 +352,19 @@ pipeline-{id}.zip
 | `outlineUrl` | Outline 인스턴스 베이스 URL (끝 슬래시 없어도 됨) |
 | `outlineToken` | Outline API 토큰. 형식: `ol_api_` + 38자 영숫자 |
 
+### ⚠️ 다른 컴퓨터에서 git clone/pull 후 반드시 알아야 할 것
+
+`data/`, `dist/data/` 전체가 `.gitignore`에 포함되어 있어서 **API 키·Outline 토큰 등
+`settings.json`은 Git으로 절대 동기화되지 않는다.** (2026-07-10 이전엔 `dist/data/`가
+gitignore 누락 상태였음 — 2026-07-11 수정.)
+
+즉, 새 컴퓨터에서 `git clone`/`git pull`만 하면:
+- 메모/북마크/달력 데이터, 파이프라인 정의(`data/pipelines/*.json`), 설정(API 키 등)이 **전부 없음**
+- 앱 최초 실행 시 앱 **설정** 화면에서 Claude/Gemini API 키, Outline URL/토큰을 다시 입력해야
+  `CALL_AI`/`AI_AGENT`/`OUTLINE` 노드가 동작한다
+- 기존 파이프라인을 옮기려면 원본 컴퓨터에서 **내보내기(ZIP)** 후 새 컴퓨터에서 **가져오기**로
+  이전해야 함 (자동 동기화 없음)
+
 ---
 
 ## REST API
@@ -412,6 +450,33 @@ java --module-path "$MPATH" \
 
 포트는 랜덤 자동 할당됨. 앱 실행 시 자동으로 브라우저가 열린다.  
 서버 포트 로그: `Tomcat started on port {N}` — 해당 포트로 브라우저 접속 가능.
+
+### 헤드리스(API 전용) 테스트 실행 — JavaFX GUI 없이
+
+파이프라인 노드 동작만 빠르게 확인하고 싶을 때, JavaFX 창을 띄우는
+`Launcher`(springBoot mainClass) 대신 순수 Spring Boot 엔트리포인트인
+`MemoBookmarkApplication`을 직접 실행하면 GUI 없이 REST API만으로 테스트 가능하다.
+
+```bash
+# JDK 21 필요 (JAVA_HOME 설정)
+./gradlew compileJava processResources -x npmBuildFrontend   # 프론트 재빌드 스킵
+
+java -cp "build/classes/java/main;build/resources/main;<런타임 classpath>" \
+  com.app.memobookmark.MemoBookmarkApplication \
+  --server.port=8099 --app.storage.path=./data
+```
+
+- `ScreenCaptureService`가 `javafx.stage.Stage`를 참조하므로 classpath에
+  JavaFX jar(win 배포용, `configurations.javafxWin`)가 없으면 Bean 생성 시
+  `NoClassDefFoundError: javafx/stage/Stage`로 기동 실패한다 — classpath에
+  포함시킬 것 (Stage를 실제로 열지는 않으므로 창은 뜨지 않음).
+- 런타임 classpath 전체 목록은 `./gradlew sourceSets.main.runtimeClasspath` 같은
+  임시 태스크로 뽑아내거나 IDE에서 확인.
+- 이후 `curl`로 `/api/pipelines`, `/api/pipelines/{id}/run`, `/api/executions/{execId}` 등을
+  직접 호출해 실제 노드 실행 결과를 확인할 수 있다.
+- Git Bash에서 한글 등 비ASCII가 포함된 JSON을 `curl -d '...'`로 직접 넘기면
+  인코딩 깨짐(`Invalid UTF-8 middle byte`)이 발생할 수 있다 — 파일로 저장 후
+  `curl --data-binary @file.json`로 보낼 것.
 
 ---
 
