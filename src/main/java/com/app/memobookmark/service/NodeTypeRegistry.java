@@ -120,6 +120,17 @@ public class NodeTypeRegistry {
             new NodeParam("outputVar", "출력 변수명", "text", "screenshot", null)
         )),
 
+        // ── 파일 출력 ────────────────────────────────────────────────
+        new NodeTypeInfo("SAVE_MD", "MD 파일 저장", "💾", "#F59E0B", "파일 출력", List.of(
+            new NodeParam("content",   "내용 (${변수} 참조)", "textarea", "", null),
+            new NodeParam("outputDir", "저장 폴더 경로",      "text",     "~/Desktop", null),
+            new NodeParam("saveMode",  "저장 방식",           "select",   "단일 파일",
+                List.of("단일 파일", "섹션별 분할 (## 기준)", "구분자로 분할 (---)")),
+            new NodeParam("filename",  "파일명 패턴 (단일: output.md │ 분할: ${heading}.md 또는 doc_${index}.md)",
+                "text", "output.md", null),
+            new NodeParam("outputVar", "출력 변수명 (저장 경로 목록)", "text", "savedFiles", null)
+        )),
+
         // ── 레거시 (팔레트 미노출, 기존 파이프라인 호환용) ─────────
         new NodeTypeInfo("OUTLINE", "아웃라인 (구버전)", "📋", "#0EA5E9", null, List.of(
             new NodeParam("operation", "작업", "select", "문서 목록",

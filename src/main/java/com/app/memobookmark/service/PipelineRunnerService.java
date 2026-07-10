@@ -308,6 +308,36 @@ public class PipelineRunnerService {
                 yield path;
             }
 
+            case "SAVE_MD" -> {
+                String rawContent = resolveVars(str(cfg, "content", ""), ctx);
+                if (rawContent == null || rawContent.isBlank())
+                    throw new Exception("저장할 내용이 비어있습니다. content 파라미터에 ${변수명}을 입력하세요.");
+
+                String rawDir   = resolveVars(str(cfg, "outputDir", "~/Desktop"), ctx);
+                String saveMode = str(cfg, "saveMode", "단일 파일");
+                String pattern  = str(cfg, "filename",  "output.md");
+
+                // ~ 경로 확장
+                String dir = rawDir.replace("~", System.getProperty("user.home"));
+                Files.createDirectories(Path.of(dir));
+
+                List<String> savedPaths;
+                savedPaths = switch (saveMode) {
+                    case "섹션별 분할 (## 기준)" -> saveSections(rawContent, dir, pattern);
+                    case "구분자로 분할 (---)"   -> saveSeparated(rawContent, dir, pattern);
+                    default                       -> {
+                        String fname = pattern.replace("${index}", "1");
+                        Path dest = Path.of(dir, fname);
+                        Files.writeString(dest, rawContent, java.nio.charset.StandardCharsets.UTF_8);
+                        yield List.of(dest.toAbsolutePath().toString());
+                    }
+                };
+
+                String summary = savedPaths.size() + "개 파일 저장 완료:\n"
+                        + String.join("\n", savedPaths);
+                yield summary;
+            }
+
             case "OUTLINE_COLLECTIONS" -> executeOutline("컬렉션 목록",      cfg, ctx);
             case "OUTLINE_DOCS"        -> executeOutline("문서 목록",         cfg, ctx);
             case "OUTLINE_SEARCH"      -> executeOutline("문서 검색",         cfg, ctx);
@@ -450,6 +480,102 @@ public class PipelineRunnerService {
 
             default -> throw new Exception("알 수 없는 노드 타입: " + node.getType());
         };
+    }
+
+    // ── MD 파일 저장 헬퍼 ──────────────────────────────────────────
+
+    /** ## 헤딩 기준으로 섹션 분할 후 각각 저장 */
+    private List<String> saveSections(String content, String dir, String pattern) throws Exception {
+        List<String[]> sections = new ArrayList<>(); // {heading, body}
+        StringBuilder current = null;
+        // 전체에서 첫 번째 # 헤딩을 기본 heading으로 사용 (preamble용)
+        String heading = extractFirstHeading(content);
+
+        for (String line : content.split("\n")) {
+            if (line.startsWith("## ")) {
+                if (current != null && !current.toString().isBlank())
+                    sections.add(new String[]{heading, current.toString().trim()});
+                heading = line.substring(3).trim();
+                current = new StringBuilder(line).append("\n");
+            } else {
+                if (current == null) current = new StringBuilder();
+                current.append(line).append("\n");
+            }
+        }
+        if (current != null && !current.toString().isBlank())
+            sections.add(new String[]{heading, current.toString().trim()});
+
+        if (sections.isEmpty()) throw new Exception("## 기준 섹션을 찾지 못했습니다. 내용에 ## 헤딩이 있는지 확인하세요.");
+
+        List<String> paths = new ArrayList<>();
+        Set<String> usedNames = new HashSet<>();
+        for (int i = 0; i < sections.size(); i++) {
+            String[] sec = sections.get(i);
+            String fname = resolveFilePattern(pattern, mdSafeFilename(sec[0]), i + 1);
+            // 중복 파일명 충돌 방지
+            if (usedNames.contains(fname)) {
+                String base = fname.endsWith(".md") ? fname.substring(0, fname.length() - 3) : fname;
+                fname = base + "_" + (i + 1) + ".md";
+            }
+            usedNames.add(fname);
+            Path dest = Path.of(dir, fname);
+            Files.writeString(dest, sec[1], java.nio.charset.StandardCharsets.UTF_8);
+            paths.add(dest.toAbsolutePath().toString());
+        }
+        return paths;
+    }
+
+    /** --- 구분자 기준으로 분할 후 각각 저장 */
+    private List<String> saveSeparated(String content, String dir, String pattern) throws Exception {
+        String[] parts = content.split("\\n---+\\n");
+        List<String> paths = new ArrayList<>();
+        Set<String> usedNames = new HashSet<>();
+        int idx = 1;
+        for (String part : parts) {
+            String trimmed = part.trim();
+            if (trimmed.isEmpty()) continue;
+            String fname = resolveFilePattern(pattern, mdSafeFilename(extractFirstHeading(trimmed)), idx);
+            if (usedNames.contains(fname)) {
+                String base = fname.endsWith(".md") ? fname.substring(0, fname.length() - 3) : fname;
+                fname = base + "_" + idx + ".md";
+            }
+            usedNames.add(fname);
+            Path dest = Path.of(dir, fname);
+            Files.writeString(dest, trimmed, java.nio.charset.StandardCharsets.UTF_8);
+            paths.add(dest.toAbsolutePath().toString());
+            idx++;
+        }
+        if (paths.isEmpty()) throw new Exception("--- 구분자를 찾지 못했습니다. 내용에 '---' 행이 있는지 확인하세요.");
+        return paths;
+    }
+
+    private String resolveFilePattern(String pattern, String heading, int index) {
+        return pattern
+                .replace("${heading}", heading)
+                .replace("${index}",   String.valueOf(index));
+    }
+
+    private String extractFirstHeading(String content) {
+        for (String line : content.split("\n")) {
+            if (line.startsWith("### ")) return line.substring(4).trim();
+            if (line.startsWith("## "))  return line.substring(3).trim();
+            if (line.startsWith("# "))   return line.substring(2).trim();
+        }
+        return "document";
+    }
+
+    private String mdSafeFilename(String name) {
+        // 마크다운 인라인 제거 (**bold** → bold, `code` → code)
+        String clean = name.replaceAll("\\*+([^*]+)\\*+", "$1")
+                           .replaceAll("`([^`]+)`", "$1")
+                           .replaceAll("\\[([^]]+)]\\([^)]+\\)", "$1");
+        // 파일명에 쓸 수 없는 문자 제거 및 공백 → _
+        String safe = clean.replaceAll("[/\\\\:*?\"<>|]", "")
+                           .replaceAll("\\s+", "_")
+                           .trim();
+        // 최대 60자
+        if (safe.length() > 60) safe = safe.substring(0, 60);
+        return safe.isEmpty() ? "document" : safe;
     }
 
     // ── Outline API 공통 실행 ───────────────────────────────────────

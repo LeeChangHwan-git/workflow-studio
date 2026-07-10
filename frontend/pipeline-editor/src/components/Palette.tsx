@@ -6,7 +6,7 @@ interface Props {
   onStartDrag: (typeId: string, e: React.MouseEvent) => void
 }
 
-const CATEGORY_ORDER = ['아웃라인', 'AI', '통합', '화면 자동화']
+const CATEGORY_ORDER = ['아웃라인', 'AI', '파일 출력', '통합', '화면 자동화']
 
 export function Palette({ nodeTypes, onStartDrag }: Props) {
   const [query, setQuery] = useState('')
