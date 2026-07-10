@@ -53,66 +53,6 @@
     }
     .import-label:hover { border-color: var(--primary-text); color: var(--primary-text); }
     #importFile { display: none; }
-
-    /* 실행 모달 */
-    .modal-backdrop {
-        display: none; position: fixed; inset: 0;
-        background: rgba(0,0,0,.7); z-index: 999;
-        align-items: center; justify-content: center;
-    }
-    .modal-backdrop.show { display: flex; }
-    .modal-box {
-        background: var(--bg-2); border-radius: var(--radius);
-        border: 1px solid var(--border);
-        width: 600px; max-height: 80vh;
-        display: flex; flex-direction: column;
-        box-shadow: var(--shadow-lg);
-        overflow: hidden;
-    }
-    .modal-header {
-        padding: 18px 20px 14px;
-        border-bottom: 1px solid var(--border);
-        display: flex; align-items: center; gap: 10px;
-    }
-    .modal-title { font-size: 15px; font-weight: 700; flex: 1; color: var(--text); }
-    .modal-close {
-        background: none; border: none; cursor: pointer;
-        font-size: 16px; color: var(--muted); padding: 4px;
-        border-radius: var(--radius); transition: color .15s;
-    }
-    .modal-close:hover { color: #F14C4C; }
-    .modal-body { flex: 1; overflow-y: auto; padding: 14px 20px; }
-    .modal-footer {
-        padding: 12px 20px;
-        border-top: 1px solid var(--border);
-        display: flex; gap: 8px; justify-content: flex-end;
-    }
-    .log-item {
-        display: flex; align-items: flex-start; gap: 10px;
-        padding: 9px 11px;
-        border-radius: var(--radius);
-        margin-bottom: 6px;
-        font-size: 13px;
-    }
-    .log-item.running { background: #1E2D3A; border-left: 3px solid #569CD6; }
-    .log-item.success { background: #1B3D35; border-left: 3px solid #4EC9B0; }
-    .log-item.error   { background: #3A1E1E; border-left: 3px solid #F14C4C; }
-    .log-status { font-size: 15px; flex-shrink: 0; margin-top: 1px; }
-    .log-msg { flex: 1; line-height: 1.5; color: var(--text); }
-    .log-output {
-        font-family: 'Consolas', monospace; font-size: 11px;
-        color: #CE9178; margin-top: 4px;
-        white-space: pre-wrap; word-break: break-all;
-    }
-    .overall-status {
-        padding: 9px 12px;
-        border-radius: var(--radius);
-        font-size: 13px; font-weight: 600;
-        margin-bottom: 10px;
-    }
-    .overall-status.running { background: #1E2D3A; color: #569CD6; border: 1px solid #264F78; }
-    .overall-status.done    { background: #1B3D35; color: #4EC9B0; border: 1px solid #2D5A4A; }
-    .overall-status.error   { background: #3A1E1E; color: #F48771; border: 1px solid #5A2D2D; }
 </style>
 <body>
 <nav>
@@ -157,9 +97,7 @@
             </div>
             <div class="pl-actions">
                 <a class="btn-sm btn-run"
-                        th:data-id="${pl.id}"
-                        th:data-name="${pl.name}"
-                        onclick="startRun(this.dataset.id, this.dataset.name)">▶ 실행</a>
+                        th:href="${'/pipelines/' + pl.id + '?autorun=true'}">▶ 실행</a>
                 <a th:href="@{/pipelines/{id}(id=${pl.id})}" class="btn-sm btn-edit">✏ 편집</a>
                 <a th:href="@{/api/pipelines/{id}/export(id=${pl.id})}" class="btn-sm btn-export"
                    target="_blank">📤 내보내기</a>
@@ -171,108 +109,7 @@
     </div>
 </div>
 
-<!-- 실행 모달 -->
-<div class="modal-backdrop" id="runModal">
-    <div class="modal-box">
-        <div class="modal-header">
-            <span>⚡</span>
-            <div class="modal-title" id="runModalTitle">파이프라인 실행 중...</div>
-            <a class="modal-close" onclick="closeModal()">✕</a>
-        </div>
-        <div class="modal-body">
-            <div class="overall-status running" id="overallStatus">⏳ 실행 중...</div>
-            <div id="logContainer"></div>
-        </div>
-        <div class="modal-footer">
-            <a class="btn btn-ghost" id="cancelBtn" onclick="cancelRun()">중단</a>
-            <a class="btn btn-primary" id="closeBtn" onclick="closeModal()" style="display:none">닫기</a>
-        </div>
-    </div>
-</div>
-
 <script>
-let currentExecId = null;
-let pollInterval = null;
-
-function startRun(pipelineId, name) {
-    document.getElementById('runModalTitle').textContent = name + ' 실행 중...';
-    document.getElementById('logContainer').innerHTML = '';
-    document.getElementById('overallStatus').className = 'overall-status running';
-    document.getElementById('overallStatus').textContent = '⏳ 실행 중...';
-    document.getElementById('cancelBtn').style.display = '';
-    document.getElementById('closeBtn').style.display = 'none';
-    document.getElementById('runModal').classList.add('show');
-
-    fetch('/api/pipelines/' + pipelineId + '/run', {method: 'POST'})
-        .then(r => r.json())
-        .then(data => {
-            if (data.error) { showError(data.error); return; }
-            currentExecId = data.executionId;
-            pollInterval = setInterval(() => pollLogs(currentExecId), 800);
-        })
-        .catch(e => showError(e.message));
-}
-
-function pollLogs(execId) {
-    fetch('/api/executions/' + execId)
-        .then(r => r.json())
-        .then(data => {
-            renderLogs(data.logs);
-            if (data.status !== 'running') {
-                clearInterval(pollInterval); pollInterval = null;
-                const os = document.getElementById('overallStatus');
-                if (data.status === 'done') {
-                    os.className = 'overall-status done'; os.textContent = '✅ 완료';
-                } else {
-                    os.className = 'overall-status error'; os.textContent = '❌ 오류 발생';
-                }
-                document.getElementById('cancelBtn').style.display = 'none';
-                document.getElementById('closeBtn').style.display = '';
-            }
-        });
-}
-
-function renderLogs(logs) {
-    const container = document.getElementById('logContainer');
-    container.innerHTML = '';
-    (logs || []).forEach(log => {
-        const icon = log.status === 'success' ? '✅' : log.status === 'error' ? '❌' : '⏳';
-        const div = document.createElement('div');
-        div.className = 'log-item ' + log.status;
-        div.innerHTML = `
-            <div class="log-status">${icon}</div>
-            <div class="log-msg">
-                <strong>${log.nodeType || ''}</strong> ${log.message || ''}
-                ${log.output ? '<div class="log-output">' + escHtml(log.output) + '</div>' : ''}
-            </div>`;
-        container.appendChild(div);
-    });
-    container.scrollTop = container.scrollHeight;
-}
-
-function showError(msg) {
-    clearInterval(pollInterval);
-    const os = document.getElementById('overallStatus');
-    os.className = 'overall-status error'; os.textContent = '❌ ' + msg;
-    document.getElementById('cancelBtn').style.display = 'none';
-    document.getElementById('closeBtn').style.display = '';
-}
-
-function cancelRun() {
-    if (!currentExecId) return;
-    fetch('/api/executions/' + currentExecId + '/cancel', {method: 'POST'});
-    clearInterval(pollInterval);
-    document.getElementById('overallStatus').className = 'overall-status error';
-    document.getElementById('overallStatus').textContent = '⛔ 중단됨';
-    document.getElementById('cancelBtn').style.display = 'none';
-    document.getElementById('closeBtn').style.display = '';
-}
-
-function closeModal() {
-    clearInterval(pollInterval);
-    document.getElementById('runModal').classList.remove('show');
-}
-
 function deletePipeline(id, btn) {
     if (!confirm('이 파이프라인을 삭제하시겠습니까?')) return;
     fetch('/api/pipelines/' + id, {method: 'DELETE'})
@@ -285,10 +122,6 @@ function importPipeline(input) {
     fd.append('file', input.files[0]);
     fetch('/api/pipelines/import', {method: 'POST', body: fd})
         .then(r => { if (r.ok) location.reload(); else alert('가져오기 실패'); });
-}
-
-function escHtml(s) {
-    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 </script>
 </body>

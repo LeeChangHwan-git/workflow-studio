@@ -8,6 +8,7 @@ public class RunLog {
     private String status; // running | success | error | skipped
     private String message;
     private String output;
+    private String outputVar;
     private LocalDateTime timestamp;
 
     public RunLog() {}
@@ -30,6 +31,8 @@ public class RunLog {
     public void setMessage(String message) { this.message = message; }
     public String getOutput() { return output; }
     public void setOutput(String output) { this.output = output; }
+    public String getOutputVar() { return outputVar; }
+    public void setOutputVar(String outputVar) { this.outputVar = outputVar; }
     public LocalDateTime getTimestamp() { return timestamp; }
     public void setTimestamp(LocalDateTime timestamp) { this.timestamp = timestamp; }
 }

@@ -119,6 +119,7 @@ public class PipelineRunnerService {
                             ? s : node.getId() + ".output";
                     context.put(key, output);
                     context.put(node.getId() + ".output", output);
+                    log.setOutputVar(key);
                 }
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();

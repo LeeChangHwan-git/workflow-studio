@@ -42,6 +42,7 @@ export interface RunLog {
   status: 'running' | 'success' | 'error'
   message: string
   output?: string
+  outputVar?: string
 }
 
 export interface ExecutionStateDto {

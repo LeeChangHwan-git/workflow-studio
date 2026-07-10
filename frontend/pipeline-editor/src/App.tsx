@@ -57,6 +57,13 @@ export default function App({ initialPipelineId }: Props) {
         applyPipeline(pipeline, types)
       }
       setLoading(false)
+
+      // ?autorun=true 로 진입 시 자동으로 실행 모달 열기
+      if (initialPipelineId && new URLSearchParams(window.location.search).get('autorun') === 'true') {
+        // URL에서 파라미터 제거 (뒤로가기 시 재실행 방지)
+        window.history.replaceState(null, '', `/pipelines/${initialPipelineId}`)
+        setRunModalOpen(true)
+      }
     }
 
     load()

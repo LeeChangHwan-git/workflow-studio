@@ -171,7 +171,7 @@ export function RunModal({ pipelineId, open, onClose, nodeTypes }: Props) {
                         </button>
                       </div>
                       <div className="result-card-body">
-                        <SimpleMarkdown text={log.output!} />
+                        <SmartRenderer text={log.output!} outputVar={log.outputVar} />
                       </div>
                     </div>
                   )
@@ -186,6 +186,133 @@ export function RunModal({ pipelineId, open, onClose, nodeTypes }: Props) {
         </div>
       </div>
     </div>
+  )
+}
+
+/* ── 스마트 렌더러: JSON이면 JsonViewer, 아니면 SimpleMarkdown ── */
+
+function SmartRenderer({ text, outputVar }: { text: string; outputVar?: string }) {
+  // "HTTP 200\n\n{...}" 같은 prefix 처리
+  const prefixMatch = text.match(/^(HTTP \d+[^\n]*\n+)([\s\S]*)$/)
+  const prefix = prefixMatch ? prefixMatch[1].trim() : null
+  const body = prefixMatch ? prefixMatch[2] : text
+
+  // JSON 파싱 시도
+  let parsed: unknown = undefined
+  try {
+    parsed = JSON.parse(body.trim())
+  } catch {
+    // JSON이 아님
+  }
+
+  if (parsed !== undefined) {
+    return (
+      <div>
+        {prefix && <div className="json-prefix-line">{prefix}</div>}
+        <JsonViewer json={parsed} outputVar={outputVar} />
+      </div>
+    )
+  }
+
+  return <SimpleMarkdown text={text} />
+}
+
+/* ── JSON Viewer ─────────────────────────────────────────────── */
+
+function JsonViewer({ json, outputVar }: { json: unknown; outputVar?: string }) {
+  const [hoverPath, setHoverPath] = useState<string | null>(null)
+  const varName = outputVar ?? 'result'
+
+  return (
+    <div className="json-viewer">
+      <div className="json-path-bar">
+        {hoverPath !== null
+          ? <span className="json-path-active">${'{'}{ varName }{hoverPath ? '.' + hoverPath : ''}{'}'}
+            </span>
+          : <span className="json-path-hint">값에 마우스를 올리면 경로가 표시됩니다</span>
+        }
+      </div>
+      <div className="json-tree">
+        <JsonNode value={json} path="" depth={0} onHover={setHoverPath} />
+      </div>
+    </div>
+  )
+}
+
+function JsonNode({
+  value, path, depth, onHover,
+}: {
+  value: unknown
+  path: string
+  depth: number
+  onHover: (p: string | null) => void
+}) {
+  if (Array.isArray(value)) {
+    if (value.length === 0) return <span className="json-punct">{'[]'}</span>
+    return (
+      <span>
+        <span className="json-punct">{'['}</span>
+        {value.map((item, idx) => {
+          const childPath = path ? `${path}[${idx}]` : `[${idx}]`
+          return (
+            <div key={idx} style={{ paddingLeft: '1em' }}>
+              <JsonNode value={item} path={childPath} depth={depth + 1} onHover={onHover} />
+              {idx < value.length - 1 && <span className="json-punct">,</span>}
+            </div>
+          )
+        })}
+        <div style={{ paddingLeft: `${depth * 0.5}em` }}>
+          <span className="json-punct">{']'}</span>
+        </div>
+      </span>
+    )
+  }
+
+  if (value !== null && typeof value === 'object') {
+    const entries = Object.entries(value as Record<string, unknown>)
+    if (entries.length === 0) return <span className="json-punct">{'{}'}</span>
+    return (
+      <span>
+        <span className="json-punct">{'{'}</span>
+        {entries.map(([k, v], idx) => {
+          const childPath = path ? `${path}.${k}` : k
+          return (
+            <div key={k} style={{ paddingLeft: '1em' }}>
+              <span
+                className="json-key"
+                onMouseEnter={() => onHover(childPath)}
+                onMouseLeave={() => onHover(null)}
+              >"{k}"</span>
+              <span className="json-punct">: </span>
+              <JsonNode value={v} path={childPath} depth={depth + 1} onHover={onHover} />
+              {idx < entries.length - 1 && <span className="json-punct">,</span>}
+            </div>
+          )
+        })}
+        <div style={{ paddingLeft: `${depth * 0.5}em` }}>
+          <span className="json-punct">{'}'}</span>
+        </div>
+      </span>
+    )
+  }
+
+  // 원시값
+  const cls =
+    value === null ? 'json-null' :
+    typeof value === 'string' ? 'json-str' :
+    typeof value === 'boolean' ? 'json-bool' :
+    'json-num'
+  const display =
+    value === null ? 'null' :
+    typeof value === 'string' ? `"${value}"` :
+    String(value)
+
+  return (
+    <span
+      className={`json-val ${cls}`}
+      onMouseEnter={() => onHover(path)}
+      onMouseLeave={() => onHover(null)}
+    >{display}</span>
   )
 }
 
