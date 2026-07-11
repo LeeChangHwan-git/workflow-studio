@@ -61,6 +61,7 @@ public class NodeTypeRegistry {
             new NodeParam("userInput",    "사용자 입력 (${변수} 참조 가능)", "textarea", "", null),
             new NodeParam("outputFormat", "출력 형식", "select", "자유 텍스트",
                 List.of("자유 텍스트", "마크다운", "JSON")),
+            new NodeParam("outputSchema", "JSON 키 정의 (출력 형식이 JSON일 때, 한 줄에 하나씩: 키=설명)", "textarea", "", null),
             new NodeParam("outputVar",    "출력 변수명", "text", "aiResult", null)
         )),
 
@@ -73,6 +74,9 @@ public class NodeTypeRegistry {
             new NodeParam("tools", "사용 도구", "select", "전체 (HTTP + 앱 검색)",
                 List.of("없음", "HTTP 요청", "앱 검색 (메모/북마크)", "전체 (HTTP + 앱 검색)")),
             new NodeParam("maxIter", "최대 도구 호출 횟수", "number", "5", null),
+            new NodeParam("outputFormat", "출력 형식", "select", "자유 텍스트",
+                List.of("자유 텍스트", "JSON")),
+            new NodeParam("outputSchema", "JSON 키 정의 (출력 형식이 JSON일 때, 한 줄에 하나씩: 키=설명)", "textarea", "", null),
             new NodeParam("outputVar", "출력 변수명", "text", "agentResult", null)
         )),
 

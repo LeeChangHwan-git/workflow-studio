@@ -360,13 +360,16 @@ public class PipelineRunnerService {
                 // 구버전 호환: prompt 필드
                 if (userInput.isBlank()) userInput = resolveVars(str(cfg, "prompt", ""), ctx);
                 String outputFormat = str(cfg, "outputFormat", "자유 텍스트");
+                String outputSchema = str(cfg, "outputSchema", "");
                 String outputVar    = str(cfg, "outputVar", "aiResult");
 
                 String finalInput = userInput;
                 if ("마크다운".equals(outputFormat))
                     finalInput += "\n\n응답은 반드시 마크다운 형식으로 작성해주세요.";
-                else if ("JSON".equals(outputFormat))
+                else if ("JSON".equals(outputFormat)) {
                     finalInput += "\n\n응답은 반드시 유효한 JSON만 출력하세요. 설명 텍스트 없이 JSON만 출력하세요.";
+                    finalInput += buildJsonSchemaInstruction(outputSchema);
+                }
 
                 String aiResult;
                 if (aiService.startsWith("Gemini")) {
@@ -406,6 +409,13 @@ public class PipelineRunnerService {
                 String userInput   = resolveVars(str(cfg, "userInput", ""), ctx);
                 String toolsConfig = str(cfg, "tools", "없음");
                 int    maxIter     = intVal(cfg, "maxIter", 5);
+                String outputFormat2 = str(cfg, "outputFormat", "자유 텍스트");
+                String outputSchema2 = str(cfg, "outputSchema", "");
+
+                if ("JSON".equals(outputFormat2)) {
+                    sysPrompt += "\n\n도구 호출이 더 필요 없는 최종 답변 단계에서는 반드시 유효한 JSON 객체만 출력하세요. 설명 텍스트 없이 JSON만 출력하세요.";
+                    sysPrompt += buildJsonSchemaInstruction(outputSchema2);
+                }
 
                 List<Map<String, Object>> agentTools = buildAgentTools(toolsConfig);
 
@@ -937,6 +947,25 @@ public class PipelineRunnerService {
     }
 
     // ── 유틸 ────────────────────────────────────────────────────
+
+    // outputSchema 텍스트(한 줄에 하나씩, "키=설명" 또는 "키")를 AI에게 전달할
+    // JSON 키 지시문으로 변환
+    private String buildJsonSchemaInstruction(String outputSchema) {
+        if (outputSchema == null || outputSchema.isBlank()) return "";
+        StringBuilder sb = new StringBuilder("\n\n다음 키를 포함하는 JSON 객체만 출력하세요:\n");
+        for (String line : outputSchema.split("\\r?\\n")) {
+            String t = line.trim();
+            if (t.isEmpty()) continue;
+            int eq = t.indexOf('=');
+            if (eq > 0) {
+                sb.append("- \"").append(t.substring(0, eq).trim()).append("\": ")
+                  .append(t.substring(eq + 1).trim()).append("\n");
+            } else {
+                sb.append("- \"").append(t).append("\"\n");
+            }
+        }
+        return sb.toString();
+    }
 
     private String resolveVars(String text, Map<String, Object> ctx) {
         if (text == null) return null;

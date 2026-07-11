@@ -56,8 +56,8 @@ n8n 스타일 시각적 노드 에디터로 파이프라인을 만들고, HTTP �
 
 | 타입 | 아이콘 | 주요 파라미터 | 설명 |
 |------|--------|--------------|------|
-| `CALL_AI` | 🤖 | aiService, apiKey, model, systemPrompt, userInput, outputFormat, outputVar | Claude/Gemini/커스텀 AI 단순 질의 |
-| `AI_AGENT` | 🧠 | model, systemPrompt, userInput, tools, maxIter, outputVar | 도구 사용 가능한 Claude 에이전트 |
+| `CALL_AI` | 🤖 | aiService, apiKey, model, systemPrompt, userInput, outputFormat, outputSchema, outputVar | Claude/Gemini/커스텀 AI 단순 질의 |
+| `AI_AGENT` | 🧠 | model, systemPrompt, userInput, tools, maxIter, outputFormat, outputSchema, outputVar | 도구 사용 가능한 Claude 에이전트 |
 
 ### 통합 그룹
 
@@ -100,7 +100,29 @@ n8n 스타일 시각적 노드 에디터로 파이프라인을 만들고, HTTP �
 | `systemPrompt` | textarea | AI 역할·지시사항. `${변수}` 참조 가능 |
 | `userInput` | textarea | 실제 입력. `${변수}` 참조 가능 |
 | `outputFormat` | select | `자유 텍스트` / `마크다운` / `JSON` — 선택 시 AI에게 형식 지시 자동 추가 |
+| `outputSchema` | textarea | (2026-07-11 추가) `outputFormat`이 `JSON`일 때만 사용. 한 줄에 하나씩 `키=설명` 형식으로 원하는 JSON 키를 정의하면, AI에게 "다음 키를 포함하는 JSON 객체만 출력하라"는 지시문으로 자동 변환되어 프롬프트에 추가됨. 설명(`=` 뒤)은 생략 가능 |
 | `outputVar` | text | 결과를 저장할 변수명 (기본값: `aiResult`) |
+
+#### outputSchema 예시
+
+```
+greeting=한 문장 인사말
+mood=오늘의 기분을 나타내는 한 단어
+tags=관련 키워드 배열
+```
+
+→ AI 응답:
+```json
+{
+  "greeting": "오늘 서울은 맑고 상쾌한 날씨네요!",
+  "mood": "상쾌함",
+  "tags": ["서울", "날씨", "오늘", "맑음", "상쾌"]
+}
+```
+
+> 참고: 프롬프트 지시문 방식이라 스키마를 강제하지는 않음 (제공사 네이티브
+> structured output/response_format 미사용). 응답이 JSON 코드블록(` ```json ... ``` `)으로
+> 감싸져 오는 경우가 있어 후속 노드에서 파싱할 때 감안할 것.
 
 ### 서비스별 기본 모델
 
@@ -172,6 +194,8 @@ Claude API를 도구(Tool Use) 포함 모드로 호출해 자율적으로 작업
 | `userInput` | 사용자 입력 (`${변수}` 참조 가능) |
 | `tools` | `없음` / `HTTP 요청` / `앱 검색 (메모/북마크)` / `전체 (HTTP + 앱 검색)` |
 | `maxIter` | 최대 도구 호출 횟수 (기본 5회, 루프 방지) |
+| `outputFormat` | (2026-07-11 추가) `자유 텍스트` / `JSON` — `JSON` 선택 시 도구 호출이 끝난 최종 답변 단계에서 JSON만 출력하도록 시스템 프롬프트에 지시 추가 |
+| `outputSchema` | (2026-07-11 추가) `outputFormat`이 `JSON`일 때만 사용. `CALL_AI`와 동일한 `키=설명` 형식 |
 | `outputVar` | 최종 결과 저장 변수명 |
 
 ---
@@ -291,6 +315,23 @@ ${items[2].address.city}
 
 ---
 
+## 하단 툴바 드래그 이동 / 크기 조절 (2026-07-11 추가)
+
+기존에는 하단 툴바(파이프라인 이름/설명 입력, 저장/실행/내보내기/가져오기/전체삭제 버튼)가
+화면 하단 중앙에 고정되어 캔버스나 다른 UI를 가릴 때 옮길 방법이 없었다. `Toolbar.tsx`에
+드래그 손잡이와 크기 조절 손잡이를 추가해 자유롭게 배치할 수 있게 했다.
+
+- **왼쪽 끝 `⠿` 드래그 손잡이**: 누른 채 끌면 툴바를 화면 어디로든 이동. 위치는
+  `position: fixed` 좌표(`left`/`top`)로 전환되어 적용됨
+- **오른쪽 끝 `⤡` 크기 조절 손잡이**: 누른 채 좌우로 끌면 `transform: scale()`로
+  60%(`MIN_SCALE`)~130%(`MAX_SCALE`) 범위에서 툴바 전체 크기 조절
+- 위치·크기는 `localStorage`(`pipeline-toolbar-pos`, `pipeline-toolbar-scale`)에 저장되어
+  새로고침/재실행 후에도 유지됨
+- 손잡이를 **더블클릭**하면 초기 위치(하단 중앙)·크기(100%)로 리셋
+- 창 크기 변경 시 툴바가 화면 밖으로 나가지 않도록 좌표를 자동 보정(clamp)
+
+---
+
 ## 화면 캡처 (인앱, 드래그 선택)
 
 `WAIT_IMAGE`/`CLICK_IMAGE` 등 이미지 파라미터를 파일 업로드 없이 **앱에서 직접 드래그로 캡처**할 수 있다.
@@ -407,7 +448,7 @@ frontend/pipeline-editor/
       ConfigPanel.tsx       # 오른쪽 설정/결과 탭 패널
       BottomPanel.tsx       # 하단 실행 결과 패널 (접기/펼치기)
       OutputRenderer.tsx    # JSON 트리 뷰어 + Markdown 렌더러
-      Toolbar.tsx           # 저장/실행/내보내기 버튼
+      Toolbar.tsx           # 저장/실행/내보내기 버튼 (드래그 이동 + 크기 조절)
       NodePalette.tsx       # 왼쪽 노드 팔레트
 ```
 
