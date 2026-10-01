@@ -1,4 +1,12 @@
-import type { ExecutionStateDto, NodeTypeInfo, PipelineDto } from './types'
+import type {
+  ExecutionStateDto,
+  ExecutionSummaryDto,
+  NodeTypeInfo,
+  PipelineDto,
+  RunMode,
+  WebhookHistoryEntry,
+  WebhookPreview,
+} from './types'
 
 async function json<T>(res: Response): Promise<T> {
   if (!res.ok) throw new Error(`요청 실패 (${res.status})`)
@@ -33,6 +41,25 @@ export const api = {
 
   getExecution: (execId: string) =>
     fetch(`/api/executions/${execId}`).then((r) => json<ExecutionStateDto>(r)),
+
+  /** 최근 실행 요약 (없으면 null) — 웹훅 테스트 실행 감지용 */
+  getLatestExecution: (pipelineId: string, mode: RunMode) =>
+    fetch(`/api/pipelines/${pipelineId}/executions/latest?mode=${mode}`).then((r) =>
+      r.status === 204 ? null : json<ExecutionSummaryDto>(r),
+    ),
+
+  getWebhookHistory: (nodeId: string) =>
+    fetch(`/api/webhooks/${nodeId}/history`).then((r) => json<WebhookHistoryEntry[]>(r)),
+
+  previewWebhook: (nodeId: string, template: string) =>
+    fetch(`/api/webhooks/${nodeId}/preview`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ template }),
+    }).then((r) => json<WebhookPreview>(r)),
+
+  clearWebhookHistory: (nodeId: string) =>
+    fetch(`/api/webhooks/${nodeId}/history`, { method: 'DELETE' }),
 
   cancelExecution: (execId: string) => fetch(`/api/executions/${execId}/cancel`, { method: 'POST' }),
 

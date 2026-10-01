@@ -4,6 +4,35 @@
     <meta charset="UTF-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <title th:text="${title} + ' — 내 메모'">내 메모</title>
+    <script>
+        // 파이프라인 탭의 마지막 위치 기억: 다른 메뉴에서 '파이프라인'을 누르면 마지막으로 보던
+        // 목록/편집 화면으로 이동 (편집 화면 주소는 에디터(React)가 저장)
+        (function () {
+            var KEY = 'nav-last-pipelines-url';
+            var path = location.pathname;
+            try {
+                if (path === '/pipelines') localStorage.setItem(KEY, '/pipelines');
+                document.addEventListener('DOMContentLoaded', function () {
+                    if (path.indexOf('/pipelines') === 0) return; // 파이프라인 탭 안에서는 항상 목록으로
+                    var last = localStorage.getItem(KEY);
+                    var link = document.querySelector('nav a.nav-link[href="/pipelines"]');
+                    if (last && link) link.setAttribute('href', last);
+                });
+            } catch (e) { /* localStorage 사용 불가 시 기본 동작 */ }
+        })();
+
+        // 서버와 상시 연결 (AppLiveController): 서버가 재시작되면 자동 재연결 → 실행 id가 바뀌었으면 새로고침.
+        // 서버는 기동 직후 이 연결이 있으면 새 브라우저 탭을 열지 않는다 (탭이 계속 늘어나는 것 방지)
+        (function () {
+            if (!window.EventSource) return;
+            var known = null;
+            var es = new EventSource('/api/app/live');
+            es.addEventListener('instance', function (e) {
+                if (known === null) known = e.data;
+                else if (known !== e.data) location.reload();
+            });
+        })();
+    </script>
     <style>
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 

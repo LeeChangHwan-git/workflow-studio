@@ -4,11 +4,14 @@ import type { NodeTypeInfo } from '../types'
 interface Props {
   nodeTypes: NodeTypeInfo[]
   onStartDrag: (typeId: string, e: React.MouseEvent) => void
+  /** 파이프라인 목록으로 이동 */
+  onBack: () => void
 }
 
-const CATEGORY_ORDER = ['아웃라인', 'AI', '파일 출력', '통합', '화면 자동화']
+// 그룹 표시 순서 (여기 없는 그룹은 모듈 등록 순서대로 뒤에 붙음)
+const CATEGORY_ORDER: string[] = []
 
-export function Palette({ nodeTypes, onStartDrag }: Props) {
+export function Palette({ nodeTypes, onStartDrag, onBack }: Props) {
   const [query, setQuery] = useState('')
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({})
 
@@ -43,6 +46,9 @@ export function Palette({ nodeTypes, onStartDrag }: Props) {
 
   return (
     <div className="palette">
+      <button type="button" className="palette-back" onClick={onBack} title="파이프라인 목록으로">
+        <span className="palette-back-arrow">←</span> 파이프라인 목록
+      </button>
       <div className="palette-title">노드</div>
       <input
         className="palette-search"
@@ -52,7 +58,9 @@ export function Palette({ nodeTypes, onStartDrag }: Props) {
         onChange={(e) => setQuery(e.target.value)}
       />
       {groups.size === 0 ? (
-        <div className="palette-empty">검색 결과가 없습니다</div>
+        <div className="palette-empty">
+          {query.trim() ? '검색 결과가 없습니다' : '등록된 노드 모듈이 없습니다'}
+        </div>
       ) : (
         Array.from(groups.entries()).map(([cat, items]) => (
           <div key={cat} className="palette-group">

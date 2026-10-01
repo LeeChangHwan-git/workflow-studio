@@ -8,7 +8,8 @@ import {
   type Edge,
 } from '@xyflow/react'
 import { api } from './api'
-import type { NodeTypeInfo, PipelineDto, RunLog } from './types'
+import { nodeDisplayName, OFF, ON, WEBHOOK_TYPE } from './types'
+import type { NodeTypeInfo, PipelineDto, RunLog, RunMode } from './types'
 import type { PipelineFlowNode } from './components/PipelineNodeCard'
 import { Palette } from './components/Palette'
 import { PipelineCanvas } from './components/PipelineCanvas'
@@ -41,6 +42,7 @@ export default function App({ initialPipelineId }: Props) {
   // ── 실행 상태 ──
   const [runLogs, setRunLogs] = useState<RunLog[]>([])
   const [runStatus, setRunStatus] = useState<'idle' | 'running' | 'done' | 'error'>('idle')
+  const [runMode, setRunMode] = useState<RunMode>('manual')
   const [bottomPanelOpen, setBottomPanelOpen] = useState(false)
   const execIntervalRef = useRef<number | null>(null)
 
@@ -113,34 +115,86 @@ export default function App({ initialPipelineId }: Props) {
     )
   }
 
-  async function startExecution(id: string) {
+  /** 실행 하나를 폴링하며 하단 패널/노드 상태에 반영 */
+  function followExecution(execId: string, mode: RunMode) {
     if (execIntervalRef.current) {
       window.clearInterval(execIntervalRef.current)
       execIntervalRef.current = null
     }
     setRunLogs([])
     setRunStatus('running')
+    setRunMode(mode)
     setBottomPanelOpen(true)
 
+    const poll = async () => {
+      try {
+        const state = await api.getExecution(execId)
+        setRunLogs(state.logs)
+        if (state.status !== 'running') {
+          setRunStatus(state.status as 'done' | 'error')
+          if (execIntervalRef.current) window.clearInterval(execIntervalRef.current)
+          execIntervalRef.current = null
+        }
+      } catch {
+        setRunStatus('error')
+        if (execIntervalRef.current) window.clearInterval(execIntervalRef.current)
+        execIntervalRef.current = null
+      }
+    }
+    poll()
+    execIntervalRef.current = window.setInterval(poll, 1000)
+  }
+
+  async function startExecution(id: string) {
     try {
       const res = await api.runPipeline(id)
       if (!res.executionId) {
         setRunStatus('error')
+        setBottomPanelOpen(true)
         return
       }
-      execIntervalRef.current = window.setInterval(async () => {
-        const state = await api.getExecution(res.executionId!)
-        setRunLogs(state.logs)
-        if (state.status !== 'running') {
-          setRunStatus(state.status as 'done' | 'error')
-          window.clearInterval(execIntervalRef.current!)
-          execIntervalRef.current = null
-        }
-      }, 1000)
+      followExecution(res.executionId, 'manual')
     } catch {
       setRunStatus('error')
+      setBottomPanelOpen(true)
     }
   }
+
+  // ── 웹훅 테스트 수신 감지: 트리거 노드가 있는 저장된 파이프라인이면 최근 test 실행을 폴링 ──
+  const hasTrigger = nodes.some((n) => n.data.nodeType?.trigger)
+  const lastSeenTestExecRef = useRef<string | null | undefined>(undefined) // undefined = 아직 기준점 없음
+
+  useEffect(() => {
+    if (!pipelineId || !hasTrigger) return
+    let stopped = false
+
+    const check = async () => {
+      try {
+        const latest = await api.getLatestExecution(pipelineId, 'test')
+        if (stopped) return
+        const latestId = latest?.executionId ?? null
+        if (lastSeenTestExecRef.current === undefined) {
+          // 에디터를 연 시점의 기존 실행은 무시하고 기준점만 기록
+          lastSeenTestExecRef.current = latestId
+          return
+        }
+        if (latestId && latestId !== lastSeenTestExecRef.current) {
+          lastSeenTestExecRef.current = latestId
+          followExecution(latestId, 'test')
+        }
+      } catch {
+        // 일시적 오류는 다음 주기에 재시도
+      }
+    }
+
+    check()
+    const timer = window.setInterval(check, 1500)
+    return () => {
+      stopped = true
+      window.clearInterval(timer)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pipelineId, hasTrigger])
 
   const handleAddNode = useCallback(
     (typeId: string, position: { x: number; y: number }) => {
@@ -194,10 +248,10 @@ export default function App({ initialPipelineId }: Props) {
   )
 
   const buildPayload = useCallback(
-    (): Partial<PipelineDto> => ({
+    (nodeList: PipelineFlowNode[] = nodes): Partial<PipelineDto> => ({
       name,
       description,
-      nodes: nodes.map((n) => ({
+      nodes: nodeList.map((n) => ({
         id: n.id,
         type: n.data.nodeType.id,
         posX: n.position.x,
@@ -209,28 +263,97 @@ export default function App({ initialPipelineId }: Props) {
     [name, description, nodes, edges],
   )
 
-  const handleSave = useCallback(async (): Promise<string> => {
+  // ── 저장 안 된 변경 감지: 마지막 저장(또는 불러온) 상태와 현재 상태 비교 ──
+  const savedSnapshotRef = useRef<string | null>(null)
+  const currentSnapshot = loading ? null : JSON.stringify(buildPayload())
+  useEffect(() => {
+    if (!loading && savedSnapshotRef.current === null) savedSnapshotRef.current = currentSnapshot
+  }, [loading, currentSnapshot])
+  const dirty = savedSnapshotRef.current !== null && currentSnapshot !== savedSnapshotRef.current
+
+  // 저장 안 한 채 페이지를 떠나면 브라우저 확인창
+  useEffect(() => {
+    if (!dirty) return
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault()
+      e.returnValue = ''
+    }
+    window.addEventListener('beforeunload', onBeforeUnload)
+    return () => window.removeEventListener('beforeunload', onBeforeUnload)
+  }, [dirty])
+
+  // 다른 메뉴에서 '파이프라인' 탭을 누르면 이 화면으로 돌아오도록 기억 (layout.html 스크립트와 같은 키)
+  useEffect(() => {
+    if (!pipelineId) return
+    try {
+      localStorage.setItem('nav-last-pipelines-url', `/pipelines/${pipelineId}`)
+    } catch { /* 저장 불가 시 무시 */ }
+  }, [pipelineId])
+
+  const handleSave = useCallback(async (nodeList?: PipelineFlowNode[]): Promise<string> => {
     setSaving(true)
     try {
-      const payload = buildPayload()
+      const payload = buildPayload(nodeList)
+      let id: string
       if (pipelineId) {
         await api.updatePipeline(pipelineId, payload)
-        return pipelineId
+        id = pipelineId
+      } else {
+        const created = await api.createPipeline(payload)
+        setPipelineId(created.id)
+        window.history.replaceState(null, '', `/pipelines/${created.id}`)
+        id = created.id
       }
-      const created = await api.createPipeline(payload)
-      setPipelineId(created.id)
-      window.history.replaceState(null, '', `/pipelines/${created.id}`)
-      return created.id
+      savedSnapshotRef.current = JSON.stringify(payload)
+      return id
     } finally {
       setSaving(false)
     }
   }, [pipelineId, buildPayload])
 
+  const handleBackToList = useCallback(() => {
+    window.location.href = '/pipelines' // 저장 안 된 변경이 있으면 beforeunload 확인창
+  }, [])
+
+  // 웹훅 노드가 있으면 ▶ 버튼 = 수신 대기 ON/OFF (테스트 URL 켜짐/꺼짐과 같은 상태)
+  const webhookNodes = nodes.filter((n) => n.data.nodeType?.id === WEBHOOK_TYPE)
+  const listening = webhookNodes.some((n) => n.data.config.testEnabled === ON)
+
+  const handleToggleListen = useCallback(async () => {
+    const next = listening ? OFF : ON
+    const updated = nodes.map((n) =>
+      n.data.nodeType?.id === WEBHOOK_TYPE
+        ? { ...n, data: { ...n.data, config: { ...n.data.config, testEnabled: next } } }
+        : n,
+    )
+    setNodes(updated)
+    const id = await handleSave(updated) // 서버는 저장된 설정으로 URL 켜짐 여부를 판단
+    setPipelineId(id)
+    if (next === ON) {
+      // 이전 실행 결과는 지우고 '수신 대기 중' 상태로 하단 패널 표시
+      if (execIntervalRef.current) window.clearInterval(execIntervalRef.current)
+      execIntervalRef.current = null
+      setRunLogs([])
+      setRunStatus('idle')
+      setRunMode('test')
+      setBottomPanelOpen(true)
+    }
+  }, [listening, nodes, setNodes, handleSave])
+
   const handleRun = useCallback(async () => {
+    if (webhookNodes.length > 0) {
+      await handleToggleListen()
+      return
+    }
     const id = await handleSave()
     setPipelineId(id)
     await startExecution(id)
-  }, [handleSave])  // eslint-disable-line react-hooks/exhaustive-deps
+  }, [handleSave, handleToggleListen, webhookNodes.length])  // eslint-disable-line react-hooks/exhaustive-deps
+
+  /** 수신 기록에서 특정 실행 다시 보기 */
+  const handleShowExecution = useCallback((execId: string, mode: RunMode) => {
+    followExecution(execId, mode)
+  }, [])  // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleExport = useCallback(() => {
     if (!pipelineId) return
@@ -260,7 +383,7 @@ export default function App({ initialPipelineId }: Props) {
   return (
     <div className="editor-wrap">
       <div className="editor-main">
-        <Palette nodeTypes={nodeTypes} onStartDrag={startDrag} />
+        <Palette nodeTypes={nodeTypes} onStartDrag={startDrag} onBack={handleBackToList} />
         <PipelineCanvas
           nodes={nodes}
           edges={edges}
@@ -279,10 +402,12 @@ export default function App({ initialPipelineId }: Props) {
           </div>
         )}
         <ConfigPanel
+          nodeId={selectedNode?.id ?? null}
           nodeType={selectedNode?.data.nodeType ?? null}
           config={selectedNode?.data.config ?? {}}
           onChange={handleConfigChange}
           runLog={selectedNodeLog}
+          onShowExecution={handleShowExecution}
         />
       </div>
 
@@ -291,7 +416,10 @@ export default function App({ initialPipelineId }: Props) {
         <BottomPanel
           logs={runLogs}
           status={runStatus}
+          mode={runMode}
+          listening={listening}
           nodeTypes={nodeTypes}
+          nodeNames={new Map(nodes.map((n) => [n.id, nodeDisplayName(n.data.nodeType, n.data.config)]))}
           onSelectNode={handleSelectNodeFromPanel}
           onClose={() => setBottomPanelOpen(false)}
         />
@@ -302,7 +430,8 @@ export default function App({ initialPipelineId }: Props) {
         description={description}
         onNameChange={setName}
         onDescriptionChange={setDescription}
-        onSave={handleSave}
+        onSave={() => handleSave()}
+        dirty={dirty}
         onRun={handleRun}
         onExport={handleExport}
         onImport={handleImport}
@@ -310,6 +439,8 @@ export default function App({ initialPipelineId }: Props) {
         saving={saving}
         canExport={!!pipelineId}
         bottomPanelOpen={bottomPanelOpen}
+        runLabel={webhookNodes.length === 0 ? '▶ 실행' : listening ? '■ 중지' : '▶ 수신 대기'}
+        runActive={listening}
       />
     </div>
   )

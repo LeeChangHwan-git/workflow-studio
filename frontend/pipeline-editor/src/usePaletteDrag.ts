@@ -4,7 +4,7 @@ import type { NodeTypeInfo } from './types'
 
 /**
  * 팔레트 → 캔버스 드래그를 HTML5 DnD 대신 mouse 이벤트로 구현.
- * JavaFX WebView(WebKit)는 HTML5 드래그앤드롭 이벤트를 지원하지 않아 필요.
+ * (JavaFX WebView 시절 HTML5 드래그앤드롭 미지원으로 도입한 방식 — 브라우저에서도 그대로 동작)
  */
 export function usePaletteDrag(
   nodeTypes: NodeTypeInfo[],

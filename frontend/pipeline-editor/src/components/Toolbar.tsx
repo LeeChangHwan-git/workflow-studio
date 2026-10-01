@@ -13,6 +13,12 @@ interface Props {
   saving: boolean
   canExport: boolean
   bottomPanelOpen?: boolean
+  /** 실행 버튼 문구 (트리거 파이프라인이면 '▶ 수신 대기' / '■ 중지') */
+  runLabel?: string
+  /** 수신 대기 중 → 실행 버튼 초록 강조 */
+  runActive?: boolean
+  /** 저장 안 된 변경 있음 → 저장 버튼 강조 */
+  dirty?: boolean
 }
 
 const POS_KEY = 'pipeline-toolbar-pos'
@@ -47,6 +53,9 @@ export function Toolbar({
   saving,
   canExport,
   bottomPanelOpen,
+  runLabel = '▶ 실행',
+  runActive = false,
+  dirty = false,
 }: Props) {
   const importInputRef = useRef<HTMLInputElement>(null)
   const toolbarRef = useRef<HTMLDivElement>(null)
@@ -161,11 +170,17 @@ export function Toolbar({
         value={description}
         onChange={(e) => onDescriptionChange(e.target.value)}
       />
-      <button type="button" className="btn" onClick={onSave} disabled={saving}>
-        💾 저장
+      <button
+        type="button"
+        className={`btn${dirty ? ' btn-dirty' : ''}`}
+        onClick={onSave}
+        disabled={saving}
+        title={dirty ? '저장하지 않은 변경이 있습니다' : '저장됨'}
+      >
+        💾 저장{dirty && <span className="dirty-dot">●</span>}
       </button>
-      <button type="button" className="btn" onClick={onRun}>
-        ▶ 실행
+      <button type="button" className={`btn${runActive ? ' btn-live' : ''}`} onClick={onRun}>
+        {runLabel}
       </button>
       <button type="button" className="btn" onClick={onExport} disabled={!canExport}>
         ⬇ 내보내기

@@ -13,8 +13,6 @@ java {
 
 configurations {
     compileOnly { extendsFrom annotationProcessor }
-    javafxDev   // 개발용 (macOS aarch64) — 컴파일 + 로컬 실행
-    javafxWin   // 배포용 (Windows) — dist/libs 복사
 }
 
 repositories {
@@ -29,36 +27,15 @@ dependencies {
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
-
-    // JavaFX (macOS aarch64 — 개발 머신)
-    javafxDev 'org.openjfx:javafx-base:21.0.2:mac-aarch64'
-    javafxDev 'org.openjfx:javafx-controls:21.0.2:mac-aarch64'
-    javafxDev 'org.openjfx:javafx-graphics:21.0.2:mac-aarch64'
-    javafxDev 'org.openjfx:javafx-web:21.0.2:mac-aarch64'
-    javafxDev 'org.openjfx:javafx-fxml:21.0.2:mac-aarch64'
-    javafxDev 'org.openjfx:javafx-media:21.0.2:mac-aarch64'
-
-    // JavaFX (Windows 배포용)
-    javafxWin 'org.openjfx:javafx-base:21.0.2:win'
-    javafxWin 'org.openjfx:javafx-controls:21.0.2:win'
-    javafxWin 'org.openjfx:javafx-graphics:21.0.2:win'
-    javafxWin 'org.openjfx:javafx-web:21.0.2:win'
-    javafxWin 'org.openjfx:javafx-fxml:21.0.2:win'
-    javafxWin 'org.openjfx:javafx-media:21.0.2:win'
-}
-
-// JavaFX를 module-path로 컴파일
-compileJava {
-    doFirst {
-        options.compilerArgs += [
-            '--module-path', configurations.javafxDev.asPath,
-            '--add-modules', 'javafx.base,javafx.controls,javafx.graphics,javafx.web,javafx.fxml,javafx.media'
-        ]
-    }
 }
 
 tasks.named('test') {
     useJUnitPlatform()
+}
+
+// bootRun 도 AWT(매크로/화면 캡처)를 쓸 수 있도록 headless 해제
+tasks.named('bootRun') {
+    systemProperty 'java.awt.headless', 'false'
 }
 
 // ── 파이프라인 에디터 프론트엔드 (React + React Flow) 빌드 연동 ──
@@ -83,37 +60,16 @@ tasks.register('npmBuildFrontend', Exec) {
 
 processResources.dependsOn npmBuildFrontend
 
-// bootJar: Start-Class 를 Launcher 로 설정
 springBoot {
-    mainClass = 'com.app.memobookmark.Launcher'
-}
-
-// 로컬 실행 태스크 (macOS) — java -jar + --module-path
-tasks.register('runApp', Exec) {
-    dependsOn bootJar
-    def jfxPath = configurations.javafxDev.asPath
-    def jarFile = bootJar.archiveFile.get().asFile.absolutePath
-    commandLine 'java',
-        '--module-path', jfxPath,
-        '--add-modules', 'javafx.base,javafx.controls,javafx.graphics,javafx.web,javafx.fxml,javafx.media',
-        '-jar', jarFile
-}
-
-// Windows 배포용 JavaFX libs 복사 (win 네이티브 JAR만)
-tasks.register('copyJavafxWin', Copy) {
-    from(configurations.javafxWin) {
-        include '*-win.jar'
-    }
-    into 'dist/libs'
+    mainClass = 'com.app.workflowstudio.WorkflowStudioApplication'
 }
 
 tasks.register('makeDist', Zip) {
-    dependsOn bootJar, 'copyJavafxWin'
-    archiveFileName = 'memo-bookmark-app.zip'
+    dependsOn bootJar
+    archiveFileName = 'workflow-studio.zip'
     destinationDirectory = file('dist')
 
     from(bootJar.archiveFile) { into '.' }
-    from('dist/libs') { into 'libs' }
     from('dist/application.properties') { into '.' }
     from('dist/실행.bat') { into '.' }
     from('dist/저장경로변경.bat') { into '.' }
