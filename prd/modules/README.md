@@ -7,6 +7,10 @@
 | ID | 이름 | 카테고리 | 상태 | 문서 |
 |----|------|----------|------|------|
 | `WEBHOOK` | 웹훅 | 트리거 | ✅ 완료 (2026-10-01) | [webhook.md](webhook.md) |
+| `FILE_WRITE` | 파일 쓰기 (Windows 전용) | 파일 | ✅ 완료 (2026-10-02) | [file-write.md](file-write.md) |
+| `HTTP_REQUEST` | HTTP 요청 (REST API 호출) | 통합 | ✅ 완료 (2026-10-03) | [http-request.md](http-request.md) |
+| `AI_AGENT` | AI 에이전트 (소켓: 모델·메모리·지시문) | AI | ✅ 1차 (2026-10-02) | [ai-agent.md](ai-agent.md) |
+| `GEMINI_MODEL` · `CHAT_MEMORY` · `AI_INSTRUCTION` | Gemini 모델 · 대화 메모리 · 지시문 (부품) | AI 부품 | ✅ 1차 (2026-10-02) | [ai-agent.md](ai-agent.md) |
 
 상태: 📝 설계 중 · 🚧 구현 중 · ✅ 완료
 

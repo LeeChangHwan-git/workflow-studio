@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { nodeDisplayName, WEBHOOK_TYPE } from '../types'
+import { nodeDisplayName, paramVisible, WEBHOOK_TYPE } from '../types'
 import type { NodeParam, NodeTypeInfo, RunLog, RunMode } from '../types'
 import { api } from '../api'
 import { OutputRenderer } from './OutputRenderer'
@@ -151,8 +151,25 @@ export function ConfigPanel({ nodeId, nodeType, config, onChange, runLog, onShow
       {/* 설정 탭 */}
       {tab === 'config' && (
         <div className="config-body">
-          {nodeType.params.map((param) =>
-            param.type === 'webhookUrls' ? (
+          {nodeType.provides && (
+            <div className="cfg-part-hint">
+              🔌 부품 노드입니다 — 위쪽 연결점을 <b>AI 에이전트</b> 아래의 맞는 소켓에 끌어다 연결하세요.
+            </div>
+          )}
+          {nodeType.params.filter((p) => paramVisible(p, config, nodeType.params)).map((param) =>
+            param.type === 'geminiModel' ? (
+              <GeminiModelField
+                key={param.name}
+                param={param}
+                value={String(config[param.name] ?? param.defaultValue ?? '')}
+                apiKey={String(config.apiKey ?? '')}
+                onChange={(v) => onChange(param.name, v)}
+              />
+            ) : param.type === 'memoryInfo' ? (
+              <MemoryInfoField key={param.name} label={param.label} nodeId={nodeId!} />
+            ) : param.type === 'httpOpen' ? (
+              <HttpOpenField key={param.name} label={param.label} config={config} />
+            ) : param.type === 'webhookUrls' ? (
               <WebhookUrls key={param.name} label={param.label} nodeId={nodeId!} config={config} />
             ) : param.type === 'webhookTemplate' ? (
               <WebhookTemplateField
@@ -222,6 +239,9 @@ function ParamField({
   if (param.type === 'image') {
     return <ImageField param={param} value={value as string} onChange={onChange} />
   }
+  if (param.type === 'folder' || param.type === 'file') {
+    return <PathField param={param} value={String(value ?? '')} onChange={onChange} kind={param.type} />
+  }
 
   return (
     <div className="cfg-group">
@@ -250,6 +270,7 @@ function ParamField({
         <input
           className="cfg-input"
           type="number"
+          autoComplete="off"
           value={value === '' || value == null ? '' : Number(value)}
           onChange={(e) => onChange(e.target.value === '' ? '' : Number(e.target.value))}
         />
@@ -258,6 +279,7 @@ function ParamField({
         <input
           className="cfg-input"
           type="text"
+          autoComplete="off"
           value={String(value ?? '')}
           onChange={(e) => onChange(e.target.value)}
         />
@@ -349,6 +371,220 @@ function WebhookUrls({
   )
 }
 
+/** 폴더/파일 경로 입력 + '📁 찾아보기' (서버 PC에 Windows 선택 창) */
+function PathField({
+  param,
+  value,
+  onChange,
+  kind,
+}: {
+  param: NodeParam
+  value: string
+  onChange: (v: string) => void
+  kind: 'folder' | 'file'
+}) {
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const browse = async () => {
+    setBusy(true)
+    setError(null)
+    try {
+      const res = kind === 'folder' ? await api.pickFolder(value) : await api.pickFile(value)
+      if (res.path) onChange(res.path)
+      else if (res.error) setError(res.error)
+    } catch {
+      setError('선택 창을 열 수 없습니다')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="cfg-group">
+      <label className="cfg-label">{param.label}</label>
+      <div className="cfg-folder-wrap">
+        <input
+          className="cfg-input cfg-folder-input"
+          type="text"
+          autoComplete="off"
+          value={value}
+          spellCheck={false}
+          onChange={(e) => onChange(e.target.value)}
+        />
+        <button type="button" className="cfg-folder-btn" onClick={browse} disabled={busy}>
+          {busy ? '선택 중…' : '📁 찾아보기'}
+        </button>
+      </div>
+      {busy && (
+        <div className="wh-url-hint">
+          작업 표시줄에서 "{kind === 'folder' ? '폴더' : '파일'} 선택" 창을 확인하세요.
+        </div>
+      )}
+      {error && <div className="wh-url-warn">{error}</div>}
+    </div>
+  )
+}
+
+type VerifyState =
+  | { state: 'checking' }
+  | { state: 'ok' | 'fail'; message: string; keyOk: boolean; keySource: 'node' | 'env' | 'none' }
+
+/**
+ * Gemini 모델 — 입력 + 자동완성 목록 + 연결 검증.
+ * API 키나 모델이 바뀌면 0.8초 뒤 자동으로 검증(실행·토큰 사용 없음: 모델 목록 조회로 키 확인 + 모델 존재 확인).
+ */
+function GeminiModelField({
+  param,
+  value,
+  apiKey,
+  onChange,
+}: {
+  param: NodeParam
+  value: string
+  apiKey: string
+  onChange: (v: string) => void
+}) {
+  const [models, setModels] = useState<string[]>([])
+  const [verify, setVerify] = useState<VerifyState | null>(null)
+  const listId = useRef(`gemini-models-${Math.random().toString(36).slice(2)}`).current
+  const seq = useRef(0)
+
+  const run = async () => {
+    const my = ++seq.current
+    setVerify({ state: 'checking' })
+    try {
+      const res = await api.verifyGemini(apiKey, value)
+      if (my !== seq.current) return // 더 최근 검증이 진행 중
+      if (res.models) setModels(res.models)
+      setVerify({ state: res.ok ? 'ok' : 'fail', message: res.message, keyOk: res.keyOk, keySource: res.keySource })
+    } catch {
+      if (my === seq.current) setVerify({ state: 'fail', message: '검증 요청 실패 (서버 연결 확인)', keyOk: false, keySource: 'none' })
+    }
+  }
+
+  useEffect(() => {
+    const t = window.setTimeout(run, 800)
+    return () => window.clearTimeout(t)
+  }, [apiKey, value]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const sourceLabel =
+    verify && verify.state !== 'checking'
+      ? verify.keySource === 'node' ? '노드에 입력한 키' : verify.keySource === 'env' ? 'GEMINI_API_KEY 환경 변수' : '키 없음'
+      : null
+
+  return (
+    <div className="cfg-group">
+      <label className="cfg-label">{param.label}</label>
+      <div className="cfg-folder-wrap">
+        <input
+          className="cfg-input cfg-folder-input"
+          type="text"
+          autoComplete="off"
+          list={listId}
+          value={value}
+          spellCheck={false}
+          onChange={(e) => onChange(e.target.value)}
+        />
+        <button type="button" className="cfg-folder-btn" onClick={run} disabled={verify?.state === 'checking'}>
+          {verify?.state === 'checking' ? '확인 중…' : '🔑 연결 확인'}
+        </button>
+      </div>
+      <datalist id={listId}>
+        {models.map((m) => <option key={m} value={m} />)}
+      </datalist>
+      {verify && (
+        <div className={`verify-box ${verify.state}`}>
+          {verify.state === 'checking' ? (
+            <span>⏳ 키와 모델을 확인하는 중…</span>
+          ) : (
+            <>
+              <div>{verify.state === 'ok' ? '✅' : verify.keyOk ? '⚠️' : '❌'} {verify.message}</div>
+              <div className="verify-sub">
+                {sourceLabel}
+                {models.length > 0 && ` · 사용 가능 모델 ${models.length}개 (입력칸을 눌러 고르기)`}
+              </div>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+/** HTTP 요청 노드 — 현재 설정을 상단 HTTP 화면(새 탭)에 채워서 바로 보내 보기 */
+function HttpOpenField({ label, config }: { label: string; config: Record<string, unknown> }) {
+  const BTYPE: Record<string, string> = { '없음': 'none', JSON: 'json', Text: 'text', 'Form (a=1&b=2)': 'form' }
+  const url = String(config.url ?? '')
+  const hasVars = /\$\{/.test(url + String(config.headers ?? '') + String(config.body ?? ''))
+
+  const open = () => {
+    const bodyType = String(config.bodyType ?? '없음')
+    const q = new URLSearchParams({
+      from: 'node',
+      method: String(config.method ?? 'GET'),
+      url,
+      btype: BTYPE[bodyType] ?? 'none',
+      body: bodyType === '없음' ? '' : String(config.body ?? ''),
+      headers: String(config.headers ?? ''),
+    })
+    window.open(`/http?${q.toString()}`, '_blank')
+  }
+
+  return (
+    <div className="cfg-group">
+      <label className="cfg-label">{label}</label>
+      <button type="button" className="wh-test-btn http-open-btn" onClick={open}>
+        🌐 HTTP 화면에서 이 요청 열기
+      </button>
+      {hasVars && (
+        <div className="wh-url-hint">
+          <code>{'${...}'}</code> 변수는 HTTP 화면에서 그대로 보이니, 테스트할 값으로 바꿔서 보내세요.
+        </div>
+      )}
+    </div>
+  )
+}
+
+/** 대화 메모리 — 저장된 대화(대화 ID별 메시지 수) 보기 + 비우기 */
+function MemoryInfoField({ label, nodeId }: { label: string; nodeId: string }) {
+  const [sessions, setSessions] = useState<{ sessionKey: string; messages: number }[] | null>(null)
+
+  const load = () => api.memorySessions(nodeId).then(setSessions).catch(() => setSessions([]))
+  useEffect(() => {
+    load()
+    const t = window.setInterval(load, 5000)
+    return () => window.clearInterval(t)
+  }, [nodeId]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const clear = async () => {
+    if (!window.confirm('이 메모리에 저장된 대화를 모두 지울까요?')) return
+    await api.clearMemory(nodeId)
+    load()
+  }
+
+  return (
+    <div className="cfg-group">
+      <label className="cfg-label">{label}</label>
+      {sessions === null ? (
+        <div className="wh-url-hint">불러오는 중...</div>
+      ) : sessions.length === 0 ? (
+        <div className="wh-url-hint">아직 저장된 대화가 없습니다.</div>
+      ) : (
+        <>
+          {sessions.map((s) => (
+            <div key={s.sessionKey} className="mem-row">
+              <span className="mem-key">{s.sessionKey}</span>
+              <span className="mem-count">메시지 {s.messages}개</span>
+            </div>
+          ))}
+          <button type="button" className="wh-url-copy" onClick={clear}>대화 모두 지우기</button>
+        </>
+      )}
+    </div>
+  )
+}
+
 function PasswordField({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   const [show, setShow] = useState(false)
   return (
@@ -356,9 +592,13 @@ function PasswordField({ value, onChange }: { value: string; onChange: (v: strin
       <input
         className="cfg-input cfg-password-input"
         type={show ? 'text' : 'password'}
+        // 브라우저에 저장된 로그인 비밀번호가 API 키 칸에 자동으로 채워지지 않도록
+        autoComplete="new-password"
+        data-lpignore="true"
+        data-1p-ignore="true"
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        placeholder="비워두면 앱 설정값 사용"
+        placeholder="비워두면 환경 변수 사용"
       />
       <button
         type="button"

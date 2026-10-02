@@ -1,9 +1,21 @@
 export interface NodeParam {
   name: string
   label: string
-  type: 'text' | 'textarea' | 'select' | 'number' | 'image' | 'password' | 'webhookUrls' | 'webhookTemplate'
+  type:
+    | 'text' | 'textarea' | 'select' | 'number' | 'image' | 'password' | 'folder' | 'file'
+    | 'webhookUrls' | 'webhookTemplate' | 'geminiModel' | 'memoryInfo' | 'httpOpen'
   defaultValue: unknown
   options: string[] | null
+  showWhen?: string | null  // "다른파라미터=값" 일 때만 표시
+}
+
+/** 노드 아래쪽 소켓 — 부품 노드를 끼우는 자리 */
+export interface NodeSocket {
+  id: string
+  label: string
+  accepts: string     // 끼울 수 있는 부품 종류 (부품 노드의 provides 와 같아야 함)
+  required: boolean
+  multiple: boolean
 }
 
 export interface NodeTypeInfo {
@@ -14,6 +26,24 @@ export interface NodeTypeInfo {
   category?: string | null  // 팔레트 그룹명 (null = 레거시, 팔레트 미노출)
   params: NodeParam[]
   trigger?: boolean  // 트리거 노드 (입력 연결 없음, 파이프라인 시작점)
+  sockets?: NodeSocket[]     // 아래쪽 소켓 (AI 에이전트 등)
+  provides?: string | null   // 부품 노드라면 부품 종류 (ai_model 등) — 단독 실행 안 됨
+}
+
+/** 부품 노드의 위쪽 연결점 id */
+export const PART_HANDLE = 'part'
+
+/** showWhen 조건 확인 ("source=파일" 같음 / "bodyType!=없음" 다름) */
+export function paramVisible(param: NodeParam, config: Record<string, unknown>, all: NodeParam[]): boolean {
+  if (!param.showWhen) return true
+  const not = param.showWhen.indexOf('!=')
+  const i = not >= 0 ? not : param.showWhen.indexOf('=')
+  if (i < 0) return true
+  const key = param.showWhen.slice(0, i)
+  const expected = param.showWhen.slice(i + (not >= 0 ? 2 : 1))
+  const ref = all.find((p) => p.name === key)
+  const actual = String(config[key] ?? ref?.defaultValue ?? '')
+  return not >= 0 ? actual !== expected : actual === expected
 }
 
 export interface PipelineNodeDto {
@@ -27,6 +57,7 @@ export interface PipelineNodeDto {
 export interface PipelineConnectionDto {
   fromNodeId: string
   toNodeId: string
+  toHandle?: string | null  // 소켓 id (부품 연결), 없으면 일반 실행 흐름
 }
 
 export interface PipelineDto {

@@ -12,7 +12,8 @@ interface Props {
   onDeleteAll: () => void
   saving: boolean
   canExport: boolean
-  bottomPanelOpen?: boolean
+  /** 기본 위치(하단 중앙)일 때 화면 아래에서 띄울 거리 — 하단 실행 결과 패널 높이에 맞춤 */
+  bottomOffset?: number
   /** 실행 버튼 문구 (트리거 파이프라인이면 '▶ 수신 대기' / '■ 중지') */
   runLabel?: string
   /** 수신 대기 중 → 실행 버튼 초록 강조 */
@@ -52,7 +53,7 @@ export function Toolbar({
   onDeleteAll,
   saving,
   canExport,
-  bottomPanelOpen,
+  bottomOffset = 20,
   runLabel = '▶ 실행',
   runActive = false,
   dirty = false,
@@ -143,7 +144,7 @@ export function Toolbar({
         transformOrigin: 'top left',
       }
     : {
-        bottom: bottomPanelOpen ? 220 : 20,
+        bottom: bottomOffset,
         transform: `translateX(-50%) scale(${scale})`,
         transformOrigin: 'bottom center',
       }
@@ -161,12 +162,14 @@ export function Toolbar({
       <input
         className="pipeline-name-input"
         placeholder="파이프라인 이름"
+        autoComplete="off"
         value={name}
         onChange={(e) => onNameChange(e.target.value)}
       />
       <input
         className="pipeline-desc-input"
         placeholder="설명 (선택)"
+        autoComplete="off"
         value={description}
         onChange={(e) => onDescriptionChange(e.target.value)}
       />

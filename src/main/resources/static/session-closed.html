@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>세션 종료됨 — 내 메모</title>
+    <!-- 앱 세션 스크립트를 넣지 않은 페이지: 서버와 연결·요청을 하지 않음 -->
+    <style>
+        body {
+            margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center;
+            background: #1E1E1E; color: #D4D4D4; font-family: 'Segoe UI', system-ui, sans-serif;
+        }
+        .box { text-align: center; line-height: 1.7; }
+        .icon { font-size: 44px; opacity: .5; margin-bottom: 10px; }
+        .title { font-size: 18px; font-weight: 700; color: #fff; }
+        .sub { font-size: 13px; color: #9E9E9E; margin-top: 4px; }
+        a {
+            display: inline-block; margin-top: 18px; padding: 8px 18px; border-radius: 6px;
+            background: #0E639C; color: #fff; text-decoration: none; font-size: 13px; font-weight: 600;
+        }
+        a:hover { background: #1177BB; }
+    </style>
+</head>
+<body>
+<div class="box">
+    <div class="icon">⏏️</div>
+    <div class="title">이 탭의 세션이 종료되었습니다</div>
+    <div class="sub">서버와의 연결이 끊긴 상태입니다. 이 탭은 닫으셔도 됩니다.</div>
+    <a href="/">다시 열기</a>
+</div>
+<script>
+    // 스크립트로 닫을 수 있는 탭이면 닫기 시도 (보통은 브라우저가 막음)
+    try { window.close(); } catch (e) {}
+</script>
+</body>
+</html>

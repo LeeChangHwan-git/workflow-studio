@@ -13,6 +13,14 @@ async function json<T>(res: Response): Promise<T> {
   return res.json() as Promise<T>
 }
 
+function pickPath(url: string, initial: string) {
+  return fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ initial }),
+  }).then((r) => r.json() as Promise<{ path?: string; cancelled?: boolean; error?: string }>)
+}
+
 export const api = {
   getNodeTypes: () => fetch('/api/node-types').then((r) => json<NodeTypeInfo[]>(r)),
 
@@ -60,6 +68,38 @@ export const api = {
 
   clearWebhookHistory: (nodeId: string) =>
     fetch(`/api/webhooks/${nodeId}/history`, { method: 'DELETE' }),
+
+  /** 서버 PC에 폴더/파일 선택 창 표시 */
+  pickFolder: (initial: string) => pickPath('/api/dialog/folder', initial),
+  pickFile: (initial: string) => pickPath('/api/dialog/file', initial),
+
+  /** Gemini 모델 목록 (키가 비면 서버의 GEMINI_API_KEY) */
+  geminiModels: (apiKey: string) =>
+    fetch('/api/ai/gemini/models', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ apiKey }),
+    }).then((r) => r.json() as Promise<{ models?: string[]; error?: string }>),
+
+  /** 모델 부품 검증 (실행 없이) — 키 확인 + 모델 존재 확인 */
+  verifyGemini: (apiKey: string, model: string) =>
+    fetch('/api/ai/gemini/verify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ apiKey, model }),
+    }).then((r) => r.json() as Promise<{
+      ok: boolean
+      keyOk: boolean
+      modelOk: boolean | null
+      keySource: 'node' | 'env' | 'none'
+      message: string
+      models?: string[]
+    }>),
+
+  memorySessions: (nodeId: string) =>
+    fetch(`/api/ai/memory/${nodeId}`).then((r) => json<{ sessionKey: string; messages: number }[]>(r)),
+
+  clearMemory: (nodeId: string) => fetch(`/api/ai/memory/${nodeId}`, { method: 'DELETE' }),
 
   cancelExecution: (execId: string) => fetch(`/api/executions/${execId}/cancel`, { method: 'POST' }),
 

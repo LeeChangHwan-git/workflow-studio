@@ -21,18 +21,9 @@
             } catch (e) { /* localStorage 사용 불가 시 기본 동작 */ }
         })();
 
-        // 서버와 상시 연결 (AppLiveController): 서버가 재시작되면 자동 재연결 → 실행 id가 바뀌었으면 새로고침.
-        // 서버는 기동 직후 이 연결이 있으면 새 브라우저 탭을 열지 않는다 (탭이 계속 늘어나는 것 방지)
-        (function () {
-            if (!window.EventSource) return;
-            var known = null;
-            var es = new EventSource('/api/app/live');
-            es.addEventListener('instance', function (e) {
-                if (known === null) known = e.data;
-                else if (known !== e.data) location.reload();
-            });
-        })();
     </script>
+    <!-- 서버 재시작 감지(→ 새로고침) + 열린 앱 탭 관리(상단 "탭 N/M" 배지). 공유 워커로 브라우저당 연결 1개 -->
+    <script src="/js/app-session.js?v=2" defer></script>
     <style>
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 

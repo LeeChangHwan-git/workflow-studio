@@ -8,15 +8,34 @@ import {
   type Edge,
 } from '@xyflow/react'
 import { api } from './api'
-import { nodeDisplayName, OFF, ON, WEBHOOK_TYPE } from './types'
+import { nodeDisplayName, OFF, ON, PART_HANDLE, WEBHOOK_TYPE } from './types'
 import type { NodeTypeInfo, PipelineDto, RunLog, RunMode } from './types'
 import type { PipelineFlowNode } from './components/PipelineNodeCard'
 import { Palette } from './components/Palette'
 import { PipelineCanvas } from './components/PipelineCanvas'
 import { ConfigPanel } from './components/ConfigPanel'
 import { Toolbar } from './components/Toolbar'
-import { BottomPanel } from './components/BottomPanel'
+import { BottomPanel, BOTTOM_HEADER_HEIGHT, BOTTOM_MIN_HEIGHT } from './components/BottomPanel'
+
+const BOTTOM_HEIGHT_KEY = 'pipeline-bottom-panel-height'
+const BOTTOM_DEFAULT_HEIGHT = 200
 import { usePaletteDrag } from './usePaletteDrag'
+
+/** 연결선 생성 — 소켓(부품) 연결은 점선·화살표 없음, 일반 실행 흐름은 실선 화살표 */
+function makeEdge(source: string, target: string, targetHandle?: string | null): Edge {
+  if (targetHandle) {
+    return {
+      id: `${source}-${target}-${targetHandle}`,
+      source,
+      target,
+      sourceHandle: PART_HANDLE,
+      targetHandle,
+      className: 'edge-socket',
+      style: { strokeDasharray: '5 4', stroke: '#8B8B8B' },
+    }
+  }
+  return { id: `${source}-${target}`, source, target, markerEnd: { type: MarkerType.ArrowClosed } }
+}
 
 function defaultConfig(nodeType: NodeTypeInfo): Record<string, unknown> {
   const config: Record<string, unknown> = {}
@@ -44,6 +63,27 @@ export default function App({ initialPipelineId }: Props) {
   const [runStatus, setRunStatus] = useState<'idle' | 'running' | 'done' | 'error'>('idle')
   const [runMode, setRunMode] = useState<RunMode>('manual')
   const [bottomPanelOpen, setBottomPanelOpen] = useState(false)
+  const [bottomCollapsed, setBottomCollapsed] = useState(false)
+  const [bottomHeight, setBottomHeight] = useState<number>(() => {
+    try {
+      const v = Number(localStorage.getItem(BOTTOM_HEIGHT_KEY))
+      return v >= BOTTOM_MIN_HEIGHT && v <= 2000 ? v : BOTTOM_DEFAULT_HEIGHT
+    } catch {
+      return BOTTOM_DEFAULT_HEIGHT
+    }
+  })
+  const handleBottomHeight = useCallback((h: number, done: boolean) => {
+    setBottomHeight(h)
+    if (done) {
+      try { localStorage.setItem(BOTTOM_HEIGHT_KEY, String(h)) } catch { /* 무시 */ }
+    }
+  }, [])
+  const resetBottomHeight = useCallback(() => {
+    setBottomHeight(BOTTOM_DEFAULT_HEIGHT)
+    try { localStorage.removeItem(BOTTOM_HEIGHT_KEY) } catch { /* 무시 */ }
+  }, [])
+  // 툴바(하단 중앙)가 패널에 가리지 않도록 패널 위로 띄우는 거리
+  const toolbarBottom = bottomPanelOpen ? (bottomCollapsed ? BOTTOM_HEADER_HEIGHT : bottomHeight) + 20 : 20
   const execIntervalRef = useRef<number | null>(null)
 
   const [nodes, setNodes, onNodesChange] = useNodesState<PipelineFlowNode>([])
@@ -105,14 +145,7 @@ export default function App({ initialPipelineId }: Props) {
         data: { nodeType: typeMap.get(n.type)!, config: n.config },
       })),
     )
-    setEdges(
-      pipeline.connections.map((c) => ({
-        id: `${c.fromNodeId}-${c.toNodeId}`,
-        source: c.fromNodeId,
-        target: c.toNodeId,
-        markerEnd: { type: MarkerType.ArrowClosed },
-      })),
-    )
+    setEdges(pipeline.connections.map((c) => makeEdge(c.fromNodeId, c.toNodeId, c.toHandle)))
   }
 
   /** 실행 하나를 폴링하며 하단 패널/노드 상태에 반영 */
@@ -226,12 +259,37 @@ export default function App({ initialPipelineId }: Props) {
     [setNodes, setEdges],
   )
 
+  // 연결 규칙: 부품 노드 → 맞는 종류의 소켓에만, 일반 노드 → 일반 입력에만
+  const isValidConnection = useCallback(
+    (c: Connection | Edge) => {
+      if (c.source === c.target) return false
+      const src = nodes.find((n) => n.id === c.source)?.data.nodeType
+      const tgt = nodes.find((n) => n.id === c.target)?.data.nodeType
+      if (!src || !tgt) return false
+      if (c.targetHandle) {
+        const socket = tgt.sockets?.find((s) => s.id === c.targetHandle)
+        return !!socket && src.provides === socket.accepts
+      }
+      return !src.provides && !tgt.provides
+    },
+    [nodes],
+  )
+
   const handleConnect = useCallback(
     (connection: Connection) => {
-      if (connection.source === connection.target) return
-      setEdges((eds) => addEdge({ ...connection, markerEnd: { type: MarkerType.ArrowClosed } }, eds))
+      if (!isValidConnection(connection)) return
+      const socket = connection.targetHandle
+        ? nodes.find((n) => n.id === connection.target)?.data.nodeType.sockets?.find((s) => s.id === connection.targetHandle)
+        : undefined
+      setEdges((eds) => {
+        // 1개만 끼우는 소켓이면 기존 부품 연결을 교체
+        const kept = socket && !socket.multiple
+          ? eds.filter((e) => !(e.target === connection.target && e.targetHandle === connection.targetHandle))
+          : eds
+        return addEdge(makeEdge(connection.source, connection.target, connection.targetHandle), kept)
+      })
     },
-    [setEdges],
+    [isValidConnection, nodes, setEdges],
   )
 
   const handleConfigChange = useCallback(
@@ -258,7 +316,7 @@ export default function App({ initialPipelineId }: Props) {
         posY: n.position.y,
         config: n.data.config,
       })),
-      connections: edges.map((e) => ({ fromNodeId: e.source, toNodeId: e.target })),
+      connections: edges.map((e) => ({ fromNodeId: e.source, toNodeId: e.target, toHandle: e.targetHandle ?? null })),
     }),
     [name, description, nodes, edges],
   )
@@ -281,6 +339,11 @@ export default function App({ initialPipelineId }: Props) {
     window.addEventListener('beforeunload', onBeforeUnload)
     return () => window.removeEventListener('beforeunload', onBeforeUnload)
   }, [dirty])
+
+  // 탭 제목 = 파이프라인 이름 (열린 탭 관리 패널에도 이 이름으로 표시)
+  useEffect(() => {
+    document.title = `${name || '새 파이프라인'} · 파이프라인 — 내 메모`
+  }, [name])
 
   // 다른 메뉴에서 '파이프라인' 탭을 누르면 이 화면으로 돌아오도록 기억 (layout.html 스크립트와 같은 키)
   useEffect(() => {
@@ -393,6 +456,7 @@ export default function App({ initialPipelineId }: Props) {
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
           onConnect={handleConnect}
+          isValidConnection={isValidConnection}
           onSelectNode={setSelectedNodeId}
           onDeleteNode={handleDeleteNode}
         />
@@ -422,6 +486,11 @@ export default function App({ initialPipelineId }: Props) {
           nodeNames={new Map(nodes.map((n) => [n.id, nodeDisplayName(n.data.nodeType, n.data.config)]))}
           onSelectNode={handleSelectNodeFromPanel}
           onClose={() => setBottomPanelOpen(false)}
+          height={bottomHeight}
+          onHeightChange={handleBottomHeight}
+          onResetHeight={resetBottomHeight}
+          collapsed={bottomCollapsed}
+          onToggleCollapse={() => setBottomCollapsed((c) => !c)}
         />
       )}
 
@@ -438,7 +507,7 @@ export default function App({ initialPipelineId }: Props) {
         onDeleteAll={handleDeleteAll}
         saving={saving}
         canExport={!!pipelineId}
-        bottomPanelOpen={bottomPanelOpen}
+        bottomOffset={toolbarBottom}
         runLabel={webhookNodes.length === 0 ? '▶ 실행' : listening ? '■ 중지' : '▶ 수신 대기'}
         runActive={listening}
       />

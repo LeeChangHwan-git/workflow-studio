@@ -223,6 +223,62 @@ button { font-family: inherit; }
 }
 .wh-url-copy:hover { background: #4A4A4A; }
 .wh-url-hint { font-size: 11px; color: #858585; line-height: 1.5; margin-top: 4px; }
+/* ── 소켓 / 부품 노드 (AI 에이전트) ── */
+.pnode.has-sockets { min-width: 240px; }
+.pnode-sockets {
+  display: flex; border-top: 1px solid #3E3E42; margin-top: 2px;
+}
+.pnode-socket {
+  position: relative; flex: 1; text-align: center; padding: 5px 4px 9px;
+  font-size: 10px; font-weight: 600; color: #858585;
+}
+.pnode-socket + .pnode-socket { border-left: 1px dashed #3E3E42; }
+.pnode-socket.filled { color: #D4D4D4; }
+.pnode-socket.missing { color: #F48771; }
+.pnode-socket-req { color: #F48771; margin-left: 1px; }
+.pnode-socket-count { color: #4FC1FF; }
+.pnode-handle-socket {
+  width: 11px !important; height: 11px !important; border-radius: 2px !important;
+  transform: translate(-50%, 50%) rotate(45deg) !important;
+  background: #3C3C3C !important; border: 1.5px solid #8B8B8B !important;
+}
+.pnode-socket.filled .pnode-handle-socket { background: #8B5CF6 !important; border-color: #C4B5FD !important; }
+.pnode-socket.missing .pnode-handle-socket { border-color: #F48771 !important; }
+
+.pnode.part { border-radius: 18px; min-width: 150px; }
+.pnode.part .pnode-cat-bar { border-radius: 18px 18px 0 0; }
+.pnode-handle-part {
+  width: 11px !important; height: 11px !important; border-radius: 2px !important;
+  transform: translate(-50%, -50%) rotate(45deg) !important;
+  background: #8B5CF6 !important; border: 1.5px solid #C4B5FD !important;
+}
+.cfg-part-hint {
+  font-size: 11px; color: #C4B5FD; background: #2A2340; border: 1px solid #4C3D7A;
+  border-radius: 4px; padding: 7px 9px; margin-bottom: 12px; line-height: 1.5;
+}
+.mem-row { display: flex; justify-content: space-between; font-size: 12px; padding: 3px 0; }
+.mem-key { font-family: Consolas, monospace; color: #9CDCFE; overflow: hidden; text-overflow: ellipsis; }
+.mem-count { color: #858585; flex-shrink: 0; margin-left: 8px; }
+
+/* 모델 연결 검증 결과 */
+.verify-box {
+  margin-top: 6px; padding: 7px 9px; border-radius: 4px; font-size: 12px; line-height: 1.5;
+  background: #252526; border: 1px solid #3C3C3C; color: #BBBBBB;
+}
+.verify-box.ok { background: #1B3D27; border-color: #2E6B3B; color: #7EE2A8; }
+.verify-box.fail { background: #3A1E1E; border-color: #5A2D2D; color: #F48771; }
+.verify-sub { font-size: 11px; opacity: .75; margin-top: 2px; }
+
+/* 폴더 경로 입력 */
+.cfg-folder-wrap { display: flex; gap: 6px; }
+.cfg-folder-input { flex: 1; min-width: 0; font-family: Consolas, 'D2Coding', monospace; }
+.cfg-folder-btn {
+  flex-shrink: 0; padding: 0 10px; font-size: 12px; cursor: pointer; white-space: nowrap;
+  background: #3C3C3C; color: #D4D4D4; border: 1px solid #555; border-radius: 4px;
+}
+.cfg-folder-btn:hover { background: #4A4A4A; }
+.cfg-folder-btn:disabled { opacity: .6; cursor: default; }
+
 /* 노드 이름 지정 시 패널 헤더의 원래 타입명 */
 .config-header-type { margin-left: 8px; font-size: 11px; font-weight: 400; color: #6A6A6A; }
 
@@ -251,6 +307,8 @@ button { font-family: inherit; }
   background: #3D3420; border: 1px solid #5C4D2A; border-radius: 4px;
 }
 .wh-test-btn:hover { background: #4A3F27; }
+.http-open-btn { color: #4FC1FF; background: #1E3A5F; border-color: #264F78; }
+.http-open-btn:hover { background: #264F78; }
 .wh-url-warn { font-size: 11px; color: #E2C08D; margin-bottom: 4px; }
 
 /* 트리거 노드: 왼쪽을 둥글게 (입력 없음 표시) */
@@ -313,7 +371,8 @@ body.resizing-col { cursor: col-resize; user-select: none; }
 .btn.btn-live { background: #1F3D27; border-color: #3FB950; color: #3FB950; }
 .btn.btn-live:hover { background: #26502F; }
 .pnode.trigger .pnode-cat-bar { border-top-left-radius: 22px; padding-left: 14px; }
-.cfg-label { display: block; font-size: 10px; font-weight: 700; color: #6A6A6A; margin-bottom: 5px; text-transform: uppercase; letter-spacing: .4px; }
+/* 대문자 변환 없음 — 라벨 안의 ${date}, ${input} 같은 문법이 바뀌어 보이면 안 되므로 */
+.cfg-label { display: block; font-size: 11px; font-weight: 700; color: #7A7A7A; margin-bottom: 5px; letter-spacing: .2px; }
 .cfg-input, .cfg-select, .cfg-textarea {
   width: 100%; padding: 7px 9px; border: 1px solid #454545; border-radius: 4px;
   font-size: 12px; font-family: inherit; color: #D4D4D4; background: #3C3C3C; outline: none;
@@ -498,10 +557,17 @@ body.resizing-col { cursor: col-resize; user-select: none; }
   background: #252526;
   border-top: 1px solid #3E3E42;
   display: flex; flex-direction: column;
-  height: 200px; overflow: hidden;
+  overflow: hidden; position: relative;
   transition: height .2s ease;
 }
-.bottom-panel.collapsed { height: 36px; }
+/* 위쪽 가장자리 높이 조절 핸들 */
+.bottom-resizer {
+  position: absolute; top: 0; left: 0; right: 0; height: 5px; z-index: 5;
+  cursor: row-resize; transition: background .15s;
+}
+.bottom-resizer:hover, body.resizing-row .bottom-resizer { background: #0E639C; }
+body.resizing-row { cursor: row-resize; user-select: none; }
+body.resizing-row .bottom-panel { transition: none; }
 
 .bottom-panel-header {
   display: flex; align-items: center; gap: 8px;

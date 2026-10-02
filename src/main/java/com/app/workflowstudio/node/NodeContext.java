@@ -23,15 +23,29 @@ public class NodeContext {
     private final Object triggerData;
     private final ObjectMapper objectMapper;
 
+    private final Map<String, List<PipelineNode>> parts;
+
     public NodeContext(PipelineNode node, Map<String, Object> vars, String input,
                        RunMode mode, Object triggerData, ObjectMapper objectMapper) {
+        this(node, vars, input, mode, triggerData, Map.of(), objectMapper);
+    }
+
+    public NodeContext(PipelineNode node, Map<String, Object> vars, String input,
+                       RunMode mode, Object triggerData, Map<String, List<PipelineNode>> parts,
+                       ObjectMapper objectMapper) {
         this.node = node;
         this.config = node.getConfig() != null ? node.getConfig() : Map.of();
         this.vars = vars;
         this.input = input;
         this.mode = mode;
         this.triggerData = triggerData;
+        this.parts = parts;
         this.objectMapper = objectMapper;
+    }
+
+    /** 소켓(socketId)에 끼워진 부품 노드들 (연결된 순서, 없으면 빈 목록) */
+    public List<PipelineNode> parts(String socketId) {
+        return parts.getOrDefault(socketId, List.of());
     }
 
     public PipelineNode node() {
@@ -69,6 +83,14 @@ public class NodeContext {
 
     // ── 설정값 조회 (원본 그대로) ─────────────────────────────
 
+    /** 다른 노드(예: 소켓에 끼워진 부품)의 설정값 — ${...} 치환은 이 노드의 변수 기준 */
+    public static String configOf(PipelineNode n, String key, String def) {
+        Object v = n.getConfig() != null ? n.getConfig().get(key) : null;
+        if (v instanceof String s && !s.isBlank()) return s;
+        if (v instanceof Number num) return String.valueOf(num);
+        return def;
+    }
+
     public String raw(String key) {
         Object v = config.get(key);
         return v instanceof String s ? s : null;
@@ -100,8 +122,13 @@ public class NodeContext {
 
     /** 텍스트 안의 ${var} / ${var.key[0].nested} 를 변수 값으로 치환. 해석 못 한 참조는 그대로 둔다. */
     public String resolve(String text) {
+        return resolve(text, Map.of());
+    }
+
+    /** 모듈 전용 변수(extra)를 가장 먼저 찾고, 그다음 ${input}, 전역 vars 순으로 치환 */
+    public String resolve(String text, Map<String, ?> extra) {
         // ${input} 은 노드마다 다른 값 → 전역 vars 보다 우선
         Map<String, Object> inputScope = input != null ? Map.of(INPUT_VAR, input) : Map.of();
-        return Templates.resolve(text, List.of(inputScope, vars), objectMapper);
+        return Templates.resolve(text, List.of(extra, inputScope, vars), objectMapper);
     }
 }

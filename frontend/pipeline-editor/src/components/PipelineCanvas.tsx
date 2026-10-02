@@ -7,6 +7,7 @@ import {
   ReactFlow,
   type Edge,
   type EdgeChange,
+  type IsValidConnection,
   type NodeChange,
   type OnConnect,
 } from '@xyflow/react'
@@ -14,6 +15,7 @@ import '@xyflow/react/dist/style.css'
 import { PipelineNodeCard, type PipelineFlowNode } from './PipelineNodeCard'
 import { NodeActionsContext } from '../NodeActionsContext'
 import { RunStatusContext } from '../RunStatusContext'
+import { SocketStatusContext, type SocketStatusMap } from '../SocketStatusContext'
 import type { RunLog } from '../types'
 
 const nodeTypeComponents = { pipelineNode: PipelineNodeCard }
@@ -27,6 +29,7 @@ interface Props {
   onNodesChange: (changes: NodeChange<PipelineFlowNode>[]) => void
   onEdgesChange: (changes: EdgeChange[]) => void
   onConnect: OnConnect
+  isValidConnection: IsValidConnection
   onSelectNode: (id: string | null) => void
   onDeleteNode: (id: string) => void
 }
@@ -40,15 +43,29 @@ export function PipelineCanvas({
   onNodesChange,
   onEdgesChange,
   onConnect,
+  isValidConnection,
   onSelectNode,
   onDeleteNode,
 }: Props) {
   const actions = useMemo(() => ({ onDeleteNode }), [onDeleteNode])
 
+  // 노드별 소켓에 끼워진 부품 수 (카드의 소켓 표시용)
+  const socketStatus = useMemo(() => {
+    const map: SocketStatusMap = new Map()
+    for (const e of edges) {
+      if (!e.targetHandle) continue
+      const rec = map.get(e.target) ?? {}
+      rec[e.targetHandle] = (rec[e.targetHandle] ?? 0) + 1
+      map.set(e.target, rec)
+    }
+    return map
+  }, [edges])
+
   return (
     <div className={`canvas-wrap${dragOver ? ' drag-over' : ''}`} ref={wrapperRef}>
       <NodeActionsContext.Provider value={actions}>
         <RunStatusContext.Provider value={runStatusMap}>
+        <SocketStatusContext.Provider value={socketStatus}>
           <ReactFlow
             nodes={nodes}
             edges={edges}
@@ -56,6 +73,7 @@ export function PipelineCanvas({
             onNodesChange={onNodesChange}
             onEdgesChange={onEdgesChange}
             onConnect={onConnect}
+            isValidConnection={isValidConnection}
             onNodeClick={(_, node) => onSelectNode(node.id)}
             onPaneClick={() => onSelectNode(null)}
             colorMode="dark"
@@ -72,6 +90,7 @@ export function PipelineCanvas({
               maskColor="rgba(0,0,0,0.6)"
             />
           </ReactFlow>
+        </SocketStatusContext.Provider>
         </RunStatusContext.Provider>
       </NodeActionsContext.Provider>
     </div>

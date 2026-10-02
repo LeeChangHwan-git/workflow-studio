@@ -122,8 +122,11 @@ public class PipelineRunnerService {
         Set<String> reachable = state.triggerNodeId != null
                 ? reachableFrom(pipeline, state.triggerNodeId) : null;
 
+        Map<String, Map<String, List<PipelineNode>>> partsByNode = partsMap(pipeline);
+
         for (PipelineNode node : topoSort(pipeline)) {
             if (reachable != null && !reachable.contains(node.getId())) continue;
+            if (isPart(node)) continue; // 부품 노드는 소켓에 끼워진 노드가 읽어서 사용
             if (Thread.currentThread().isInterrupted()) {
                 state.status = "error";
                 return;
@@ -144,8 +147,8 @@ public class PipelineRunnerService {
                         .orElse(null);
                 Object nodeTrigger = node.getId().equals(state.triggerNodeId) ? triggerData : null;
 
-                String output = module.execute(
-                        new NodeContext(node, vars, input, state.mode, nodeTrigger, objectMapper));
+                String output = module.execute(new NodeContext(node, vars, input, state.mode, nodeTrigger,
+                        partsByNode.getOrDefault(node.getId(), Map.of()), objectMapper));
                 log.setStatus("success");
                 log.setMessage("[" + node.getType() + "] 완료");
                 log.setOutput(output);
@@ -177,12 +180,40 @@ public class PipelineRunnerService {
     }
 
     // ── 그래프 헬퍼 ───────────────────────────────────────────
+    // 실행 흐름(화살표)만 순서·${input}에 쓰고, 소켓 연결(부품)은 partsMap 으로 따로 전달한다.
+
+    private boolean isPart(PipelineNode node) {
+        NodeModule m = nodeTypeRegistry.find(node.getType());
+        return m != null && m.info().isPart();
+    }
+
+    /** 실행 흐름 연결만 (소켓 연결 제외) */
+    private List<PipelineConnection> flowConnections(Pipeline pipeline) {
+        if (pipeline.getConnections() == null) return List.of();
+        return pipeline.getConnections().stream().filter(c -> !c.socket()).toList();
+    }
+
+    /** nodeId → (소켓 id → 끼워진 부품 노드 목록, 연결 순서) */
+    private Map<String, Map<String, List<PipelineNode>>> partsMap(Pipeline pipeline) {
+        Map<String, Map<String, List<PipelineNode>>> map = new HashMap<>();
+        if (pipeline.getConnections() == null || pipeline.getNodes() == null) return map;
+        Map<String, PipelineNode> byId = new HashMap<>();
+        for (PipelineNode n : pipeline.getNodes()) byId.put(n.getId(), n);
+        for (PipelineConnection c : pipeline.getConnections()) {
+            if (!c.socket()) continue;
+            PipelineNode part = byId.get(c.getFromNodeId());
+            if (part == null) continue;
+            map.computeIfAbsent(c.getToNodeId(), k -> new LinkedHashMap<>())
+               .computeIfAbsent(c.getToHandle(), k -> new ArrayList<>())
+               .add(part);
+        }
+        return map;
+    }
 
     /** nodeId → 화살표로 이 노드에 들어오는 노드 id 목록 */
     private Map<String, List<String>> upstreamMap(Pipeline pipeline) {
         Map<String, List<String>> map = new HashMap<>();
-        if (pipeline.getConnections() == null) return map;
-        for (PipelineConnection c : pipeline.getConnections()) {
+        for (PipelineConnection c : flowConnections(pipeline)) {
             map.computeIfAbsent(c.getToNodeId(), k -> new ArrayList<>()).add(c.getFromNodeId());
         }
         return map;
@@ -191,10 +222,8 @@ public class PipelineRunnerService {
     /** startId 자신 + 화살표를 따라 도달 가능한 모든 노드 id */
     private Set<String> reachableFrom(Pipeline pipeline, String startId) {
         Map<String, List<String>> down = new HashMap<>();
-        if (pipeline.getConnections() != null) {
-            for (PipelineConnection c : pipeline.getConnections()) {
-                down.computeIfAbsent(c.getFromNodeId(), k -> new ArrayList<>()).add(c.getToNodeId());
-            }
+        for (PipelineConnection c : flowConnections(pipeline)) {
+            down.computeIfAbsent(c.getFromNodeId(), k -> new ArrayList<>()).add(c.getToNodeId());
         }
         Set<String> seen = new HashSet<>();
         Deque<String> stack = new ArrayDeque<>(List.of(startId));
@@ -209,7 +238,8 @@ public class PipelineRunnerService {
 
     private List<PipelineNode> topoSort(Pipeline pipeline) {
         if (pipeline.getNodes() == null) return List.of();
-        if (pipeline.getConnections() == null || pipeline.getConnections().isEmpty()) {
+        List<PipelineConnection> flow = flowConnections(pipeline);
+        if (flow.isEmpty()) {
             return new ArrayList<>(pipeline.getNodes());
         }
 
@@ -222,7 +252,8 @@ public class PipelineRunnerService {
             adj.put(id, new ArrayList<>());
             inDegree.put(id, 0);
         }
-        for (PipelineConnection c : pipeline.getConnections()) {
+        for (PipelineConnection c : flow) {
+            if (!adj.containsKey(c.getFromNodeId()) || !inDegree.containsKey(c.getToNodeId())) continue; // 지워진 노드
             adj.get(c.getFromNodeId()).add(c.getToNodeId());
             inDegree.merge(c.getToNodeId(), 1, Integer::sum);
         }

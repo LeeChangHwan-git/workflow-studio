@@ -193,14 +193,23 @@ const $ = (id) => document.getElementById(id);
     if (q.get('url')) $('url').value = q.get('url');
     if (q.get('body') !== null) $('body').value = q.get('body');
     if (q.get('btype')) setBodyType(q.get('btype'));
+    var headerLines = (q.get('headers') || '').split(/\r?\n/)
+        .map(function (l) { return l.trim(); })
+        .filter(function (l) { return l && l.charAt(0) !== '#' && l.indexOf(':') > 0; })
+        .map(function (l) { var i = l.indexOf(':'); return { key: l.slice(0, i).trim(), value: l.slice(i + 1).trim() }; });
     if (q.get('from') === 'webhook') {
         const b = $('banner');
         b.innerHTML = '🪝 웹훅 테스트 URL이 채워졌습니다. 파이프라인 에디터에서 <b>▶ 수신 대기</b>가 켜져 있어야 실행되며, '
             + '에디터를 열어 두면 실행 과정이 실시간으로 보입니다. (꺼져 있으면 404 응답)';
         b.classList.remove('hidden');
     }
+    if (q.get('from') === 'node') {
+        var bn = $('banner');
+        bn.innerHTML = '🌐 파이프라인의 HTTP 요청 노드 설정이 채워졌습니다. <code>${...}</code> 변수가 있으면 테스트할 값으로 바꿔서 보내세요.';
+        bn.classList.remove('hidden');
+    }
     if (q.toString()) history.replaceState(null, '', location.pathname); // 새로고침 시 덮어쓰기 방지
-    addHeader('', '');
+    setHeaders(headerLines);
     paintMethod();
     bodyType();
     renderHistory();
@@ -245,8 +254,8 @@ function formatJson() {
 function addHeader(k, v) {
     const row = document.createElement('div');
     row.className = 'kv-row';
-    row.innerHTML = '<input type="text" class="hk" placeholder="Header (예: Authorization)">'
-        + '<input type="text" class="hv" placeholder="Value">'
+    row.innerHTML = '<input type="text" class="hk" placeholder="Header (예: Authorization)" autocomplete="off">'
+        + '<input type="text" class="hv" placeholder="Value" autocomplete="off">'
         + '<button type="button" class="kv-del" title="삭제">✕</button>';
     row.querySelector('.hk').value = k;
     row.querySelector('.hv').value = v;

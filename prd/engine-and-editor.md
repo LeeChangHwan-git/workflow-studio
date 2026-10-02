@@ -37,11 +37,20 @@ public class DelayModule implements NodeModule {
 - **트리거 노드**는 `NodeTypeInfo`의 마지막 인자 `trigger=true`로 선언 → 캔버스에서 입력 핸들이 없고(왼쪽 둥근 카드),
   외부 이벤트로 시작될 땐 `runner.runTriggered(pipeline, nodeId, mode, data)` 호출. 모듈은 `ctx.triggerData()`로 데이터를 받음
 - `category`가 `null`이면 팔레트에 노출되지 않음 (구버전 호환용 숨김 노드 등에 사용)
-- 파라미터 `type`: `text` | `textarea` | `select`(options 필수) | `number` | `password` | `image` | `webhookUrls`(표시 전용) | `webhookTemplate`(템플릿 + 키 칩 + 미리보기)
+- 파라미터 `type`: `text` | `textarea` | `select`(options 필수) | `number` | `password` | `image` | `webhookUrls`(표시 전용) | `webhookTemplate`(템플릿 + 키 칩 + 미리보기) | `folder` · `file`(경로 입력 + 📁 찾아보기 선택 창) | `geminiModel`(입력 + 자동 연결 검증) | `memoryInfo`(표시 전용) | `httpOpen`(HTTP 화면 열기 버튼)
+- 조건부 표시: `new NodeParam(..., showWhen)` — `"source=파일"`(같을 때) / `"bodyType!=없음"`(다를 때)
 - 출력을 다음 노드로 넘기려면 `outputVar` 파라미터를 두는 것을 관례로 함
   (엔진이 `outputVar` 값 또는 `{nodeId}.output` 키로 출력을 저장)
 - 실패는 예외로 던질 것 → 로그에 `[TYPE] 오류: 메시지`, 파이프라인 중단
 - 오래 걸리는 루프는 `ctx.isCancelled()` 확인 또는 `Thread.sleep`으로 취소에 반응하게 할 것
+
+### 부품 노드와 소켓 (sub-node)
+- 소켓을 가진 노드: `NodeTypeInfo.withSockets(..., List<NodeSocket>)` — `NodeSocket{id, label, accepts, required, multiple}`
+- 부품 노드: `NodeTypeInfo.part(..., provides)` — 단독 실행되지 않으며 `execute`는 호출되지 않음
+- 연결: `PipelineConnection.toHandle` = 소켓 id (부품 연결). 부품 연결은 실행 순서·`${input}`·트리거 도달 범위와 무관
+- 소켓을 가진 모듈은 `ctx.parts("소켓id")`로 끼워진 부품 노드 목록(연결 순서)을 받고, `NodeContext.configOf(part, key, def)`로 설정을 읽음
+- 에디터 연결 규칙: 부품의 `provides` == 소켓의 `accepts`일 때만 연결, `multiple=false`면 교체
+- 예: `node/modules/ai/` (AI 에이전트 + Gemini 모델 · 대화 메모리 · 지시문)
 
 ### NodeContext API
 | 메서드 | 설명 |
@@ -50,6 +59,7 @@ public class DelayModule implements NodeModule {
 | `raw(key)` / `raw(key, def)` | 설정값 원본 (치환 없음) |
 | `intVal(key, def)` | 숫자 설정값 (문자열도 파싱) |
 | `resolve(text)` | 임의 텍스트의 `${변수}` 치환 |
+| `resolve(text, extra)` | 모듈 전용 변수 맵(`extra`)을 가장 먼저 찾고 치환 (예: 파일 쓰기의 `${date}`) |
 | `input()` | 화살표로 연결된 직전 노드(들)의 출력 (여러 개면 줄바꿈으로 합침, 없으면 null) |
 | `vars()` | 이전 노드 출력 변수 맵 (모듈이 직접 값을 추가해도 됨) |
 | `mode()` | 실행 경로: `MANUAL`(▶ 버튼) / `TEST`(웹훅 테스트 URL) / `PROD`(웹훅 운영 URL) |
@@ -104,7 +114,7 @@ ${n1.output}             → outputVar가 없는 노드의 출력
 | 왼쪽 | `Palette.tsx` | 맨 위 "← 파이프라인 목록", `/api/node-types` 기반 노드 목록, 검색, 그룹 접기. 마우스 드래그로 캔버스에 추가 (`usePaletteDrag.ts`) |
 | 가운데 | `PipelineCanvas.tsx`, `PipelineNodeCard.tsx` | React Flow 캔버스. 실행 상태에 따라 노드 테두리(파랑 pulse / 초록 / 빨강) |
 | 오른쪽 | `ConfigPanel.tsx` | **설정** 탭: 파라미터 타입별 입력 필드 (image는 업로드 + 📷 화면 캡처, webhookUrls는 테스트/운영 URL + 복사). **결과** 탭: 마지막 실행 출력. 웹훅 노드는 **수신 기록** 탭 추가. 왼쪽 가장자리 드래그로 너비 조절(더블클릭 초기화, localStorage 저장) |
-| 아래 | `BottomPanel.tsx` | 실행 로그 (접기/펼치기, 성공/실패 수), 행 클릭 시 노드 선택. 웹훅으로 시작된 실행은 제목에 "🪝 웹훅 테스트 수신" 표시 |
+| 아래 | `BottomPanel.tsx` | 실행 로그 (접기/펼치기, 성공/실패 수), 행 클릭 시 노드 선택. 위쪽 가장자리 드래그로 높이 조절(더블클릭 초기화, localStorage 저장, 툴바가 함께 이동). 웹훅으로 시작된 실행은 제목에 "🪝 웹훅 테스트 수신" 표시 |
 
 **웹훅 테스트 실시간 표시**: 저장된 파이프라인에 트리거 노드가 있으면 에디터가 1.5초마다
 `GET /api/pipelines/{id}/executions/latest?mode=test`를 확인 → 새 테스트 실행이 생기면 자동으로 따라가며 표시
@@ -135,7 +145,11 @@ cd frontend/pipeline-editor && npm install   # 최초 1회
 | `*` | `/webhook-test/{path}`, `/webhook/{path}` | 웹훅 수신 → 트리거 실행 (`prd/modules/webhook.md`) |
 | `GET` / `DELETE` | `/api/webhooks/{nodeId}/history` | 웹훅 수신 기록 조회(최신순) / 삭제 |
 | `POST` | `/api/webhooks/{nodeId}/preview` | 전달 내용 구성 미리보기 `{template}` → `{hasSample, sampleAt, keys, result}` |
-| `GET` | `/api/app/live` | SSE 상시 연결 — 서버 실행 id 전송 (재시작 감지 → 탭 자동 새로고침, 기동 시 새 탭 열지 않음 판단) |
+| `GET` | `/api/app/live` | SSE 상시 연결 — 서버 실행 id 전송 (재시작 감지 → 탭 자동 새로고침, 기동 시 새 탭 열지 않음 판단). **브라우저당 SharedWorker 1개만 연결** (탭마다 열면 동시 연결 6개 제한에 걸려 멈춤). 워커는 열린 탭 목록도 관리 → 상단 "탭 N/M" 배지·종료 패널 (`static/js/app-session.js`) |
+| `POST` | `/api/dialog/folder` · `/api/dialog/file` | 서버 PC에 폴더/파일 선택 창 표시 `{initial}` → `{path}` / `{cancelled}` / `{error}` |
+| `POST` | `/api/ai/gemini/models` | `{apiKey}` → `{models}` / `{error}` (generateContent 지원 모델만) |
+| `POST` | `/api/ai/gemini/verify` | 모델 부품 검증 `{apiKey, model}` → `{ok, keyOk, modelOk, keySource, message, models}` (토큰 사용 없음) |
+| `GET` / `DELETE` | `/api/ai/memory/{nodeId}` | 대화 메모리: 대화 ID별 메시지 수 / 모두 지우기 |
 | `POST` | `/api/http-client/send` | HTTP 메뉴용 요청 대행 `{method,url,headers:[{key,value}],body}` → `{status,durationMs,size,headers,body}` 또는 `{error}` |
 | `POST` | `/api/executions/{execId}/cancel` | 실행 취소 |
 | `GET` | `/api/pipelines/{id}/export` | ZIP 내보내기 (`pipeline.json` + 참조 이미지) |

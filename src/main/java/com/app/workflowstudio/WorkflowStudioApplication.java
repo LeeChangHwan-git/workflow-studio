@@ -53,7 +53,7 @@ public class WorkflowStudioApplication {
             }
             int reconnected = liveController.clientCount();
             if (reconnected > 0) {
-                System.out.println("  열려 있던 앱 탭 " + reconnected
+                System.out.println("  앱 화면이 열려 있던 브라우저 " + reconnected
                         + "개가 다시 연결됨 → 새 탭을 열지 않고 기존 탭을 새로고침합니다\n");
                 return;
             }

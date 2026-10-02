@@ -16,7 +16,7 @@
 
 | 항목 | 내용 |
 |------|------|
-| 언어 | Java 17+ (실행은 JDK 21 권장) |
+| 언어 | Java 21 (빌드·실행 모두 JDK 21 필요) |
 | 백엔드 | Spring Boot 3.2.5 + Thymeleaf (목록 화면) |
 | 에디터 | React 18 + TypeScript + Vite + React Flow (`frontend/pipeline-editor/`) |
 | 빌드 | Gradle (bootJar 시 npm 빌드 자동 실행, `makeDist`로 배포 ZIP) |
@@ -31,13 +31,16 @@
    │
    ├─ /pipelines (Thymeleaf 목록) ── /pipelines/{id} (React 에디터)
    │
+   ├─ /http (간이 HTTP 클라이언트) ── HttpClientController ── HttpSender
+   │
    └─ REST /api/** ── PipelineApiController
                          ├─ PipelineService        파이프라인 JSON CRUD, ZIP 내보내기/가져오기, 이미지 저장
                          ├─ PipelineRunnerService  실행 엔진: 위상정렬 → 노드 순차 실행 → 로그/상태
-                         │     └─ NodeTypeRegistry → NodeModule (노드별 동작, 모듈로 추가)
+                         │     └─ NodeTypeRegistry → NodeModule (노드별 동작, 모듈로 추가 / 부품 노드는 소켓으로 전달)
                          └─ ScreenCaptureService   설정 패널의 '화면 캡처'(image 파라미터용)
 
 외부 ── /webhook-test/{path}, /webhook/{path} ── WebhookController ── runTriggered()
+모든 화면 ── SharedWorker(브라우저당 1개) ── /api/app/live (SSE) : 서버 재시작 감지 → 새로고침, 열린 탭 관리
 ```
 
 - 엔진/에디터 상세: `prd/engine-and-editor.md`
@@ -59,9 +62,11 @@
 ├── memos.json           # 메모 목록
 ├── bookmarks.json       # 북마크 목록
 ├── calendar.json        # 달력 이벤트 목록
-└── pipelines/
-    ├── {uuid}.json      # 파이프라인 정의 (노드 + 연결 + 노드 설정)
-    └── images/          # image 타입 파라미터로 업로드/캡처한 이미지
+├── pipelines/
+│   ├── {uuid}.json      # 파이프라인 정의 (노드 + 연결 + 노드 설정 — AI 모델 API 키 포함 시 평문)
+│   └── images/          # image 타입 파라미터로 업로드/캡처한 이미지
+├── webhooks/            # 웹훅 노드별 수신 기록 ({nodeId}.json, 최근 200건)
+└── agent-memory/        # AI 대화 메모리 ({메모리 노드 id}/{대화 ID 해시}.json)
 ```
 
 > ⚠️ `data/`는 `.gitignore` 대상 (단, 메모·북마크·달력 JSON 3개는 예전부터 git에 추적 중).
@@ -73,7 +78,7 @@
 
 ### 파이프라인 자동화 (핵심)
 노드 모듈을 처음부터 하나씩 설계 중 → `prd/modules/README.md`
-- 현재 모듈: 🪝 웹훅 (트리거)
+- 현재 모듈: 🪝 웹훅 (트리거), 🤖 AI 에이전트 (+ 부품: ✨ Gemini 모델 · 🧠 대화 메모리 · 📜 지시문), 🌐 HTTP 요청, 💾 파일 쓰기 (Windows 전용)
 
 ### HTTP (간이 HTTP 클라이언트)
 - `/http` — 메소드·URL·헤더·바디로 요청을 보내고 응답(상태·시간·크기·바디·헤더)을 확인. 보낸 요청 기록(브라우저 저장)
@@ -129,27 +134,111 @@ src/main/java/com/app/workflowstudio/
 │   ├── HomeController.java          # / → /memos
 │   ├── Memo/Bookmark/CalendarController.java
 │   ├── PipelineController.java      # 파이프라인 목록/에디터 화면
-│   └── PipelineApiController.java   # 파이프라인 REST API
-├── model/                           # Memo, Bookmark, CalendarEvent, Pipeline*, RunLog
+│   ├── PipelineApiController.java   # 파이프라인 REST API
+│   ├── HttpClientController.java    # /http 화면 + 요청 대행 API
+│   ├── AppLiveController.java       # SSE 상시 연결 (재시작 감지·새 탭 방지)
+│   └── FileDialogController.java    # 폴더/파일 선택 창 (공용)
+├── model/                           # Memo, Bookmark, CalendarEvent, Pipeline, PipelineNode,
+│                                    # PipelineConnection(toHandle = 소켓), RunLog
 ├── node/                            # ★ 모듈 시스템
 │   ├── NodeModule.java              #   모듈 인터페이스 (info + execute)
-│   ├── NodeContext.java             #   설정값 조회 + ${변수} 치환
-│   ├── NodeTypeInfo.java / NodeParam.java / RunMode.java
+│   ├── NodeContext.java             #   설정값 조회, ${변수} 치환, 소켓 부품(parts)
+│   ├── Templates.java               #   ${...} 치환 공용 로직
+│   ├── NodeTypeInfo / NodeParam / NodeSocket / RunMode
 │   ├── NodeTypeRegistry.java        #   @Component 모듈 자동 수집
 │   └── modules/                     #   모듈 구현 (모듈당 패키지 하나)
-│       └── webhook/                 #     WEBHOOK 트리거 (Module, Controller, PayloadStore)
+│       ├── webhook/                 #     WEBHOOK (Module, Controller, HistoryStore)
+│       ├── ai/                      #     AI_AGENT + 부품(GEMINI_MODEL, CHAT_MEMORY, AI_INSTRUCTION),
+│       │                            #     GeminiClient, ChatMemoryStore, AiController
+│       ├── http/                    #     HTTP_REQUEST
+│       └── filewrite/               #     FILE_WRITE (Windows 전용)
 └── service/
     ├── Memo/Bookmark/CalendarEventService.java
     ├── PipelineService.java
-    ├── PipelineRunnerService.java
+    ├── PipelineRunnerService.java   # 실행 엔진 (실행 흐름 / 소켓 연결 구분)
+    ├── HttpSender.java              # 공용 HTTP 요청 전송 (HTTP 메뉴 + HTTP 요청 노드)
     └── ScreenCaptureService.java
-src/main/resources/templates/        # layout, memo/, bookmark/, calendar/, pipeline/
-frontend/pipeline-editor/            # React 에디터 소스
+src/main/resources/
+├── templates/                       # layout(공통 head·세션 스크립트), memo/, bookmark/, calendar/, pipeline/, http/
+└── static/
+    ├── js/app-live-worker.js        # 공유 워커: 서버 연결 1개 + 열린 탭 목록
+    ├── js/app-session.js            # 상단 "탭 N/M" 배지·관리 패널
+    └── session-closed.html          # 종료된 탭이 보여주는 화면
+frontend/pipeline-editor/            # React 에디터 소스 (빌드 결과 → static/pipeline-editor/)
+src/test/java/...                    # 모듈별 테스트 (가짜 Gemini·가짜 API 서버 포함, 총 21개)
 ```
 
 ---
 
 ## 변경 이력
+
+### 🔑 모델 연결 검증 + 하단 패널 높이 조절 + HTTP 요청 모듈 (2026-10-03)
+
+- **Gemini 모델 연결 검증** (→ `prd/modules/ai-agent.md`): 파이프라인을 실행하지 않고 모델 부품 설정 화면에서
+  키·모델을 바꾸면 자동 검증(0.8초 뒤) + 🔑 연결 확인 버튼. 모델 목록 조회로 키 확인(토큰 사용 없음) → 모델 존재 확인(별칭 포함).
+  `POST /api/ai/gemini/verify`. 실제 Google로 가짜 키를 넣어 "API key not valid" 즉시 표시되는 것 확인
+- **하단 실행 결과 패널 높이 조절**: 위쪽 가장자리 드래그(최소 90px ~ 화면 75%), 더블클릭 초기화(200px),
+  localStorage `pipeline-bottom-panel-height`. 툴바(기본 위치)가 패널 높이에 맞춰 함께 이동
+- **HTTP 요청 모듈** (`HTTP_REQUEST`, 팔레트 "통합", → `prd/modules/http-request.md`): 메소드·URL·헤더(`이름: 값` 줄)·바디(없음/JSON/Text/Form)·
+  제한 시간·실패 응답 처리. 출력 `{status, ok, durationMs, headers, body}`. **🌐 HTTP 화면에서 이 요청 열기** 버튼.
+  요청 전송 로직을 `service/HttpSender`로 분리해 상단 HTTP 메뉴와 공유. HTTP 화면이 `headers` 쿼리도 받도록 확장
+- `NodeParam.showWhen`에 `!=`(다를 때 표시) 지원
+- 테스트 4개 추가 (총 21개 통과)
+
+### 🤖 핵심 모듈: AI 에이전트 + 부품(모델·메모리·지시문) (2026-10-02)
+
+→ 상세: `prd/modules/ai-agent.md`
+
+- **AI 에이전트 노드**: 아래쪽 **소켓 3개**(모델* · 메모리 · 지시문)에 부품 노드를 끼워 구성 (n8n AI Agent 방식)
+- **부품 노드**: ✨ Gemini 모델(무료 키, 모델 목록 불러오기, 키 비우면 `GEMINI_API_KEY`), 🧠 대화 메모리(대화 ID별 최근 N턴, 파일 저장, 보기·지우기),
+  📜 지시문(직접 입력 또는 파일 — 실행 때마다 다시 읽음, 여러 개 연결 시 순서대로 이어 붙임)
+- **엔진 확장 (공통)**: 부품 노드·소켓 개념 (`PipelineConnection.toHandle`, `NodeTypeInfo.sockets/provides`, `NodeContext.parts()`),
+  부품은 단독 실행 안 됨, 조건부 설정 칸 `NodeParam.showWhen`, 공용 선택 창 API `/api/dialog/folder|file`
+- **에디터**: 소켓·부품 카드 모양, 종류가 맞는 소켓에만 연결되는 규칙, 점선 부품 연결
+- **보안 수정**: Chrome이 저장된 로그인 정보를 API 키 칸에 자동으로 채워 넣는 문제 발견 → 에디터·HTTP 화면 입력칸 자동 채우기 차단
+- 데모 파이프라인 "AI 에이전트 데모" 추가 (모델 부품에 키 입력 필요). 테스트 3개 추가 (총 17개 통과, 가짜 Gemini 서버 사용)
+
+### 💾 두 번째 모듈: 파일 쓰기 (Windows 전용) (2026-10-02)
+
+→ 상세: `prd/modules/file-write.md`
+
+- **파일 쓰기 노드** (`FILE_WRITE`, 팔레트 "파일" 그룹): 앞 노드에서 받은 내용(기본 `${input}`)을 원하는 폴더에 원하는 확장자로 저장
+  - 폴더(`%USERPROFILE%`·`~`·**📁 찾아보기** 폴더 선택 창), 파일명(`${date}` `${time}` `${datetime}` `${timestamp}` 등),
+    확장자(txt·md·json·csv·log·html·xml·yaml·직접 입력), 같은 이름 처리(덮어쓰기·이어쓰기·새 이름·오류), 인코딩(UTF-8·BOM·MS949), json 정렬
+  - 안전장치: Windows 외 OS 차단, 시스템 폴더 차단, 파일명 금지 문자·예약어 자동 정리
+  - 출력: `{path, folder, fileName, extension, mode, encoding, bytes}` → `${file.path}`
+- 새 파라미터 타입 `folder` (입력 + 찾아보기), 폴더 선택 API `POST /api/file-write/pick-folder`
+- `NodeContext.resolve(text, extra)` 오버로드 — 모듈 전용 변수 우선
+- 설정 패널 라벨의 대문자 변환 제거 (`${date}`가 `${DATE}`로 보이던 문제)
+- 데모 파이프라인 "파일 쓰기 데모" 추가 (웹훅 `filedemo` → 바탕화면 `workflow-studio` 폴더 txt)
+- 테스트 5개 추가 (총 14개 통과)
+
+### 🛡️ 열린 앱 탭(세션) 관리 — 최대 개수 경고 + 선택 종료 (2026-10-02)
+
+- **상단 메뉴 오른쪽 "탭 N/M" 배지** (모든 화면): 이 브라우저에 열린 앱 탭 수 / 최대 개수. 초과 시 빨간색 깜빡임
+- **배지 클릭 → 관리 패널**: 열린 탭 목록(화면 이름 · 경로 · 마지막 사용 시각, 현재 탭 표시), 탭별 **종료** / **이 탭 종료**,
+  **다른 탭 모두 종료**, **최대 개수** 선택(1·2·3·4·5·6·8·10, 기본 3, localStorage `app-max-tabs`)
+- **최대 초과 시**: 새로 연 탭에 경고 패널이 자동으로 열림 + **"오래된 탭부터 N개 정리"**(현재 탭 제외, 가장 오래 안 쓴 순).
+  최대 개수를 낮춰 초과돼도 즉시 경고
+- **종료 동작**: 대상 탭이 스스로 닫기 시도 → 브라우저가 막으면(사용자/외부에서 연 탭은 보통 막힘)
+  `session-closed.html`("이 탭의 세션이 종료되었습니다")로 전환 — 이 페이지는 세션 스크립트가 없어 서버 연결·요청을 하지 않음
+- 편집 화면 탭 제목 = 파이프라인 이름 (패널에서 구분용)
+- **구현**: 공유 워커(`static/js/app-live-worker.js?v=2`)가 서버 상시 연결과 함께 탭 목록을 관리
+  (hello/update/active/alive/bye, 150초간 응답 없는 탭은 정리), 페이지 쪽은 `static/js/app-session.js`(배지·패널 UI).
+  `layout.html`의 인라인 연결 스크립트를 이 파일로 교체. 워커 프로토콜을 바꾸면 `?v=` 버전을 올릴 것
+- **한계**: 브라우저별로 따로 관리됨 (Edge 탭과 Chrome 탭은 서로 안 보임)
+- 브라우저에서 확인: 4번째 탭에서 경고 자동 표시 → 오래된 탭 정리 → 개별 종료 → 최대 1로 낮추면 경고 → 서버 재시작 시 새로고침 유지
+
+### 🐛 목록↔편집 화면을 오가면 화면이 멈추던 문제 수정 (2026-10-02)
+
+- **증상**: 파이프라인 목록 → 항목 클릭 → 목록 … 을 반복하면 화면이 멈춤 (서버는 정상 응답)
+- **원인**: 재시작 감지용 SSE 연결(`/api/app/live`)을 **탭/페이지마다** 하나씩 열어서,
+  브라우저의 "같은 주소 동시 연결 6개" 제한이 차 버림 → 이후 요청이 빈 연결을 기다리며 멈춤
+  (확인 당시 Edge → localhost:8080 연결이 정확히 6개)
+- **수정**: 연결을 **SharedWorker 하나**(`static/js/app-live-worker.js`)가 모든 탭 대신 유지 → 브라우저당 상시 연결 1개.
+  각 페이지는 워커에서 서버 실행 id만 받아 바뀌면 새로고침 (`layout.html`). 뒤로가기 캐시 복원 시 재연결
+- 서버: 30초마다 하트비트로 끊긴 연결 정리 (`AppLiveController`), 기동 로그 문구를 "브라우저 N개"로 변경
+- 검증: 목록↔편집 30회 이동 후에도 브라우저 연결 2~3개 유지, 요청 응답 4ms. 재시작 시 기존 탭 새로고침·새 탭 미생성 확인
 
 ### 🔁 재시작 시 새 탭 대신 기존 탭 재사용 (2026-10-02)
 
@@ -161,8 +250,7 @@ frontend/pipeline-editor/            # React 에디터 소스
 - 서버 기동 후 4초 기다렸다가 재연결된 탭이 있으면 **새 탭을 열지 않음**, 없을 때만 브라우저 열기
   (로그: "열려 있던 앱 탭 N개가 다시 연결됨 → 새 탭을 열지 않고 기존 탭을 새로고침합니다")
 - 에디터에 저장 안 한 변경이 있으면 새로고침 전에 브라우저 확인창이 뜸
-- **주의**: 브라우저는 같은 주소(localhost:8080)에 동시 연결을 6개까지만 허용 → 앱 탭을 6개 이상 열어 두면 화면이 멈출 수 있음.
-  탭은 1~2개만 유지할 것
+- ~~주의: 탭을 6개 이상 열면 멈출 수 있음~~ → 같은 날 SharedWorker 방식으로 바꿔 해결 (위 🐛 항목)
 
 ### 🧭 파이프라인 탭 위치 기억 + 목록 버튼 + 저장 안 됨 표시 (2026-10-02)
 
