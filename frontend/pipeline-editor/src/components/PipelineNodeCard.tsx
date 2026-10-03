@@ -1,6 +1,6 @@
 import { Handle, Position, type NodeProps } from '@xyflow/react'
 import type { Node } from '@xyflow/react'
-import { nodeDisplayName, ON, PART_HANDLE, WEBHOOK_TYPE, type PipelineNodeData } from '../types'
+import { nodeDisplayName, ON, PART_HANDLE, SCHEDULE_TYPE, WEBHOOK_TYPE, type PipelineNodeData } from '../types'
 import { useNodeActions } from '../NodeActionsContext'
 import { useRunStatus } from '../RunStatusContext'
 import { useSocketStatus } from '../SocketStatusContext'
@@ -28,7 +28,8 @@ export function PipelineNodeCard({ id, data, selected }: NodeProps<PipelineFlowN
   const isWebhook = nodeType.id === WEBHOOK_TYPE
   const testOn = isWebhook && config.testEnabled === ON
   const prodOn = isWebhook && config.prodEnabled === ON
-  const live = testOn || prodOn
+  const timerOn = nodeType.id === SCHEDULE_TYPE && config.active === ON
+  const live = testOn || prodOn || timerOn
 
   const classes = [
     'pnode',
@@ -89,6 +90,7 @@ export function PipelineNodeCard({ id, data, selected }: NodeProps<PipelineFlowN
           {testOn && <span>LIVE 테스트</span>}
           {testOn && prodOn && <span className="pnode-live-sep">·</span>}
           {prodOn && <span>운영</span>}
+          {timerOn && <span>타이머 ON</span>}
         </div>
       )}
 

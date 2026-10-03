@@ -213,7 +213,8 @@ public class FileWriteModule implements NodeModule {
         }
     }
 
-    static Map<String, Object> timeVars(LocalDateTime now) {
+    /** 날짜/시간 변수 ${date} ${time} ${datetime} ${timestamp} — 타이머 등 다른 모듈도 사용 */
+    public static Map<String, Object> timeVars(LocalDateTime now) {
         Map<String, Object> m = new LinkedHashMap<>();
         m.put("date", now.format(DateTimeFormatter.ofPattern("yyyy-MM-dd")));
         m.put("time", now.format(DateTimeFormatter.ofPattern("HH-mm-ss")));

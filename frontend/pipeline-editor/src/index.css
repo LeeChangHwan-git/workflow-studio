@@ -82,33 +82,103 @@ button { font-family: inherit; }
   font-size: 9px; color: #666; background: #3C3C3C;
   border-radius: 9px; padding: 1px 5px; flex-shrink: 0;
 }
+/* 팔레트 항목: 왼쪽 컬러 아이콘 타일 + 이름, 호버 시 잡기 손잡이(⋮⋮) */
 .palette-item {
-  display: flex; align-items: center; gap: 8px;
-  padding: 7px 9px 7px 18px; border-radius: 4px; cursor: grab;
+  --node-color: #606060;
+  position: relative;
+  display: flex; align-items: center; gap: 9px;
+  margin: 1px 0 1px 8px; padding: 5px 8px 5px 5px; border-radius: 6px; cursor: grab;
   font-size: 12px; color: #CCCCCC; font-weight: 500;
-  border: 1px solid transparent; transition: all .12s; user-select: none;
+  border: 1px solid transparent; user-select: none;
+  transition: background .12s, border-color .12s, color .12s, opacity .15s, transform .12s;
 }
-.palette-item:hover { background: #2D2D30; border-color: #3E3E42; color: #D4D4D4; }
-.palette-item:active { cursor: grabbing; }
-.palette-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+.palette-item:hover {
+  background: #2A2D2E; border-color: #3E3E42; color: #E8E8E8;
+}
+.palette-item:active { cursor: grabbing; transform: scale(.98); }
+.palette-icon {
+  width: 24px; height: 24px; border-radius: 6px; flex-shrink: 0;
+  display: grid; place-items: center; font-size: 13px; line-height: 1;
+  background: color-mix(in srgb, var(--node-color) 22%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--node-color) 45%, transparent);
+}
+.palette-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.palette-grip {
+  font-size: 10px; letter-spacing: -2px; color: #6A6A6A;
+  opacity: 0; transition: opacity .12s;
+}
+.palette-item:hover .palette-grip { opacity: 1; }
+/* 끌고 있는 원본: 자리만 남긴 점선 */
+.palette-item.dragging {
+  opacity: .45; background: transparent;
+  border: 1px dashed color-mix(in srgb, var(--node-color) 70%, #808080);
+}
+/* 드래그 중엔 전체 커서를 잡은 손으로, 텍스트 선택 방지 */
+body.palette-dragging, body.palette-dragging * { cursor: grabbing !important; user-select: none !important; }
 
 /* ── 캔버스 ── */
 .canvas-wrap { flex: 1; position: relative; }
-.canvas-wrap.drag-over::after {
+/* 드래그가 캔버스 위에 있을 때: 테두리 안쪽에 은은한 빛만 */
+.canvas-wrap::after {
   content: '';
   position: absolute; inset: 0;
-  outline: 2px dashed #0E639C; outline-offset: -2px;
-  background: rgba(38,79,120,0.15);
+  box-shadow: inset 0 0 0 1px rgba(79,193,255,0), inset 0 0 40px rgba(79,193,255,0);
   pointer-events: none; z-index: 5;
+  transition: box-shadow .2s;
+}
+.canvas-wrap.drag-over::after {
+  box-shadow: inset 0 0 0 1px rgba(79,193,255,.35), inset 0 0 48px rgba(79,193,255,.08);
 }
 .react-flow { background: #1E1E1E; }
 
-/* ── 팔레트 드래그 고스트 ── */
-.drag-ghost {
-  position: fixed; pointer-events: none; z-index: 9999;
-  background: #2D2D30; border: 1px solid #606060; border-radius: 4px;
-  padding: 5px 12px; font-size: 12px; font-weight: 600; color: #D4D4D4;
-  opacity: 0.9; white-space: nowrap; box-shadow: 0 4px 12px rgba(0,0,0,.6);
+/* ── 팔레트 드래그 미리보기 (DragGhost) ── */
+.drag-ghost, .drag-slot {
+  position: fixed; left: 0; top: 0; pointer-events: none;
+  transform-origin: 0 0; will-change: translate, scale;
+}
+.drag-ghost { z-index: 9999; transition: scale .16s ease-out, rotate .16s ease-out, opacity .16s; }
+.drag-ghost .pnode {
+  border-color: #6A6A6A;
+  box-shadow: 0 18px 40px -8px rgba(0,0,0,.7), 0 0 0 1px rgba(255,255,255,.04);
+}
+/* 캔버스 밖: 살짝 기울어 '들고 있는' 느낌, 반투명 */
+.drag-ghost.outside { rotate: -2.5deg; opacity: .8; }
+.drag-ghost.over { rotate: 0deg; opacity: .95; }
+.drag-ghost.over .pnode { border-color: #4FC1FF; }
+
+/* 놓일 자리: 격자에 맞춰 부드럽게 이동하는 점선 슬롯 */
+.drag-slot { z-index: 9998; transition: translate .09s ease-out; }
+.drag-slot .pnode {
+  background: rgba(79,193,255,.06);
+  border: 1.5px dashed rgba(79,193,255,.6);
+  box-shadow: none;
+}
+.drag-slot .pnode > * { visibility: hidden; }
+
+/* 화면 아래 안내 */
+.drag-hint {
+  position: fixed; left: 50%; bottom: 28px; translate: -50% 0;
+  z-index: 9999; pointer-events: none;
+  display: flex; align-items: center; gap: 6px;
+  padding: 6px 12px; border-radius: 999px;
+  background: rgba(37,37,38,.92); border: 1px solid #3E3E42;
+  box-shadow: 0 6px 20px rgba(0,0,0,.45);
+  font-size: 11.5px; color: #BBBBBB;
+  backdrop-filter: blur(6px);
+  animation: hint-in .18s ease-out;
+}
+.drag-hint.over { color: #4FC1FF; border-color: rgba(79,193,255,.4); }
+.drag-hint kbd {
+  margin-left: 6px; padding: 1px 5px; border-radius: 4px;
+  background: #3C3C3C; border: 1px solid #505050; border-bottom-width: 2px;
+  font: 600 10px/1.3 inherit; color: #CCCCCC;
+}
+@keyframes hint-in { from { opacity: 0; translate: -50% 6px; } }
+
+/* 새로 놓은 노드: 살짝 튀어오르며 등장 */
+.react-flow__node.node-enter .pnode { animation: node-pop .32s cubic-bezier(.2,1.4,.4,1); }
+@keyframes node-pop {
+  from { transform: scale(.85); opacity: .4; box-shadow: 0 0 0 3px rgba(79,193,255,.6); }
 }
 
 /* ── 노드 카드 (n8n 스타일) ── */
@@ -259,6 +329,25 @@ button { font-family: inherit; }
 .mem-row { display: flex; justify-content: space-between; font-size: 12px; padding: 3px 0; }
 .mem-key { font-family: Consolas, monospace; color: #9CDCFE; overflow: hidden; text-overflow: ellipsis; }
 .mem-count { color: #858585; flex-shrink: 0; margin-left: 8px; }
+
+/* 타이머 상태 */
+.sched-box { background: #2A2316; border: 1px solid #5C4416; border-radius: 4px; padding: 7px 9px; margin-bottom: 6px; }
+.sched-desc { font-size: 12px; font-weight: 700; color: #FDBA74; }
+.sched-next { font-size: 11px; color: #D4D4D4; margin-top: 3px; font-family: Consolas, monospace; }
+.sched-state { font-size: 12px; margin: 6px 0; }
+.sched-state.on { color: #3FB950; font-weight: 600; }
+.sched-state.off { color: #9E9E9E; }
+.sched-run { margin-bottom: 4px; }
+.sched-hist { margin-top: 8px; border-top: 1px solid #3C3C3C; padding-top: 6px; }
+.sched-hist-title { font-size: 10px; color: #6A6A6A; margin-bottom: 4px; }
+.sched-hist-row { display: flex; align-items: center; gap: 6px; font-size: 11px; padding: 2px 0; }
+.sched-hist-time { color: #9CDCFE; font-family: Consolas, monospace; flex-shrink: 0; }
+.sched-hist-trigger { color: #858585; flex-shrink: 0; }
+.sched-hist-result { color: #3FB950; flex-shrink: 0; }
+.sched-hist-row.skipped .sched-hist-result { color: #E2C08D; }
+.sched-hist-row.error .sched-hist-result { color: #F48771; }
+.sched-hist-open { font-size: 10px; padding: 0 5px; background: #3C3C3C; color: #D4D4D4; border: 1px solid #555; border-radius: 3px; cursor: pointer; }
+.sched-hist-msg { color: #858585; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* 모델 연결 검증 결과 */
 .verify-box {

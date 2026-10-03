@@ -1,9 +1,11 @@
 @echo off
 chcp 65001 >nul
-cd /d %~dp0
+setlocal
+call "%~dp0_env.bat" || (pause & exit /b 1)
 title Workflow Studio 서버
-echo Workflow Studio 서버 시작 중... (http://localhost:8080)
-echo 종료하려면 이 창을 닫거나 Ctrl+C 를 누르세요.
+cd /d "%WORKDIR%"
+echo Workflow Studio 서버 시작 중... (%APP_URL%)
+echo 종료하려면 이 창을 닫거나 Ctrl+C 를 누르세요.  (창 없이 켜 두려면 "백그라운드실행.bat")
 echo.
-java -Djava.awt.headless=false -jar workflow-studio-1.0.0.jar
+"%JAVA%" %JOPTS% -jar "%JAR%"
 pause

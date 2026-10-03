@@ -26,6 +26,7 @@ const MODE_LABEL: Record<RunMode, string | null> = {
   manual: null,
   test: '🪝 웹훅 테스트 수신',
   prod: '🪝 웹훅 운영 수신',
+  schedule: '⏰ 타이머 실행',
 }
 
 export function BottomPanel({

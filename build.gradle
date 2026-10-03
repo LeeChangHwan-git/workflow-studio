@@ -70,7 +70,8 @@ tasks.register('makeDist', Zip) {
     destinationDirectory = file('dist')
 
     from(bootJar.archiveFile) { into '.' }
-    from('dist/application.properties') { into '.' }
-    from('dist/실행.bat') { into '.' }
-    from('dist/저장경로변경.bat') { into '.' }
+    from('dist') {
+        include 'application.properties', '*.bat', 'autostart.ps1'
+        into '.'
+    }
 }

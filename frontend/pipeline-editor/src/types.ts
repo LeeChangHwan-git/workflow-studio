@@ -3,7 +3,7 @@ export interface NodeParam {
   label: string
   type:
     | 'text' | 'textarea' | 'select' | 'number' | 'image' | 'password' | 'folder' | 'file'
-    | 'webhookUrls' | 'webhookTemplate' | 'geminiModel' | 'memoryInfo' | 'httpOpen'
+    | 'webhookUrls' | 'webhookTemplate' | 'geminiModel' | 'memoryInfo' | 'httpOpen' | 'scheduleInfo'
   defaultValue: unknown
   options: string[] | null
   showWhen?: string | null  // "다른파라미터=값" 일 때만 표시
@@ -77,7 +77,7 @@ export interface RunLog {
   outputVar?: string
 }
 
-export type RunMode = 'manual' | 'test' | 'prod'
+export type RunMode = 'manual' | 'test' | 'prod' | 'schedule'
 
 export interface ExecutionStateDto {
   executionId: string
@@ -117,7 +117,25 @@ export function nodeDisplayName(nodeType: NodeTypeInfo, config: Record<string, u
   return name || nodeType.label
 }
 
+/** POST /api/schedule/{pipelineId}/{nodeId}/status */
+export interface ScheduleStatus {
+  registered: boolean
+  error: string | null
+  description?: string
+  next?: string[]
+  history: {
+    at: string
+    result: 'fired' | 'skipped' | 'error'
+    trigger: 'timer' | 'now'
+    executionId: string | null
+    message: string | null
+    executionStatus: 'running' | 'done' | 'error' | null
+  }[]
+  preview: { description?: string; next?: string[]; error?: string }
+}
+
 export const WEBHOOK_TYPE = 'WEBHOOK'
+export const SCHEDULE_TYPE = 'SCHEDULE'
 export const ON = '켜짐'
 export const OFF = '꺼짐'
 

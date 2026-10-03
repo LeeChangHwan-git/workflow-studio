@@ -66,6 +66,7 @@
 │   ├── {uuid}.json      # 파이프라인 정의 (노드 + 연결 + 노드 설정 — AI 모델 API 키 포함 시 평문)
 │   └── images/          # image 타입 파라미터로 업로드/캡처한 이미지
 ├── webhooks/            # 웹훅 노드별 수신 기록 ({nodeId}.json, 최근 200건)
+├── schedules/           # 타이머 실행 기록 ({파이프라인id}_{노드id}.json, 최근 100건)
 └── agent-memory/        # AI 대화 메모리 ({메모리 노드 id}/{대화 ID 해시}.json)
 ```
 
@@ -78,7 +79,7 @@
 
 ### 파이프라인 자동화 (핵심)
 노드 모듈을 처음부터 하나씩 설계 중 → `prd/modules/README.md`
-- 현재 모듈: 🪝 웹훅 (트리거), 🤖 AI 에이전트 (+ 부품: ✨ Gemini 모델 · 🧠 대화 메모리 · 📜 지시문), 🌐 HTTP 요청, 💾 파일 쓰기 (Windows 전용)
+- 현재 모듈: 🪝 웹훅 · ⏰ 타이머 (트리거), 🤖 AI 에이전트 (+ 부품: ✨ Gemini 모델 · 🧠 대화 메모리 · 📜 지시문), 🌐 HTTP 요청, 💾 파일 쓰기 (Windows 전용)
 
 ### HTTP (간이 HTTP 클라이언트)
 - `/http` — 메소드·URL·헤더·바디로 요청을 보내고 응답(상태·시간·크기·바디·헤더)을 확인. 보낸 요청 기록(브라우저 저장)
@@ -108,17 +109,38 @@ java -jar build/libs/workflow-studio-1.0.0.jar # jar 실행
 ./gradlew makeDist                             # dist/workflow-studio.zip 생성
 ```
 
-- JDK 21 필요. `JAVA_HOME` 미설정 PC에선 직접 지정 (예: `~/.jdks/ms-21.0.7`)
+- JDK 21 필요. `JAVA_HOME` 미설정 PC에선 직접 지정 (예: `~/.jdks/ms-21.0.7`) — bat 스크립트는 자동으로 찾음
 - PowerShell에서 java 실행 시 `"-Djava.awt.headless=false"`처럼 **따옴표 필수** (안 그러면 인자가 쪼개져 실행 실패). bat 파일(cmd)은 문제없음
 - 8080 포트가 사용 중이면 기동 실패 → `server.port` 변경
 
-### 배포 ZIP 구성
+### 항상 켜 두기 (타이머용) — `dist/` 스크립트
+
+| 스크립트 | 하는 일 |
+|----------|---------|
+| `백그라운드실행.bat` | **콘솔 창 없이**(`javaw`) 실행. 이미 실행 중이면 브라우저만 열고 끝 |
+| `서버종료.bat` | 백그라운드 서버 종료 (`POST /api/app/shutdown` + 보호 헤더) |
+| `상태확인.bat` | 실행 여부·PID·가동 시간·메모리·등록된 타이머 수 (`GET /api/app/info`) |
+| `자동시작등록.bat` / `자동시작해제.bat` | 윈도우 로그인 시 자동 실행 (시작프로그램 폴더 바로가기, 브라우저는 열지 않음, 관리자 권한 불필요) |
+| `실행.bat` | 콘솔 창으로 실행 (창 닫으면 종료) |
+| `_env.bat`, `autostart.ps1` | 공통 설정 / 자동 시작 등록 도우미 |
+
+- 스크립트는 **배포 폴더(jar가 같은 폴더)** 와 **저장소(`dist\..\build\libs\`)** 둘 다 동작. 저장소에서는 데이터·로그가 저장소 루트(`data/`, `logs/`)에
+- Java 찾는 순서: `JAVA_HOME` → `%USERPROFILE%\.jdks\*21*` → PATH
+- 항상 켜 두기용 JVM 옵션: `-Xms64m -Xmx384m -XX:+UseSerialGC -XX:TieredStopAtLevel=1` (힙 상한 384MB, 가벼운 GC/JIT)
+  — 실측: 기동 직후 힙 17~19MB, 프로세스 메모리 약 135MB, 스레드 28개
+- **중복 실행 방지**: 기동 전에 같은 포트의 `/api/app/info`를 확인해 이미 떠 있으면 "이미 실행 중" 출력 후 종료
+- **로그**: `logs/workflow-studio.log` — 10MB마다 회전, 7일 보관, 전체 100MB 이내 (`.gitignore` 대상)
+- 템플릿 캐시 사용 (`spring.thymeleaf.cache=true`), Thymeleaf 문법 경고 로그 억제
+- Claude Code 세션에서 띄운 서버는 2시간 제한이 있으므로, 계속 켜 둘 때는 `백그라운드실행.bat` 사용
+
+### 배포 ZIP 구성 (`./gradlew makeDist`)
 
 ```
 workflow-studio.zip
 ├── workflow-studio-1.0.0.jar
-├── application.properties   # 외부 설정 (포트, 저장 경로 등)
-├── 실행.bat                  # 더블클릭 → 서버 기동 + 브라우저 오픈 (창 닫으면 종료)
+├── application.properties   # 외부 설정 (포트, 저장 경로, 로그 등)
+├── 실행.bat · 백그라운드실행.bat · 서버종료.bat · 상태확인.bat
+├── 자동시작등록.bat · 자동시작해제.bat · autostart.ps1 · _env.bat
 └── 저장경로변경.bat
 ```
 
@@ -137,6 +159,7 @@ src/main/java/com/app/workflowstudio/
 │   ├── PipelineApiController.java   # 파이프라인 REST API
 │   ├── HttpClientController.java    # /http 화면 + 요청 대행 API
 │   ├── AppLiveController.java       # SSE 상시 연결 (재시작 감지·새 탭 방지)
+│   ├── AppInfoController.java       # 서버 상태(/api/app/info) · 종료(/api/app/shutdown, 보호 헤더)
 │   └── FileDialogController.java    # 폴더/파일 선택 창 (공용)
 ├── model/                           # Memo, Bookmark, CalendarEvent, Pipeline, PipelineNode,
 │                                    # PipelineConnection(toHandle = 소켓), RunLog
@@ -148,6 +171,7 @@ src/main/java/com/app/workflowstudio/
 │   ├── NodeTypeRegistry.java        #   @Component 모듈 자동 수집
 │   └── modules/                     #   모듈 구현 (모듈당 패키지 하나)
 │       ├── webhook/                 #     WEBHOOK (Module, Controller, HistoryStore)
+│       ├── schedule/                #     SCHEDULE 타이머 (Module, Spec, Service, HistoryStore, Controller)
 │       ├── ai/                      #     AI_AGENT + 부품(GEMINI_MODEL, CHAT_MEMORY, AI_INSTRUCTION),
 │       │                            #     GeminiClient, ChatMemoryStore, AiController
 │       ├── http/                    #     HTTP_REQUEST
@@ -171,6 +195,37 @@ src/test/java/...                    # 모듈별 테스트 (가짜 Gemini·가�
 ---
 
 ## 변경 이력
+
+### 🖱️ 팔레트 드래그 앤 드롭 개선 (2026-10-03)
+
+배경: 커서 오른쪽 아래에 노드 이름 글자만 따라다녀 부자연스러움 → 요즘 캔버스 도구(n8n·Figma·Linear) 방식으로
+
+- **미리보기 = 실제 노드 카드 모양** (`components/DragGhost.tsx`): 컬러 헤더·아이콘·이름·소켓까지 같은 모양. 커서가 카드의 위쪽 가운데를 잡은 위치로 따라다님
+  - 캔버스 밖: 살짝 기울고 반투명 (들고 있는 느낌), 0.9배
+  - 캔버스 위: 똑바로 서고 파란 테두리, **현재 확대 배율과 같은 크기**
+- **놓일 자리 슬롯**: 캔버스 위에서 실제로 놓일 위치를 점선 카드로 표시 (배경 점 격자 24px에 맞춰 부드럽게 이동) → 놓으면 정확히 그 자리에 생성
+- 화면 아래 안내 알약: "캔버스로 끌어다 놓으세요 / 놓으면 이 자리에 추가 · Esc 취소"
+- 4px 이상 움직여야 드래그 시작 (클릭과 구분), **Esc 취소**, 드래그 중 커서 전체 grabbing·텍스트 선택 방지
+- 캔버스 강조: 굵은 점선 테두리 → 안쪽 은은한 빛
+- 팔레트 항목: 컬러 아이콘 타일 + 이름, 호버 시 잡기 손잡이(⋮⋮), 끌고 있는 원본은 점선 자리 표시
+- **더블클릭 → 보이는 캔버스 가운데에 추가** (같은 자리에 노드가 있으면 비켜서)
+- 새 노드는 살짝 튀어오르며 등장하고 자동 선택 → 오른쪽 설정 패널이 바로 열림
+- 변경 파일: `usePaletteDrag.ts`(재작성), `DragGhost.tsx`(신규), `Palette.tsx`, `App.tsx`, `index.css`
+
+### ⏰ 타이머 모듈 + 항상 켜 두기 (2026-10-03)
+
+→ 상세: `prd/modules/schedule.md`, 위 "항상 켜 두기"
+
+- **타이머 노드** (`SCHEDULE`, 팔레트 "트리거"): 일정 간격(최소 1분) · 매일/평일/주말/요일 지정 시각 · cron · 한 번만.
+  켜고 저장하면 즉시 등록(저장·삭제 이벤트 + 1분마다 재확인), 이전 실행 중이면 건너뜀, 놓친 회차는 실행 안 함.
+  설정 화면에 다음 실행 3개·등록 상태·▶ 지금 한 번 실행·최근 실행 기록(파일, 100건). `RunMode.SCHEDULE` 추가
+- **항상 켜 두기**: 백그라운드(창 없는 javaw) 실행·종료·상태확인·자동 시작 등록/해제 스크립트, 메모리 상한 384MB,
+  중복 실행 방지, 파일 로그 회전(10MB×7일, 100MB 상한), 템플릿 캐시. 서버 상태/종료 API (`AppInfoController`,
+  종료는 사용자 정의 헤더 필수 → 다른 웹사이트가 몰래 끌 수 없음)
+- 실측: 백그라운드 실행 시 힙 17~19MB · 프로세스 약 135MB · 스레드 28개, 1분 타이머가 스스로 정시 실행, 두 번째 실행은 "이미 실행 중"으로 거부, 종료 스크립트로 정상 종료
+- `FileWriteModule.timeVars` 공개 (타이머도 `${date}` 등 사용), `build.gradle` makeDist에 새 스크립트 포함
+- 테스트 6개 추가 (총 27개 통과)
+- **자동 시작 등록은 아직 실행하지 않음** (시스템 설정 변경이라 사용자 확인 후)
 
 ### 🔑 모델 연결 검증 + 하단 패널 높이 조절 + HTTP 요청 모듈 (2026-10-03)
 

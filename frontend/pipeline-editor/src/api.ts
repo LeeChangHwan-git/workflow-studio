@@ -4,6 +4,7 @@ import type {
   NodeTypeInfo,
   PipelineDto,
   RunMode,
+  ScheduleStatus,
   WebhookHistoryEntry,
   WebhookPreview,
 } from './types'
@@ -95,6 +96,18 @@ export const api = {
       message: string
       models?: string[]
     }>),
+
+  /** 타이머 상태 (config = 화면의 현재 값으로 미리보기 계산) */
+  scheduleStatus: (pipelineId: string | null, nodeId: string, config: Record<string, unknown>) =>
+    fetch(`/api/schedule/${pipelineId ?? 'new'}/${nodeId}/status`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(config),
+    }).then((r) => json<ScheduleStatus>(r)),
+
+  scheduleRunNow: (pipelineId: string, nodeId: string) =>
+    fetch(`/api/schedule/${pipelineId}/${nodeId}/run-now`, { method: 'POST' })
+      .then((r) => json<{ executionId?: string; skipped?: boolean; message?: string }>(r)),
 
   memorySessions: (nodeId: string) =>
     fetch(`/api/ai/memory/${nodeId}`).then((r) => json<{ sessionKey: string; messages: number }[]>(r)),

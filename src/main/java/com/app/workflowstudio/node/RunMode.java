@@ -7,5 +7,7 @@ public enum RunMode {
     /** 웹훅 테스트 URL 수신 (/webhook-test/**) — 열려 있는 에디터에 실시간 표시 */
     TEST,
     /** 웹훅 운영 URL 수신 (/webhook/**) — 백그라운드 실행 */
-    PROD
+    PROD,
+    /** 타이머(스케줄) 트리거 — 백그라운드 실행 */
+    SCHEDULE
 }

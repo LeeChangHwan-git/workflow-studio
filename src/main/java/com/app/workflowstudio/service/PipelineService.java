@@ -3,6 +3,7 @@ package com.app.workflowstudio.service;
 import com.app.workflowstudio.model.Pipeline;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
 import java.io.*;
@@ -15,14 +16,19 @@ import java.util.zip.*;
 @Service
 public class PipelineService {
 
+    /** 파이프라인이 저장·삭제될 때 발행 (타이머 재등록 등에 사용) */
+    public record PipelinesChangedEvent(String pipelineId) {}
+
     private final Path pipelinesDir;
     private final Path imagesDir;
     private final ObjectMapper objectMapper;
+    private final ApplicationEventPublisher events;
 
-    public PipelineService(Path storageDirectory, ObjectMapper objectMapper) {
+    public PipelineService(Path storageDirectory, ObjectMapper objectMapper, ApplicationEventPublisher events) {
         this.pipelinesDir = storageDirectory.resolve("pipelines");
         this.imagesDir = pipelinesDir.resolve("images");
         this.objectMapper = objectMapper;
+        this.events = events;
     }
 
     public List<Pipeline> findAll() {
@@ -66,7 +72,9 @@ public class PipelineService {
     public boolean delete(String id) {
         Path file = pipelinesDir.resolve(id + ".json");
         try {
-            return Files.deleteIfExists(file);
+            boolean deleted = Files.deleteIfExists(file);
+            if (deleted) events.publishEvent(new PipelinesChangedEvent(id));
+            return deleted;
         } catch (IOException e) {
             return false;
         }
@@ -161,6 +169,7 @@ public class PipelineService {
     private void writePipeline(Pipeline pipeline) {
         try {
             objectMapper.writeValue(pipelinesDir.resolve(pipeline.getId() + ".json").toFile(), pipeline);
+            events.publishEvent(new PipelinesChangedEvent(pipeline.getId()));
         } catch (IOException e) {
             throw new RuntimeException("파이프라인 저장 실패", e);
         }

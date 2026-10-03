@@ -5,9 +5,14 @@ import { api } from '../api'
 import { OutputRenderer } from './OutputRenderer'
 import { WebhookHistory } from './WebhookHistory'
 import { WebhookTemplateField } from './WebhookTemplateField'
+import { ScheduleInfoField } from './ScheduleInfoField'
 
 interface Props {
   nodeId: string | null
+  /** 저장된 파이프라인 id (새 파이프라인이면 null) */
+  pipelineId: string | null
+  /** 저장 안 된 변경 있음 */
+  dirty: boolean
   nodeType: NodeTypeInfo | null
   config: Record<string, unknown>
   onChange: (key: string, value: unknown) => void
@@ -32,7 +37,7 @@ function loadWidth(): number {
   }
 }
 
-export function ConfigPanel({ nodeId, nodeType, config, onChange, runLog, onShowExecution }: Props) {
+export function ConfigPanel({ nodeId, pipelineId, dirty, nodeType, config, onChange, runLog, onShowExecution }: Props) {
   const [tab, setTab] = useState<PanelTab>('config')
   const [width, setWidth] = useState<number>(loadWidth)
   const prevNodeId = useRef<string | null>(null)
@@ -167,6 +172,16 @@ export function ConfigPanel({ nodeId, nodeType, config, onChange, runLog, onShow
               />
             ) : param.type === 'memoryInfo' ? (
               <MemoryInfoField key={param.name} label={param.label} nodeId={nodeId!} />
+            ) : param.type === 'scheduleInfo' ? (
+              <ScheduleInfoField
+                key={param.name}
+                label={param.label}
+                pipelineId={pipelineId}
+                nodeId={nodeId!}
+                config={config}
+                dirty={dirty}
+                onShowExecution={onShowExecution}
+              />
             ) : param.type === 'httpOpen' ? (
               <HttpOpenField key={param.name} label={param.label} config={config} />
             ) : param.type === 'webhookUrls' ? (

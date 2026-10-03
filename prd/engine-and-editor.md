@@ -37,7 +37,7 @@ public class DelayModule implements NodeModule {
 - **트리거 노드**는 `NodeTypeInfo`의 마지막 인자 `trigger=true`로 선언 → 캔버스에서 입력 핸들이 없고(왼쪽 둥근 카드),
   외부 이벤트로 시작될 땐 `runner.runTriggered(pipeline, nodeId, mode, data)` 호출. 모듈은 `ctx.triggerData()`로 데이터를 받음
 - `category`가 `null`이면 팔레트에 노출되지 않음 (구버전 호환용 숨김 노드 등에 사용)
-- 파라미터 `type`: `text` | `textarea` | `select`(options 필수) | `number` | `password` | `image` | `webhookUrls`(표시 전용) | `webhookTemplate`(템플릿 + 키 칩 + 미리보기) | `folder` · `file`(경로 입력 + 📁 찾아보기 선택 창) | `geminiModel`(입력 + 자동 연결 검증) | `memoryInfo`(표시 전용) | `httpOpen`(HTTP 화면 열기 버튼)
+- 파라미터 `type`: `text` | `textarea` | `select`(options 필수) | `number` | `password` | `image` | `webhookUrls`(표시 전용) | `webhookTemplate`(템플릿 + 키 칩 + 미리보기) | `folder` · `file`(경로 입력 + 📁 찾아보기 선택 창) | `geminiModel`(입력 + 자동 연결 검증) | `memoryInfo`(표시 전용) | `httpOpen`(HTTP 화면 열기 버튼) | `scheduleInfo`(타이머 상태)
 - 조건부 표시: `new NodeParam(..., showWhen)` — `"source=파일"`(같을 때) / `"bodyType!=없음"`(다를 때)
 - 출력을 다음 노드로 넘기려면 `outputVar` 파라미터를 두는 것을 관례로 함
   (엔진이 `outputVar` 값 또는 `{nodeId}.output` 키로 출력을 저장)
@@ -62,7 +62,7 @@ public class DelayModule implements NodeModule {
 | `resolve(text, extra)` | 모듈 전용 변수 맵(`extra`)을 가장 먼저 찾고 치환 (예: 파일 쓰기의 `${date}`) |
 | `input()` | 화살표로 연결된 직전 노드(들)의 출력 (여러 개면 줄바꿈으로 합침, 없으면 null) |
 | `vars()` | 이전 노드 출력 변수 맵 (모듈이 직접 값을 추가해도 됨) |
-| `mode()` | 실행 경로: `MANUAL`(▶ 버튼) / `TEST`(웹훅 테스트 URL) / `PROD`(웹훅 운영 URL) |
+| `mode()` | 실행 경로: `MANUAL`(▶ 버튼) / `TEST`(웹훅 테스트 URL) / `PROD`(웹훅 운영 URL) / `SCHEDULE`(타이머) |
 | `triggerData()` | 이 노드가 이번 실행을 시작시킨 트리거라면 외부 이벤트 데이터, 아니면 null |
 | `node()` | 현재 노드 (id, type, config) |
 | `objectMapper()` | JSON 직렬화용 |
@@ -111,7 +111,7 @@ ${n1.output}             → outputVar가 없는 노드의 출력
 
 | 영역 | 컴포넌트 | 내용 |
 |------|----------|------|
-| 왼쪽 | `Palette.tsx` | 맨 위 "← 파이프라인 목록", `/api/node-types` 기반 노드 목록, 검색, 그룹 접기. 마우스 드래그로 캔버스에 추가 (`usePaletteDrag.ts`) |
+| 왼쪽 | `Palette.tsx` | 맨 위 "← 파이프라인 목록", `/api/node-types` 기반 노드 목록, 검색, 그룹 접기. 마우스 드래그로 캔버스에 추가 (`usePaletteDrag.ts` + `DragGhost.tsx`: 실제 카드 모양 미리보기, 캔버스 위에선 격자 24px에 맞춘 점선 '놓일 자리' 슬롯, Esc 취소, 4px 이상 움직여야 시작). 더블클릭하면 화면 가운데에 추가. 새 노드는 자동 선택 |
 | 가운데 | `PipelineCanvas.tsx`, `PipelineNodeCard.tsx` | React Flow 캔버스. 실행 상태에 따라 노드 테두리(파랑 pulse / 초록 / 빨강) |
 | 오른쪽 | `ConfigPanel.tsx` | **설정** 탭: 파라미터 타입별 입력 필드 (image는 업로드 + 📷 화면 캡처, webhookUrls는 테스트/운영 URL + 복사). **결과** 탭: 마지막 실행 출력. 웹훅 노드는 **수신 기록** 탭 추가. 왼쪽 가장자리 드래그로 너비 조절(더블클릭 초기화, localStorage 저장) |
 | 아래 | `BottomPanel.tsx` | 실행 로그 (접기/펼치기, 성공/실패 수), 행 클릭 시 노드 선택. 위쪽 가장자리 드래그로 높이 조절(더블클릭 초기화, localStorage 저장, 툴바가 함께 이동). 웹훅으로 시작된 실행은 제목에 "🪝 웹훅 테스트 수신" 표시 |
@@ -145,6 +145,9 @@ cd frontend/pipeline-editor && npm install   # 최초 1회
 | `*` | `/webhook-test/{path}`, `/webhook/{path}` | 웹훅 수신 → 트리거 실행 (`prd/modules/webhook.md`) |
 | `GET` / `DELETE` | `/api/webhooks/{nodeId}/history` | 웹훅 수신 기록 조회(최신순) / 삭제 |
 | `POST` | `/api/webhooks/{nodeId}/preview` | 전달 내용 구성 미리보기 `{template}` → `{hasSample, sampleAt, keys, result}` |
+| `GET` | `/api/app/info` | 서버 상태 `{app, instance, pid, startedAt, uptimeMinutes, heapUsedMB, heapMaxMB, threads, activeTimers}` |
+| `POST` | `/api/app/shutdown` | 서버 종료 — 헤더 `X-Workflow-Studio-Shutdown: yes` 필수 (없으면 403) |
+| `POST` | `/api/schedule/{pipelineId}/{nodeId}/status` · `/run-now` | 타이머 상태(미리보기·등록·기록) / 지금 한 번 실행 |
 | `GET` | `/api/app/live` | SSE 상시 연결 — 서버 실행 id 전송 (재시작 감지 → 탭 자동 새로고침, 기동 시 새 탭 열지 않음 판단). **브라우저당 SharedWorker 1개만 연결** (탭마다 열면 동시 연결 6개 제한에 걸려 멈춤). 워커는 열린 탭 목록도 관리 → 상단 "탭 N/M" 배지·종료 패널 (`static/js/app-session.js`) |
 | `POST` | `/api/dialog/folder` · `/api/dialog/file` | 서버 PC에 폴더/파일 선택 창 표시 `{initial}` → `{path}` / `{cancelled}` / `{error}` |
 | `POST` | `/api/ai/gemini/models` | `{apiKey}` → `{models}` / `{error}` (generateContent 지원 모델만) |

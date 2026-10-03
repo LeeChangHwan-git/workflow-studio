@@ -3,7 +3,11 @@ import type { NodeTypeInfo } from '../types'
 
 interface Props {
   nodeTypes: NodeTypeInfo[]
+  /** 지금 끌고 있는 노드 타입 (팔레트 항목 강조용) */
+  draggingTypeId: string | null
   onStartDrag: (typeId: string, e: React.MouseEvent) => void
+  /** 더블클릭 → 캔버스 가운데에 추가 */
+  onAddAtCenter: (typeId: string) => void
   /** 파이프라인 목록으로 이동 */
   onBack: () => void
 }
@@ -11,7 +15,7 @@ interface Props {
 // 그룹 표시 순서 (여기 없는 그룹은 모듈 등록 순서대로 뒤에 붙음)
 const CATEGORY_ORDER: string[] = ['트리거', 'AI', 'AI 부품', '통합', '파일']
 
-export function Palette({ nodeTypes, onStartDrag, onBack }: Props) {
+export function Palette({ nodeTypes, draggingTypeId, onStartDrag, onAddAtCenter, onBack }: Props) {
   const [query, setQuery] = useState('')
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({})
 
@@ -73,12 +77,15 @@ export function Palette({ nodeTypes, onStartDrag, onBack }: Props) {
               items.map((nt) => (
                 <div
                   key={nt.id}
-                  className="palette-item"
+                  className={`palette-item${draggingTypeId === nt.id ? ' dragging' : ''}`}
+                  style={{ '--node-color': nt.color } as React.CSSProperties}
+                  title="캔버스로 끌어다 놓기 · 더블클릭하면 가운데에 추가"
                   onMouseDown={(e) => onStartDrag(nt.id, e)}
+                  onDoubleClick={() => onAddAtCenter(nt.id)}
                 >
-                  <span className="palette-dot" style={{ background: nt.color }} />
-                  <span>{nt.icon}</span>
-                  <span>{nt.label}</span>
+                  <span className="palette-icon">{nt.icon}</span>
+                  <span className="palette-label">{nt.label}</span>
+                  <span className="palette-grip" aria-hidden>⋮⋮</span>
                 </div>
               ))}
           </div>

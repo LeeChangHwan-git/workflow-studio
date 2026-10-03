@@ -20,6 +20,7 @@ import { BottomPanel, BOTTOM_HEADER_HEIGHT, BOTTOM_MIN_HEIGHT } from './componen
 const BOTTOM_HEIGHT_KEY = 'pipeline-bottom-panel-height'
 const BOTTOM_DEFAULT_HEIGHT = 200
 import { usePaletteDrag } from './usePaletteDrag'
+import { DragGhost } from './components/DragGhost'
 
 /** 연결선 생성 — 소켓(부품) 연결은 점선·화살표 없음, 일반 실행 흐름은 실선 화살표 */
 function makeEdge(source: string, target: string, targetHandle?: string | null): Edge {
@@ -237,17 +238,27 @@ export default function App({ initialPipelineId }: Props) {
         id: crypto.randomUUID(),
         type: 'pipelineNode',
         position,
+        className: 'node-enter',
+        selected: true,
         data: { nodeType, config: defaultConfig(nodeType) },
       }
-      setNodes((nds) => [...nds, newNode])
+      // 새 노드만 선택해 바로 설정 패널을 열고, 등장 애니메이션이 끝나면 표시용 클래스 제거
+      setNodes((nds) => [...nds.map((n) => (n.selected ? { ...n, selected: false } : n)), newNode])
+      setSelectedNodeId(newNode.id)
+      window.setTimeout(() => {
+        setNodes((nds) => nds.map((n) => (n.id === newNode.id ? { ...n, className: undefined } : n)))
+      }, 400)
     },
     [nodeTypes, setNodes],
   )
 
-  const { startDrag, dragging, ghostPos, overCanvas, nodeTypeInfo } = usePaletteDrag(
+  const occupiedPositions = useCallback(() => nodes.map((n) => n.position), [nodes])
+
+  const { startDrag, addAtCenter, dragTypeId, ghost, ghostRef } = usePaletteDrag(
     nodeTypes,
     canvasWrapperRef,
     handleAddNode,
+    occupiedPositions,
   )
 
   const handleDeleteNode = useCallback(
@@ -446,12 +457,18 @@ export default function App({ initialPipelineId }: Props) {
   return (
     <div className="editor-wrap">
       <div className="editor-main">
-        <Palette nodeTypes={nodeTypes} onStartDrag={startDrag} onBack={handleBackToList} />
+        <Palette
+          nodeTypes={nodeTypes}
+          draggingTypeId={dragTypeId}
+          onStartDrag={startDrag}
+          onAddAtCenter={addAtCenter}
+          onBack={handleBackToList}
+        />
         <PipelineCanvas
           nodes={nodes}
           edges={edges}
           wrapperRef={canvasWrapperRef}
-          dragOver={dragging && overCanvas}
+          dragOver={!!ghost?.overCanvas}
           runStatusMap={runStatusMap}
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
@@ -460,13 +477,11 @@ export default function App({ initialPipelineId }: Props) {
           onSelectNode={setSelectedNodeId}
           onDeleteNode={handleDeleteNode}
         />
-        {dragging && ghostPos && nodeTypeInfo && (
-          <div className="drag-ghost" style={{ left: ghostPos.x + 12, top: ghostPos.y + 8 }}>
-            {nodeTypeInfo.icon} {nodeTypeInfo.label}
-          </div>
-        )}
+        {ghost && <DragGhost ghost={ghost} ghostRef={ghostRef} />}
         <ConfigPanel
           nodeId={selectedNode?.id ?? null}
+          pipelineId={pipelineId}
+          dirty={dirty}
           nodeType={selectedNode?.data.nodeType ?? null}
           config={selectedNode?.data.config ?? {}}
           onChange={handleConfigChange}
