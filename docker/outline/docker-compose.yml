@@ -1,0 +1,66 @@
+# Outline 로컬 샘플 (Workflow Studio 아웃라인 모듈 테스트용)
+#   시작: docker compose up -d      → http://localhost:3000
+#   종료: docker compose down       (데이터 유지, 완전 삭제는 down -v)
+# 로그인은 Dex(OIDC)의 mock 커넥터 — 비밀번호 없이 "Example" 버튼으로 바로 로그인 (로컬 테스트 전용)
+# 비밀값은 같은 폴더의 .env (git 제외) — 없으면 README 참고해 생성
+name: outline-sample
+
+services:
+  outline:
+    image: outlinewiki/outline:latest
+    env_file: .env
+    environment:
+      URL: http://localhost:3000
+      PORT: 3000
+      FORCE_HTTPS: "false"
+      DATABASE_URL: postgres://outline:outline@postgres:5432/outline
+      PGSSLMODE: disable
+      REDIS_URL: redis://redis:6379
+      FILE_STORAGE: local
+      FILE_STORAGE_LOCAL_ROOT_DIR: /var/lib/outline/data
+      DEFAULT_LANGUAGE: ko_KR
+      # OIDC (Dex) — 브라우저는 localhost:5556, 서버끼리는 dex:5556
+      OIDC_CLIENT_ID: outline
+      OIDC_AUTH_URI: http://localhost:5556/dex/auth
+      OIDC_TOKEN_URI: http://dex:5556/dex/token
+      OIDC_USERINFO_URI: http://dex:5556/dex/userinfo
+      OIDC_USERNAME_CLAIM: email
+      OIDC_DISPLAY_NAME: Dex (로컬 테스트)
+      OIDC_SCOPES: openid profile email
+    ports:
+      - "127.0.0.1:3000:3000"
+    volumes:
+      - outline-data:/var/lib/outline/data
+    depends_on:
+      - postgres
+      - redis
+      - dex
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: outline
+      POSTGRES_PASSWORD: outline
+      POSTGRES_DB: outline
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+
+  dex:
+    image: ghcr.io/dexidp/dex:v2.41.1
+    command: ["dex", "serve", "/etc/dex/config.yaml"]
+    env_file: .env
+    volumes:
+      - ./dex.yml:/etc/dex/config.yaml:ro
+    ports:
+      - "127.0.0.1:5556:5556"
+    restart: unless-stopped
+
+volumes:
+  outline-data:
+  pg-data:

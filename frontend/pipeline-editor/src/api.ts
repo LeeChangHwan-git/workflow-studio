@@ -2,6 +2,7 @@ import type {
   ExecutionStateDto,
   ExecutionSummaryDto,
   NodeTypeInfo,
+  OutlineVerify,
   PipelineDto,
   RunMode,
   ScheduleStatus,
@@ -81,6 +82,14 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ apiKey }),
     }).then((r) => r.json() as Promise<{ models?: string[]; error?: string }>),
+
+  /** 아웃라인 연결 확인 (실행 없이) — 키 확인 + 컬렉션 목록 */
+  verifyOutline: (baseUrl: string, apiKey: string) =>
+    fetch('/api/outline/verify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ baseUrl, apiKey }),
+    }).then((r) => r.json() as Promise<OutlineVerify>),
 
   /** 모델 부품 검증 (실행 없이) — 키 확인 + 모델 존재 확인 */
   verifyGemini: (apiKey: string, model: string) =>

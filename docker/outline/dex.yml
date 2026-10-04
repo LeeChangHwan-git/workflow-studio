@@ -1,0 +1,19 @@
+# Dex — Outline 로그인용 최소 OIDC 서버 (로컬 테스트 전용)
+issuer: http://localhost:5556/dex
+storage:
+  type: memory
+web:
+  http: 0.0.0.0:5556
+oauth2:
+  skipApprovalScreen: true
+staticClients:
+  - id: outline
+    name: Outline
+    secretEnv: OIDC_CLIENT_SECRET
+    redirectURIs:
+      - http://localhost:3000/auth/oidc.callback
+# 비밀번호 없는 가짜 로그인 (항상 같은 사용자 kilgore@kilgore.trout)
+connectors:
+  - type: mockCallback
+    id: mock
+    name: Example

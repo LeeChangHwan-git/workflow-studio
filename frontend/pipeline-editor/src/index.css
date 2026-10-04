@@ -357,6 +357,7 @@ body.palette-dragging, body.palette-dragging * { cursor: grabbing !important; us
 .verify-box.ok { background: #1B3D27; border-color: #2E6B3B; color: #7EE2A8; }
 .verify-box.fail { background: #3A1E1E; border-color: #5A2D2D; color: #F48771; }
 .verify-sub { font-size: 11px; opacity: .75; margin-top: 2px; }
+.outline-verify-btn { padding: 6px 12px; }
 
 /* 폴더 경로 입력 */
 .cfg-folder-wrap { display: flex; gap: 6px; }

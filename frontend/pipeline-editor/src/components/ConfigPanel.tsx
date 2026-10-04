@@ -6,6 +6,7 @@ import { OutputRenderer } from './OutputRenderer'
 import { WebhookHistory } from './WebhookHistory'
 import { WebhookTemplateField } from './WebhookTemplateField'
 import { ScheduleInfoField } from './ScheduleInfoField'
+import { OutlineCollectionField, OutlineConnectionField } from './OutlineFields'
 
 interface Props {
   nodeId: string | null
@@ -181,6 +182,22 @@ export function ConfigPanel({ nodeId, pipelineId, dirty, nodeType, config, onCha
                 config={config}
                 dirty={dirty}
                 onShowExecution={onShowExecution}
+              />
+            ) : param.type === 'outlineConnection' ? (
+              <OutlineConnectionField
+                key={param.name}
+                label={param.label}
+                baseUrl={String(config.baseUrl ?? '')}
+                apiKey={String(config.apiKey ?? '')}
+              />
+            ) : param.type === 'outlineCollection' ? (
+              <OutlineCollectionField
+                key={param.name}
+                param={param}
+                value={String(config[param.name] ?? param.defaultValue ?? '')}
+                baseUrl={String(config.baseUrl ?? '')}
+                apiKey={String(config.apiKey ?? '')}
+                onChange={(v) => onChange(param.name, v)}
               />
             ) : param.type === 'httpOpen' ? (
               <HttpOpenField key={param.name} label={param.label} config={config} />

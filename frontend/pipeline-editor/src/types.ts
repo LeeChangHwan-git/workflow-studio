@@ -4,6 +4,7 @@ export interface NodeParam {
   type:
     | 'text' | 'textarea' | 'select' | 'number' | 'image' | 'password' | 'folder' | 'file'
     | 'webhookUrls' | 'webhookTemplate' | 'geminiModel' | 'memoryInfo' | 'httpOpen' | 'scheduleInfo'
+    | 'outlineConnection' | 'outlineCollection'
   defaultValue: unknown
   options: string[] | null
   showWhen?: string | null  // "다른파라미터=값" 일 때만 표시
@@ -33,7 +34,7 @@ export interface NodeTypeInfo {
 /** 부품 노드의 위쪽 연결점 id */
 export const PART_HANDLE = 'part'
 
-/** showWhen 조건 확인 ("source=파일" 같음 / "bodyType!=없음" 다름) */
+/** showWhen 조건 확인 ("source=파일" 같음 / "bodyType!=없음" 다름 / "action=조회|검색" 여러 값 중 하나) */
 export function paramVisible(param: NodeParam, config: Record<string, unknown>, all: NodeParam[]): boolean {
   if (!param.showWhen) return true
   const not = param.showWhen.indexOf('!=')
@@ -43,7 +44,8 @@ export function paramVisible(param: NodeParam, config: Record<string, unknown>, 
   const expected = param.showWhen.slice(i + (not >= 0 ? 2 : 1))
   const ref = all.find((p) => p.name === key)
   const actual = String(config[key] ?? ref?.defaultValue ?? '')
-  return not >= 0 ? actual !== expected : actual === expected
+  const matches = expected.split('|').includes(actual)
+  return not >= 0 ? !matches : matches
 }
 
 export interface PipelineNodeDto {
@@ -142,4 +144,14 @@ export const OFF = '꺼짐'
 export type PipelineNodeData = {
   nodeType: NodeTypeInfo
   config: Record<string, unknown>
+}
+
+/** 아웃라인 연결 확인 결과 (/api/outline/verify) */
+export interface OutlineVerify {
+  ok: boolean
+  message: string
+  keySource: 'node' | 'env' | 'none'
+  user?: string
+  team?: string
+  collections?: { id: string; name: string }[]
 }

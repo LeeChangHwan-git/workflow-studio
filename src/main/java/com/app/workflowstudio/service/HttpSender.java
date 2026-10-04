@@ -47,6 +47,9 @@ public class HttpSender {
         boolean hasBody = body != null && !body.isEmpty() && !m.equals("GET") && !m.equals("HEAD");
         HttpRequest.Builder b = HttpRequest.newBuilder(uri)
                 .timeout(timeout)
+                // 평문 http 에서 HTTP/2 업그레이드(h2c) 헤더를 보내면 400으로 거절하는 서버가 많음 (Node.js 등) → 1.1 고정.
+                // https 는 TLS(ALPN)로 협상하므로 그대로 둔다
+                .version(uri.getScheme().equals("http") ? HttpClient.Version.HTTP_1_1 : HttpClient.Version.HTTP_2)
                 .method(m, hasBody
                         ? HttpRequest.BodyPublishers.ofString(body, StandardCharsets.UTF_8)
                         : HttpRequest.BodyPublishers.noBody());

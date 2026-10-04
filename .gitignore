@@ -21,3 +21,5 @@
 
 # Windows 절대경로가 실수로 추적되는 것 방지
 C:/
+# Outline 샘플 비밀값 (로컬 생성)
+/docker/outline/.env

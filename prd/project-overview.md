@@ -175,6 +175,7 @@ src/main/java/com/app/workflowstudio/
 │       ├── ai/                      #     AI_AGENT + 부품(GEMINI_MODEL, CHAT_MEMORY, AI_INSTRUCTION),
 │       │                            #     GeminiClient, ChatMemoryStore, AiController
 │       ├── http/                    #     HTTP_REQUEST
+│       ├── outline/                 #     OUTLINE 아웃라인 게시판 (Module, Client, Controller)
 │       └── filewrite/               #     FILE_WRITE (Windows 전용)
 └── service/
     ├── Memo/Bookmark/CalendarEventService.java
@@ -189,12 +190,28 @@ src/main/resources/
     ├── js/app-session.js            # 상단 "탭 N/M" 배지·관리 패널
     └── session-closed.html          # 종료된 탭이 보여주는 화면
 frontend/pipeline-editor/            # React 에디터 소스 (빌드 결과 → static/pipeline-editor/)
-src/test/java/...                    # 모듈별 테스트 (가짜 Gemini·가짜 API 서버 포함, 총 21개)
+docker/outline/                      # 아웃라인 로컬 샘플 (docker-compose, Dex 로그인, seed.js — .env는 git 제외)
+src/test/java/...                    # 모듈별 테스트 (가짜 Gemini·가짜 API·가짜 Outline 서버 포함, 총 33개)
 ```
 
 ---
 
 ## 변경 이력
+
+### 📘 아웃라인(회사 게시판) 연동 모듈 + 예시 파이프라인 2개 (2026-10-04)
+
+→ 상세: `prd/modules/outline.md`
+
+- **아웃라인 노드** (`OUTLINE`, 팔레트 "통합"): 조회(제목만 / 제목+내용, 컬렉션, 최근 N일) · 검색 · 문서 하나 가져오기 ·
+  등록(첫 `# 제목` 줄 → 글 제목, 코드블록 벗기기, 바로 게시/초안) · 수정(바꾸기 / 끝에 덧붙이기, 문서 주소로 지정 가능)
+- 설정 화면: **연결 확인**(주소·키 바뀌면 자동, 워크스페이스·사용자·컬렉션 수) + 컬렉션 고르기 목록. API 키는 `OUTLINE_API_KEY` 환경 변수로도
+- `showWhen`에 `|`로 여러 값 허용 (`action=조회|검색`)
+- **로컬 샘플 Outline** (`docker/outline/`): Outline + Postgres + Redis + Dex(비밀번호 없는 mock 로그인), 127.0.0.1에만 열림,
+  `seed.js`로 "사내 게시판" 샘플 글 12개
+- **예시 파이프라인**: ① FW 관심 글 추천 — 매일 07:30 타이머(켜짐) → 게시판 제목 전체 조회 → AI(FW 담당자 기준 꼭 읽기/참고 + 링크) → md 파일
+  ② 메모 → 게시글 등록 — 웹훅 `{"text":"메모"}` → AI(`# [분류] 제목` 형식 정리) → 아웃라인 등록. 둘 다 실제 실행 확인
+- **버그 수정**: `HttpSender`가 평문 http에서 HTTP/2 업그레이드 헤더를 보내 Node.js 서버(Outline 등)가 400을 주던 문제 → http는 HTTP/1.1 고정
+- 테스트 6개 추가 (총 33개 통과)
 
 ### 🖱️ 팔레트 드래그 앤 드롭 개선 (2026-10-03)
 

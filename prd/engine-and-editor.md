@@ -37,8 +37,8 @@ public class DelayModule implements NodeModule {
 - **트리거 노드**는 `NodeTypeInfo`의 마지막 인자 `trigger=true`로 선언 → 캔버스에서 입력 핸들이 없고(왼쪽 둥근 카드),
   외부 이벤트로 시작될 땐 `runner.runTriggered(pipeline, nodeId, mode, data)` 호출. 모듈은 `ctx.triggerData()`로 데이터를 받음
 - `category`가 `null`이면 팔레트에 노출되지 않음 (구버전 호환용 숨김 노드 등에 사용)
-- 파라미터 `type`: `text` | `textarea` | `select`(options 필수) | `number` | `password` | `image` | `webhookUrls`(표시 전용) | `webhookTemplate`(템플릿 + 키 칩 + 미리보기) | `folder` · `file`(경로 입력 + 📁 찾아보기 선택 창) | `geminiModel`(입력 + 자동 연결 검증) | `memoryInfo`(표시 전용) | `httpOpen`(HTTP 화면 열기 버튼) | `scheduleInfo`(타이머 상태)
-- 조건부 표시: `new NodeParam(..., showWhen)` — `"source=파일"`(같을 때) / `"bodyType!=없음"`(다를 때)
+- 파라미터 `type`: `text` | `textarea` | `select`(options 필수) | `number` | `password` | `image` | `webhookUrls`(표시 전용) | `webhookTemplate`(템플릿 + 키 칩 + 미리보기) | `folder` · `file`(경로 입력 + 📁 찾아보기 선택 창) | `geminiModel`(입력 + 자동 연결 검증) | `memoryInfo`(표시 전용) | `httpOpen`(HTTP 화면 열기 버튼) | `scheduleInfo`(타이머 상태) | `outlineConnection`(아웃라인 연결 확인) · `outlineCollection`(컬렉션 입력 + 목록)
+- 조건부 표시: `new NodeParam(..., showWhen)` — `"source=파일"`(같을 때) / `"bodyType!=없음"`(다를 때) / `"action=조회|검색"`(여러 값 중 하나)
 - 출력을 다음 노드로 넘기려면 `outputVar` 파라미터를 두는 것을 관례로 함
   (엔진이 `outputVar` 값 또는 `{nodeId}.output` 키로 출력을 저장)
 - 실패는 예외로 던질 것 → 로그에 `[TYPE] 오류: 메시지`, 파이프라인 중단
