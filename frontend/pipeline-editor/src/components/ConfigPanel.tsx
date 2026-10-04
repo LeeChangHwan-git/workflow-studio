@@ -460,7 +460,7 @@ function PathField({
 
 type VerifyState =
   | { state: 'checking' }
-  | { state: 'ok' | 'fail'; message: string; keyOk: boolean; keySource: 'node' | 'env' | 'none' }
+  | { state: 'ok' | 'fail'; message: string; keyOk: boolean; keySource: 'node' | 'settings' | 'env' | 'none' }
 
 /**
  * Gemini 모델 — 입력 + 자동완성 목록 + 연결 검증.
@@ -502,7 +502,7 @@ function GeminiModelField({
 
   const sourceLabel =
     verify && verify.state !== 'checking'
-      ? verify.keySource === 'node' ? '노드에 입력한 키' : verify.keySource === 'env' ? 'GEMINI_API_KEY 환경 변수' : '키 없음'
+      ? verify.keySource === 'node' ? '노드에 입력한 키' : verify.keySource === 'settings' ? '⚙ 설정의 공용 키' : verify.keySource === 'env' ? 'GEMINI_API_KEY 환경 변수' : '키 없음'
       : null
 
   return (

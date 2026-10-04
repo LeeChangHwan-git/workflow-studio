@@ -125,6 +125,44 @@
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     line-height: 1.4;
   }
+  /* ⏰ 타이머 일정 */
+  .day-timer-pill {
+    font-size: 10px; font-weight: 600; padding: 1px 5px; border-radius: 3px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.4;
+    background: rgba(197,134,192,.14); color: #D7A8D3; border: 1px dashed rgba(197,134,192,.55);
+  }
+  .day-timer-pill.fired   { background: rgba(78,201,176,.14); color: #4EC9B0; border: 1px solid rgba(78,201,176,.4); }
+  .day-timer-pill.error   { background: rgba(241,76,76,.15); color: #F48771; border: 1px solid rgba(241,76,76,.45); }
+  .day-timer-pill.skipped { background: #2A2A2A; color: #888; border: 1px solid #444; }
+  body.hide-timers .day-timer-pill, body.hide-timers .timer-section { display: none; }
+  .cal-timer-toggle {
+    display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted);
+    cursor: pointer; user-select: none; margin-right: 6px;
+  }
+  .cal-timer-toggle input { accent-color: #C586C0; }
+  .timer-section { padding: 4px 0 6px; }
+  .timer-section-title {
+    font-size: 11px; font-weight: 700; color: #C586C0; letter-spacing: .3px;
+    margin: 6px 0 8px; display: flex; align-items: center; gap: 6px;
+  }
+  .timer-item {
+    border: 1px dashed rgba(197,134,192,.5); border-radius: var(--radius);
+    padding: 9px 12px; margin-bottom: 7px; background: rgba(197,134,192,.06);
+  }
+  .timer-item.fired { border: 1px solid rgba(78,201,176,.4); background: rgba(78,201,176,.06); }
+  .timer-item.error { border: 1px solid rgba(241,76,76,.45); background: rgba(241,76,76,.07); }
+  .timer-item.skipped { border: 1px solid #444; background: #232323; }
+  .timer-top { display: flex; align-items: center; gap: 8px; }
+  .timer-time { font-size: 13px; font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; }
+  .timer-badge { font-size: 10px; font-weight: 700; padding: 1px 7px; border-radius: 9px; background: rgba(197,134,192,.25); color: #E2C0DF; }
+  .timer-item.fired .timer-badge { background: rgba(78,201,176,.2); color: #4EC9B0; }
+  .timer-item.error .timer-badge { background: rgba(241,76,76,.25); color: #F48771; }
+  .timer-item.skipped .timer-badge { background: #333; color: #999; }
+  .timer-name { font-size: 12.5px; margin-top: 4px; }
+  .timer-name a { color: #4FC1FF; text-decoration: none; font-weight: 600; }
+  .timer-name a:hover { text-decoration: underline; }
+  .timer-sub { font-size: 11.5px; color: var(--dim); margin-top: 2px; line-height: 1.5; }
+  .timer-msg { font-size: 11.5px; color: #F48771; margin-top: 3px; white-space: pre-wrap; }
   .day-event-more {
     font-size: 10px; color: var(--dim); font-weight: 600; padding-left: 3px;
   }
@@ -230,6 +268,7 @@
   <a th:href="@{/calendar}"  class="nav-link active">달력</a>
   <a th:href="@{/pipelines}" class="nav-link">파이프라인</a>
   <a th:href="@{/http}"      class="nav-link">HTTP</a>
+  <a th:href="@{/settings}"  class="nav-link">⚙ 설정</a>
 </nav>
 
 <div class="cal-wrap">
@@ -238,6 +277,9 @@
       <a th:href="@{/calendar(year=${prevYear},month=${prevMonth})}" class="cal-nav-btn">&#8249;</a>
       <span class="cal-title"
             th:text="${currentYear} + '년 ' + ${currentMonth} + '월'"></span>
+      <label class="cal-timer-toggle" title="파이프라인 타이머의 예정·지난 실행을 달력에 표시">
+        <input type="checkbox" id="timerToggle" checked> ⏰ 타이머 표시
+      </label>
       <a th:href="@{/calendar}" class="cal-today-btn">오늘</a>
       <a th:href="@{/calendar(year=${nextYear},month=${nextMonth})}" class="cal-nav-btn">&#8250;</a>
     </div>
@@ -288,22 +330,55 @@
   const CUR_YEAR  = /*[[${currentYear}]]*/ 0;
   const CUR_MONTH = /*[[${currentMonth}]]*/ 0;
   const eventsMap = JSON.parse(EVENTS);
+  const TIMERS    = /*[[${timersJson}]]*/ '{}';
+  const timersMap = JSON.parse(TIMERS);
+  const TIMER_LABEL = { planned: '예정', fired: '실행됨', error: '오류', skipped: '건너뜀' };
+
+  // 타이머 표시 켜기/끄기 (브라우저에 기억)
+  (function initTimerToggle() {
+    const box = document.getElementById('timerToggle');
+    let show = true;
+    try { show = localStorage.getItem('calendar-show-timers') !== '0'; } catch (e) {}
+    box.checked = show;
+    document.body.classList.toggle('hide-timers', !show);
+    box.addEventListener('change', () => {
+      document.body.classList.toggle('hide-timers', !box.checked);
+      try { localStorage.setItem('calendar-show-timers', box.checked ? '1' : '0'); } catch (e) {}
+    });
+  })();
+
+  function timerText(t) {
+    return t.count ? t.time + '~' + t.until + ' ' + t.count + '회' : t.time;
+  }
 
   (function initPills() {
-    Object.keys(eventsMap).forEach(dateStr => {
+    const dates = new Set([...Object.keys(eventsMap), ...Object.keys(timersMap)]);
+    dates.forEach(dateStr => {
       const container = document.getElementById('pills-' + dateStr);
       if (!container) return;
-      const list = eventsMap[dateStr];
+      const list = eventsMap[dateStr] || [];
+      const timers = timersMap[dateStr] || [];
       list.slice(0, 2).forEach(ev => {
         const pill = document.createElement('div');
         pill.className = 'day-event-pill';
         pill.textContent = ev.title || ev.content.split('\n')[0] || '일정';
         container.appendChild(pill);
       });
-      if (list.length > 2) {
+      // 일정이 적으면 타이머를 더 보여줌 (칸 하나에 최대 3줄)
+      const timerSlots = Math.max(1, 3 - Math.min(2, list.length));
+      timers.slice(0, timerSlots).forEach(t => {
+        const pill = document.createElement('div');
+        pill.className = 'day-timer-pill ' + t.kind;
+        const icon = t.kind === 'fired' ? '✓' : t.kind === 'error' ? '✗' : t.kind === 'skipped' ? '–' : '⏰';
+        pill.textContent = icon + ' ' + timerText(t) + ' ' + t.pipelineName;
+        pill.title = t.pipelineName + ' · ' + t.nodeName + ' (' + TIMER_LABEL[t.kind] + ')';
+        container.appendChild(pill);
+      });
+      const hidden = Math.max(0, list.length - 2) + Math.max(0, timers.length - timerSlots);
+      if (hidden > 0) {
         const more = document.createElement('div');
         more.className = 'day-event-more';
-        more.textContent = '+' + (list.length - 2) + '개 더';
+        more.textContent = '+' + hidden + '개 더';
         container.appendChild(more);
       }
     });
@@ -323,6 +398,7 @@
     const dow = ['일','월','화','수','목','금','토'][new Date(y, m-1, d).getDay()];
     const label = y + '년 ' + m + '월 ' + d + '일 (' + dow + ')';
     const events = eventsMap[dateStr] || [];
+    const timers = timersMap[dateStr] || [];
 
     let eventsHtml = events.length === 0
       ? '<div class="day-panel-empty">등록된 일정이 없어요</div>'
@@ -340,6 +416,21 @@
             </div>
           </div>`).join('');
 
+    const timersHtml = timers.length === 0 ? '' : `
+      <div class="timer-section">
+        <div class="timer-section-title">⏰ 파이프라인 타이머 ${timers.length}건</div>
+        ${timers.map(t => `
+          <div class="timer-item ${t.kind}">
+            <div class="timer-top">
+              <span class="timer-time">${escHtml(timerText(t))}</span>
+              <span class="timer-badge">${TIMER_LABEL[t.kind] || t.kind}${t.trigger === 'now' ? ' · 지금 실행' : ''}</span>
+            </div>
+            <div class="timer-name"><a href="/pipelines/${encodeURIComponent(t.pipelineId)}">${escHtml(t.pipelineName)}</a> · ${escHtml(t.nodeName)}</div>
+            ${t.description ? `<div class="timer-sub">${escHtml(t.description)}${t.count ? ' · 이날 ' + t.count + '회' : ''}</div>` : ''}
+            ${t.message && t.kind !== 'fired' ? `<div class="timer-msg">${escHtml(t.message)}</div>` : ''}
+          </div>`).join('')}
+      </div>`;
+
     const addForm = `
       <div class="add-form-wrap">
         <div class="add-form-label">+ 일정 추가</div>
@@ -356,9 +447,9 @@
     document.getElementById('dayPanel').innerHTML = `
       <div class="day-panel-header">
         <div class="day-panel-date">${label}</div>
-        <div class="day-panel-sub">${events.length}개의 일정</div>
+        <div class="day-panel-sub">${events.length}개의 일정${timers.length ? ' · 타이머 ' + timers.length + '건' : ''}</div>
       </div>
-      <div class="day-events-list">${eventsHtml}</div>
+      <div class="day-events-list">${eventsHtml}${timersHtml}</div>
       ${addForm}`;
   }
 

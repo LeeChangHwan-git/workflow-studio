@@ -23,8 +23,11 @@ public class PipelineService {
     private final Path imagesDir;
     private final ObjectMapper objectMapper;
     private final ApplicationEventPublisher events;
+    private final PipelineBackupService backups;
 
-    public PipelineService(Path storageDirectory, ObjectMapper objectMapper, ApplicationEventPublisher events) {
+    public PipelineService(Path storageDirectory, ObjectMapper objectMapper, ApplicationEventPublisher events,
+                           PipelineBackupService backups) {
+        this.backups = backups;
         this.pipelinesDir = storageDirectory.resolve("pipelines");
         this.imagesDir = pipelinesDir.resolve("images");
         this.objectMapper = objectMapper;
@@ -60,8 +63,14 @@ public class PipelineService {
     }
 
     public Pipeline update(String id, Pipeline pipeline) {
+        return update(id, pipeline, "저장");
+    }
+
+    /** 수정 — 직전 상태를 자동 백업 (reason: 저장 / AI 수정 …) */
+    public Pipeline update(String id, Pipeline pipeline, String reason) {
         Pipeline existing = findById(id);
         if (existing == null) return null;
+        backups.backup(pipelinesDir.resolve(id + ".json"), id, reason);
         pipeline.setId(id);
         pipeline.setCreatedAt(existing.getCreatedAt());
         pipeline.setUpdatedAt(LocalDateTime.now());
@@ -70,7 +79,13 @@ public class PipelineService {
     }
 
     public boolean delete(String id) {
+        return delete(id, "삭제");
+    }
+
+    /** 삭제 — 지우기 전 상태를 백업해 두므로 ⚙ 설정 → 백업에서 되살릴 수 있음 */
+    public boolean delete(String id, String reason) {
         Path file = pipelinesDir.resolve(id + ".json");
+        backups.backup(file, id, reason);
         try {
             boolean deleted = Files.deleteIfExists(file);
             if (deleted) events.publishEvent(new PipelinesChangedEvent(id));
@@ -78,6 +93,17 @@ public class PipelineService {
         } catch (IOException e) {
             return false;
         }
+    }
+
+    /** 백업에서 되살리기 — 같은 id 로 저장 (현재 상태가 있으면 그것도 먼저 백업) */
+    public Pipeline restore(String pipelineId, String backupFile) throws IOException {
+        Pipeline p = backups.read(pipelineId, backupFile);
+        p.setId(pipelineId);
+        backups.backup(pipelinesDir.resolve(pipelineId + ".json"), pipelineId, "복원 전");
+        p.setUpdatedAt(LocalDateTime.now());
+        if (p.getCreatedAt() == null) p.setCreatedAt(LocalDateTime.now());
+        writePipeline(p);
+        return p;
     }
 
     /** 파이프라인 + 참조 이미지를 ZIP으로 내보내기 */

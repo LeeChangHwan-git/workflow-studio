@@ -43,7 +43,7 @@ public final class AiParts {
         public NodeTypeInfo info() {
             return NodeTypeInfo.part(TYPE, "Gemini 모델", "✨", "#4285F4", CATEGORY, List.of(
                     new NodeParam("name", "노드 이름 (캔버스에 표시)", "text", "", null),
-                    new NodeParam("apiKey", "API 키 (비우면 GEMINI_API_KEY 환경 변수, 무료 발급: aistudio.google.com/apikey)",
+                    new NodeParam("apiKey", "API 키 (비우면 ⚙ 설정의 공용 키 → GEMINI_API_KEY 환경 변수, 무료 발급: aistudio.google.com/apikey)",
                             "password", "", null),
                     new NodeParam("model", "모델 (키·모델을 바꾸면 자동으로 연결 확인)", "geminiModel", DEFAULT_MODEL, null),
                     new NodeParam("temperature", "온도 0~2 (낮을수록 일관, 높을수록 다양)", "number", 0.7, null)

@@ -161,6 +161,49 @@ class ScheduleModuleTest {
         mvc.perform(post("/api/app/shutdown")).andExpect(status().isForbidden());
     }
 
+    @Test
+    void 달력에_예정과_지난_실행이_날짜별로_나온다() throws Exception {
+        String daily = "cal-daily-" + UUID.randomUUID();
+        Pipeline p = new Pipeline();
+        p.setName("달력 테스트");
+        p.setNodes(new ArrayList<>(List.of(
+                node(daily, ScheduleModule.TYPE, Map.of("active", "켜짐", "mode", "매일·요일 지정 시각",
+                        "days", "매일", "time", "07:30", "name", "아침")),
+                node("often", ScheduleModule.TYPE, Map.of("active", "켜짐", "mode", "일정 간격",
+                        "intervalValue", 5, "intervalUnit", "분")))));
+        p.setConnections(new ArrayList<>());
+        Pipeline saved = pipelineService.create(p);
+        service.refresh();
+
+        LocalDate tomorrow = LocalDate.now().plusDays(1);
+        var cal = service.calendar(LocalDate.now(), tomorrow.plusDays(6));
+        List<Map<String, Object>> day = cal.get(tomorrow.toString()).stream()
+                .filter(m -> saved.getId().equals(m.get("pipelineId"))).toList();
+        assertThat(day).hasSize(2);
+        // 07:30 은 한 줄, 5분 간격은 "하루 288회" 한 줄로 묶임
+        assertThat(day).anySatisfy(m -> {
+            assertThat(m).containsEntry("time", "07:30").containsEntry("kind", "planned").containsEntry("nodeName", "아침");
+            assertThat(m).doesNotContainKey("count");
+        });
+        assertThat(day).anySatisfy(m -> {
+            assertThat(m).containsEntry("count", 288);
+            assertThat((String) m.get("time")).matches("00:0[0-9]");   // 간격은 등록 시각 기준이라 몇 분 어긋날 수 있음
+            assertThat((String) m.get("until")).matches("23:5[0-9]");
+        });
+        long dailyDays = cal.values().stream().flatMap(List::stream)
+                .filter(m -> daily.equals(m.get("nodeId"))).count();
+        assertThat(dailyDays).isBetween(7L, 8L);   // 오늘 07:30이 지났으면 7일
+
+        // 지난 실행 기록도 그날에 표시 (지금 실행 → trigger=now)
+        service.fire(saved.getId(), daily, "now");
+        var today = service.calendar(LocalDate.now(), LocalDate.now()).get(LocalDate.now().toString());
+        assertThat(today).anySatisfy(m -> {
+            assertThat(m).containsEntry("nodeId", daily).containsEntry("kind", "fired").containsEntry("trigger", "now");
+            assertThat(m).containsKey("executionId");
+        });
+        pipelineService.delete(saved.getId());
+    }
+
     // ── helpers ──
 
     private Pipeline pipeline(String timerId, String active) {

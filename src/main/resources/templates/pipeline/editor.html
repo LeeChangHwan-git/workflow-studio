@@ -9,6 +9,7 @@
     <a th:href="@{/calendar}"  class="nav-link">달력</a>
     <a th:href="@{/pipelines}" class="nav-link active">파이프라인</a>
     <a th:href="@{/http}"      class="nav-link">HTTP</a>
+    <a th:href="@{/settings}"  class="nav-link">⚙ 설정</a>
 </nav>
 <div id="root" th:data-pipeline-id="${isNew} ? '' : ${pipeline.id}"></div>
 <link rel="stylesheet" th:href="@{/pipeline-editor/app.css}">

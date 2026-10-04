@@ -1,5 +1,6 @@
 package com.app.workflowstudio.node.modules.ai;
 
+import com.app.workflowstudio.settings.SettingsService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Value;
@@ -33,13 +34,21 @@ public class GeminiClient {
         this.om = om;
     }
 
-    /** 노드에 키가 없으면 환경 변수 GEMINI_API_KEY */
+    /** 키 찾는 순서: 노드 → 설정의 공용 키 → 환경 변수 GEMINI_API_KEY */
     public static String resolveKey(String nodeKey) throws Exception {
-        if (nodeKey != null && !nodeKey.isBlank()) return nodeKey.trim();
-        String env = System.getenv("GEMINI_API_KEY");
-        if (env != null && !env.isBlank()) return env.trim();
-        throw new Exception("Gemini API 키가 없습니다. 모델 부품에 입력하거나 GEMINI_API_KEY 환경 변수를 설정하세요 "
+        String key = SettingsService.firstNonBlank(nodeKey,
+                SettingsService.current().credentials.geminiApiKey, System.getenv("GEMINI_API_KEY"));
+        if (key != null) return key;
+        throw new Exception("Gemini API 키가 없습니다. 모델 부품에 입력하거나 ⚙ 설정 → 공용 키에 넣으세요 "
                 + "(무료 발급: https://aistudio.google.com/apikey)");
+    }
+
+    /** 키가 어디서 오는지: node | settings | env | none */
+    public static String keySource(String nodeKey) {
+        if (nodeKey != null && !nodeKey.isBlank()) return "node";
+        if (!SettingsService.current().credentials.geminiApiKey.isBlank()) return "settings";
+        String env = System.getenv("GEMINI_API_KEY");
+        return env != null && !env.isBlank() ? "env" : "none";
     }
 
     /** 응답 텍스트 생성 */

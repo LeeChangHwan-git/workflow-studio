@@ -101,7 +101,7 @@ export const api = {
       ok: boolean
       keyOk: boolean
       modelOk: boolean | null
-      keySource: 'node' | 'env' | 'none'
+      keySource: 'node' | 'settings' | 'env' | 'none'
       message: string
       models?: string[]
     }>),

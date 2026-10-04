@@ -230,6 +230,150 @@ public class ScheduleService {
         return m;
     }
 
+    /** 동작 중인 타이머 전체 (⚙ 설정 → 타이머) — 다음 실행 순 */
+    public List<Map<String, Object>> listActive() {
+        Map<String, String> names = new HashMap<>();
+        for (var p : pipelineService.findAll()) names.put(p.getId(), p.getName());
+        List<Map<String, Object>> out = new ArrayList<>();
+        for (Entry e : entries.values()) {
+            Map<String, Object> m = new LinkedHashMap<>();
+            m.put("pipelineId", e.pipelineId());
+            m.put("pipelineName", names.getOrDefault(e.pipelineId(), "?"));
+            m.put("nodeId", e.nodeId());
+            m.put("description", e.spec().description());
+            List<String> next = e.spec().nextRuns(LocalDateTime.now(), e.anchor(), 1).stream().map(this::fmt).toList();
+            m.put("next", next.isEmpty() ? null : next.get(0));
+            out.add(m);
+        }
+        out.sort(Comparator.comparing(m -> String.valueOf(m.get("next"))));
+        return out;
+    }
+
+    /** 하루에 이보다 많이 실행되면 달력에는 "하루 N회" 한 줄로 묶음 */
+    static final int CALENDAR_DAY_LIMIT = 3;
+
+    /**
+     * 달력용 타이머 일정 (from~to, 날짜별).
+     * <ul>
+     *   <li>예정(planned): 켜져 있는 타이머의 앞으로 실행 시각 (지금 이후만)</li>
+     *   <li>지난 실행(fired / skipped / error): 타이머 실행 기록 (파일, 타이머마다 최근 100건)</li>
+     * </ul>
+     * 하루에 같은 타이머가 {@value #CALENDAR_DAY_LIMIT}번보다 많으면 한 줄로 묶어 count 에 횟수를 넣는다.
+     */
+    public Map<String, List<Map<String, Object>>> calendar(LocalDate from, LocalDate to) {
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime end = to.plusDays(1).atStartOfDay();
+        Map<String, List<Map<String, Object>>> byDate = new TreeMap<>();
+
+        for (Pipeline p : pipelineService.findAll()) {
+            for (PipelineNode n : p.getNodes()) {
+                if (!ScheduleModule.TYPE.equals(n.getType())) continue;
+                String k = key(p.getId(), n.getId());
+                Object nm = n.getConfig() == null ? null : n.getConfig().get("name");
+                String nodeName = nm instanceof String s && !s.isBlank() ? s : "타이머";
+
+                // 예정
+                Entry e = entries.get(k);
+                if (e != null) {
+                    LocalDateTime start = from.atStartOfDay().isAfter(now) ? from.atStartOfDay().minusSeconds(1) : now;
+                    Map<LocalDate, List<LocalDateTime>> runs = new TreeMap<>();
+                    LocalDateTime cursor = start;
+                    int guard = 0;
+                    outer:
+                    while (guard < 20_000) {
+                        List<LocalDateTime> batch = e.spec().nextRuns(cursor, e.anchor(), 500);
+                        if (batch.isEmpty()) break;
+                        for (LocalDateTime t : batch) {
+                            guard++;
+                            if (!t.isBefore(end)) break outer;
+                            runs.computeIfAbsent(t.toLocalDate(), d -> new ArrayList<>()).add(t);
+                        }
+                        cursor = batch.get(batch.size() - 1);
+                    }
+                    runs.forEach((day, times) -> addCalendarItems(byDate, day, times, "planned", p, n.getId(),
+                            nodeName, e.spec().description(), Map.of()));
+                }
+
+                // 지난 실행
+                Map<LocalDate, Map<String, List<ScheduleHistoryStore.Entry>>> past = new TreeMap<>();
+                for (ScheduleHistoryStore.Entry h : history.list(k)) {
+                    LocalDateTime at;
+                    try {
+                        at = LocalDateTime.parse(h.at);
+                    } catch (Exception ex) {
+                        continue;
+                    }
+                    if (at.toLocalDate().isBefore(from) || !at.isBefore(end)) continue;
+                    past.computeIfAbsent(at.toLocalDate(), d -> new TreeMap<>())
+                            .computeIfAbsent(pastKind(h), r -> new ArrayList<>()).add(h);
+                }
+                String desc = e != null ? e.spec().description() : null;
+                past.forEach((day, byKind) -> byKind.forEach((kind, list) -> {
+                    list.sort(Comparator.comparing(h -> h.at));
+                    if (list.size() > CALENDAR_DAY_LIMIT) {   // 많으면 한 줄로
+                        addCalendarItems(byDate, day, list.stream().map(h -> LocalDateTime.parse(h.at)).toList(),
+                                kind, p, n.getId(), nodeName, desc, Map.of());
+                        return;
+                    }
+                    for (ScheduleHistoryStore.Entry h : list) {   // 적으면 실행마다 (트리거·실행 id·메시지 포함)
+                        Map<String, Object> extra = new LinkedHashMap<>();
+                        if (h.trigger != null) extra.put("trigger", h.trigger);
+                        if (h.executionId != null) extra.put("executionId", h.executionId);
+                        String msg = h.message;
+                        if ("error".equals(kind) && msg == null) msg = executionError(h.executionId);
+                        if (msg != null) extra.put("message", msg);
+                        addCalendarItems(byDate, day, List.of(LocalDateTime.parse(h.at)), kind, p, n.getId(), nodeName, desc, extra);
+                    }
+                }));
+            }
+        }
+        byDate.values().forEach(list -> list.sort(Comparator.comparing(m -> String.valueOf(m.get("time")))));
+        return byDate;
+    }
+
+    /** 지난 실행의 표시 종류: 시작은 했지만 파이프라인이 오류로 끝났으면 error (실행 상세가 메모리에 남아 있을 때) */
+    private String pastKind(ScheduleHistoryStore.Entry h) {
+        String r = h.result == null ? "fired" : h.result;
+        if ("fired".equals(r) && h.executionId != null) {
+            PipelineRunnerService.ExecutionState s = runner.getState(h.executionId);
+            if (s != null && "error".equals(s.status)) return "error";
+        }
+        return r;
+    }
+
+    private String executionError(String executionId) {
+        PipelineRunnerService.ExecutionState s = executionId == null ? null : runner.getState(executionId);
+        if (s == null) return null;
+        synchronized (s.logs) {
+            for (var log : s.logs) if ("error".equals(log.getStatus())) return log.getMessage();
+        }
+        return null;
+    }
+
+    private static void addCalendarItems(Map<String, List<Map<String, Object>>> byDate, LocalDate day,
+                                         List<LocalDateTime> times, String kind, Pipeline p,
+                                         String nodeId, String nodeName, String description, Map<String, Object> extra) {
+        List<Map<String, Object>> list = byDate.computeIfAbsent(day.toString(), d -> new ArrayList<>());
+        boolean group = times.size() > CALENDAR_DAY_LIMIT;
+        for (LocalDateTime t : group ? times.subList(0, 1) : times) {
+            Map<String, Object> m = new LinkedHashMap<>();
+            m.put("time", String.format("%02d:%02d", t.getHour(), t.getMinute()));
+            m.put("kind", kind);
+            m.put("pipelineId", p.getId());
+            m.put("pipelineName", p.getName());
+            m.put("nodeId", nodeId);
+            m.put("nodeName", nodeName);
+            if (description != null) m.put("description", description);
+            if (group) {
+                m.put("count", times.size());
+                LocalDateTime lastT = times.get(times.size() - 1);
+                m.put("until", String.format("%02d:%02d", lastT.getHour(), lastT.getMinute()));
+            }
+            m.putAll(extra);
+            list.add(m);
+        }
+    }
+
     /** 등록된 타이머 수 (상태 확인용) */
     public int activeCount() {
         return entries.size();

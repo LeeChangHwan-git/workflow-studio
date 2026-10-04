@@ -26,9 +26,7 @@ public class OutlineController {
         String baseUrl = req != null ? req.get("baseUrl") : null;
         String nodeKey = req != null ? req.get("apiKey") : null;
         Map<String, Object> res = new LinkedHashMap<>();
-        String env = System.getenv("OUTLINE_API_KEY");
-        res.put("keySource", nodeKey != null && !nodeKey.isBlank() ? "node"
-                : env != null && !env.isBlank() ? "env" : "none");
+        res.put("keySource", OutlineClient.keySource(nodeKey));
         try {
             OutlineClient.Conn c = OutlineClient.conn(baseUrl, nodeKey);
             JsonNode info = client.call(c, "auth.info", Map.of()).path("data");

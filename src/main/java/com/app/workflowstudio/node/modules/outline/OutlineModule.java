@@ -50,8 +50,8 @@ public class OutlineModule implements NodeModule {
         String read = "action=" + ACT_LIST + "|" + ACT_SEARCH;
         return new NodeTypeInfo(TYPE, "아웃라인", "📘", "#4E5BF2", "통합", List.of(
                 new NodeParam("name", "노드 이름 (캔버스에 표시)", "text", "", null),
-                new NodeParam("baseUrl", "아웃라인 주소", "text", "http://localhost:3000", null),
-                new NodeParam("apiKey", "API 키 (비우면 OUTLINE_API_KEY 환경 변수 · 발급: 아웃라인 설정 → API 액세스)",
+                new NodeParam("baseUrl", "아웃라인 주소 (비우면 ⚙ 설정의 공용 주소)", "text", "", null),
+                new NodeParam("apiKey", "API 키 (비우면 ⚙ 설정의 공용 키 · 발급: 아웃라인 설정 → API 액세스)",
                         "password", "", null),
                 new NodeParam("connection", "연결", "outlineConnection", null, null),
                 new NodeParam("action", "작업", "select", ACT_LIST,

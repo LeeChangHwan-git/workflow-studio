@@ -81,6 +81,10 @@
 노드 모듈을 처음부터 하나씩 설계 중 → `prd/modules/README.md`
 - 현재 모듈: 🪝 웹훅 · ⏰ 타이머 (트리거), 🤖 AI 에이전트 (+ 부품: ✨ Gemini 모델 · 🧠 대화 메모리 · 📜 지시문), 🌐 HTTP 요청, 💾 파일 쓰기 (Windows 전용)
 
+### 💬 파이프라인 도우미 · ⚙ 설정
+말로 요청하면 AI가 파이프라인을 실제로 만들고·고치고·(확인 후) 지움. AI는 Gemini(무료) 또는 OpenAI 호환(Ollama 등 오프라인).
+설정 화면: 공용 키 · AI 연결 · 타이머 목록 · 백업/복원 · 로그 · 서버 상태/종료 → `prd/assistant-and-settings.md`
+
 ### HTTP (간이 HTTP 클라이언트)
 - `/http` — 메소드·URL·헤더·바디로 요청을 보내고 응답(상태·시간·크기·바디·헤더)을 확인. 보낸 요청 기록(브라우저 저장)
 - 서버가 대신 요청을 보내므로 외부 API도 호출 가능. 웹훅 노드의 "🚀 HTTP로 테스트" 버튼으로 테스트 URL이 채워진 채 열림
@@ -97,6 +101,7 @@
 ### 달력
 - 월별 뷰 (일요일 시작), 날짜 셀에 이벤트 미리보기 (최대 2개 + 초과 표시)
 - 날짜 클릭 → 우측 패널에서 당일 이벤트 추가/수정/삭제, 이벤트 = 제목(선택) + 내용(필수)
+- **파이프라인 타이머 연동**: 예정 실행(⏰)·지난 실행(✓/✗/–)을 함께 표시, "⏰ 타이머 표시"로 켜기/끄기 (→ `prd/modules/schedule.md` "달력 연동")
 
 ---
 
@@ -152,6 +157,11 @@ workflow-studio.zip
 src/main/java/com/app/workflowstudio/
 ├── WorkflowStudioApplication.java   # 진입점 (headless=false, 기동 후 브라우저 오픈)
 ├── config/StorageConfig.java        # 저장 경로 Bean + 디렉토리 생성, ObjectMapper
+├── settings/                        # ⚙ 설정: AppSettings(settings.json), SettingsService(비밀값 숨김·공용 키),
+│                                    #   SettingsController(설정 화면 + /api/admin 상태·타이머·백업·로그)
+├── assistant/                       # 💬 파이프라인 도우미: PipelineAssistantService(도구 호출 루프),
+│   │                                #   PipelineToolkit(설명서·검증·배치), AssistantController
+│   └── llm/                         #   ChatModel + Gemini / OpenAI 호환(Ollama 등) 구현, ChatModelFactory
 ├── controller/
 │   ├── HomeController.java          # / → /memos
 │   ├── Memo/Bookmark/CalendarController.java
@@ -179,24 +189,46 @@ src/main/java/com/app/workflowstudio/
 │       └── filewrite/               #     FILE_WRITE (Windows 전용)
 └── service/
     ├── Memo/Bookmark/CalendarEventService.java
-    ├── PipelineService.java
+    ├── PipelineService.java         # 저장·삭제 시 직전 상태 자동 백업
+    ├── PipelineBackupService.java   # data/backups/pipelines/{id}/ (파이프라인당 최근 N개)
     ├── PipelineRunnerService.java   # 실행 엔진 (실행 흐름 / 소켓 연결 구분)
     ├── HttpSender.java              # 공용 HTTP 요청 전송 (HTTP 메뉴 + HTTP 요청 노드)
     └── ScreenCaptureService.java
 src/main/resources/
-├── templates/                       # layout(공통 head·세션 스크립트), memo/, bookmark/, calendar/, pipeline/, http/
+├── templates/                       # layout(공통 head·세션·도우미 스크립트), memo/, bookmark/, calendar/, pipeline/, http/, settings/
 └── static/
     ├── js/app-live-worker.js        # 공유 워커: 서버 연결 1개 + 열린 탭 목록
     ├── js/app-session.js            # 상단 "탭 N/M" 배지·관리 패널
+    ├── js/assistant.js              # 💬 도우미 서랍 (모든 화면)
     └── session-closed.html          # 종료된 탭이 보여주는 화면
 frontend/pipeline-editor/            # React 에디터 소스 (빌드 결과 → static/pipeline-editor/)
 docker/outline/                      # 아웃라인 로컬 샘플 (docker-compose, Dex 로그인, seed.js — .env는 git 제외)
-src/test/java/...                    # 모듈별 테스트 (가짜 Gemini·가짜 API·가짜 Outline 서버 포함, 총 33개)
+src/test/java/...                    # 모듈별 테스트 (가짜 Gemini·OpenAI·API·Outline 서버 포함, 총 39개)
 ```
 
 ---
 
 ## 변경 이력
+
+### 📅 달력 ↔ 타이머 연동 (2026-10-04)
+
+- 달력에 파이프라인 타이머의 **예정 실행**(보라 점선 ⏰)과 **지난 실행**(✓ 실행됨 / ✗ 오류 / – 건너뜀)을 표시
+- 자주 도는 타이머(예: 5분마다)는 하루 한 줄로 묶음 ("00:03~23:58 288회"), 날짜 패널에서 파이프라인으로 바로 이동
+- 달력 상단 "⏰ 타이머 표시" 켜기/끄기, `ScheduleService.calendar` + 테스트 1개 (총 40개 통과)
+
+### 💬 파이프라인 도우미 + ⚙ 설정(관리자) (2026-10-04)
+
+→ 상세: `prd/assistant-and-settings.md`
+
+- **💬 도우미** (모든 화면 상단): 말로 요청 → AI가 도구(list/get/specs/create/update/delete)를 호출해 **실제로 저장**.
+  노드 설명서는 등록된 모듈에서 자동 생성(모듈 추가 시 자동 반영, 커지면 목록만 보내고 상세는 도구로).
+  검증 오류는 AI에게 돌려줘 스스로 고치게 함, 비밀값은 `***`로 가리고 수정 시 원래 값 유지, 삭제는 화면에서 확인해야 실행
+- **AI 연결 교체 가능**: `ChatModel` 인터페이스 + Gemini / OpenAI 호환(Ollama·LM Studio·vLLM·OpenRouter) 구현, ⚙ 설정에서 선택
+- **⚙ 설정** 메뉴 신설: 상태·폴더 열기·서버 종료 / 공용 키(Gemini·아웃라인 — 노드에서 비우면 사용) / AI 도우미 / 타이머 / 백업 / 로그
+- **자동 백업**: 파이프라인 저장·수정·삭제 직전 상태 보관(파이프라인당 20개), 설정에서 복원(삭제된 것도)
+- 에디터: 도우미가 열린 파이프라인을 바꾸면 자동으로 다시 불러옴 (편집 중이면 알림)
+- 모든 노드에서 `${date}` `${time}` `${datetime}` 기본 변수 사용 가능
+- 실제 Gemini로 생성(9초)·수정(8초)·삭제 요청 확인, 테스트 6개 추가 (총 39개 통과)
 
 ### 📘 아웃라인(회사 게시판) 연동 모듈 + 예시 파이프라인 2개 (2026-10-04)
 

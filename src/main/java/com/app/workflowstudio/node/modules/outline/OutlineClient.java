@@ -1,6 +1,8 @@
 package com.app.workflowstudio.node.modules.outline;
 
 import com.app.workflowstudio.service.HttpSender;
+import com.app.workflowstudio.settings.AppSettings;
+import com.app.workflowstudio.settings.SettingsService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Component;
@@ -34,18 +36,19 @@ public class OutlineClient {
     /** 접속 정보 (서버 주소 + API 키) */
     public record Conn(String baseUrl, String apiKey) {}
 
-    /** 노드에 키가 없으면 OUTLINE_API_KEY 환경 변수 */
+    /** 주소·키 찾는 순서: 노드 → ⚙ 설정의 공용 값 → 환경 변수 (OUTLINE_URL / OUTLINE_API_KEY) */
     public static Conn conn(String baseUrl, String nodeKey) throws Exception {
-        String url = baseUrl == null ? "" : baseUrl.trim();
-        if (url.isEmpty()) throw new Exception("아웃라인 주소를 입력하세요 (예: https://wiki.회사.com)");
+        AppSettings.Credentials cred = SettingsService.current().credentials;
+        String url = SettingsService.firstNonBlank(baseUrl, cred.outlineBaseUrl, System.getenv("OUTLINE_URL"));
+        if (url == null) throw new Exception("아웃라인 주소를 입력하세요 (예: https://wiki.회사.com) — 노드 또는 ⚙ 설정 → 공용 키");
         if (!url.startsWith("http://") && !url.startsWith("https://"))
             throw new Exception("아웃라인 주소는 http:// 또는 https:// 로 시작해야 합니다: " + url);
         while (url.endsWith("/")) url = url.substring(0, url.length() - 1);
         if (url.endsWith("/api")) url = url.substring(0, url.length() - 4);
 
-        String key = nodeKey != null && !nodeKey.isBlank() ? nodeKey.trim() : System.getenv("OUTLINE_API_KEY");
-        if (key == null || key.isBlank())
-            throw new Exception("API 키가 없습니다 — 아웃라인 설정 → API 액세스에서 발급해 입력하세요 (또는 OUTLINE_API_KEY 환경 변수)");
+        String key = SettingsService.firstNonBlank(nodeKey, cred.outlineApiKey, System.getenv("OUTLINE_API_KEY"));
+        if (key == null)
+            throw new Exception("API 키가 없습니다 — 아웃라인 설정 → API 액세스에서 발급해 노드나 ⚙ 설정 → 공용 키에 넣으세요");
         return new Conn(url, key.trim());
     }
 
@@ -83,6 +86,14 @@ public class OutlineClient {
         };
         throw new Exception("아웃라인 " + method + " 실패 (HTTP " + r.status() + "): " + reason
                 + (msg.isBlank() ? "" : " — " + msg));
+    }
+
+    /** 키가 어디서 오는지: node | settings | env | none */
+    public static String keySource(String nodeKey) {
+        if (nodeKey != null && !nodeKey.isBlank()) return "node";
+        if (!SettingsService.current().credentials.outlineApiKey.isBlank()) return "settings";
+        String env = System.getenv("OUTLINE_API_KEY");
+        return env != null && !env.isBlank() ? "env" : "none";
     }
 
     /** 컬렉션 목록 [{id, name}] */

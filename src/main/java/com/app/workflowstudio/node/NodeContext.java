@@ -3,6 +3,8 @@ package com.app.workflowstudio.node;
 import com.app.workflowstudio.model.PipelineNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
 
@@ -125,10 +127,23 @@ public class NodeContext {
         return resolve(text, Map.of());
     }
 
-    /** 모듈 전용 변수(extra)를 가장 먼저 찾고, 그다음 ${input}, 전역 vars 순으로 치환 */
+    /** 모듈 전용 변수(extra)를 가장 먼저 찾고, 그다음 ${input}, 전역 vars, 기본 변수(날짜·시각) 순으로 치환 */
     public String resolve(String text, Map<String, ?> extra) {
         // ${input} 은 노드마다 다른 값 → 전역 vars 보다 우선
         Map<String, Object> inputScope = input != null ? Map.of(INPUT_VAR, input) : Map.of();
-        return Templates.resolve(text, List.of(extra, inputScope, vars), objectMapper);
+        return Templates.resolve(text, List.of(extra, inputScope, vars, builtins()), objectMapper);
+    }
+
+    /**
+     * 모든 노드에서 쓸 수 있는 기본 변수: ${date} 2026-10-05 · ${time} 09:00 · ${datetime} 2026-10-05 09:00 · ${timestamp}.
+     * (파일 쓰기 노드는 파일명에 쓸 수 있게 ${time}·${datetime} 을 09-00-00 / 20261005_090000 형식으로 덮어씀)
+     */
+    public static Map<String, Object> builtins() {
+        LocalDateTime now = LocalDateTime.now();
+        return Map.of(
+                "date", now.format(DateTimeFormatter.ofPattern("yyyy-MM-dd")),
+                "time", now.format(DateTimeFormatter.ofPattern("HH:mm")),
+                "datetime", now.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")),
+                "timestamp", String.valueOf(System.currentTimeMillis()));
     }
 }

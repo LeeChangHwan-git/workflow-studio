@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="fragments/layout :: head('설정')"></head>
+<style>
+    .set-wrap { display: flex; height: calc(100vh - 56px); }
+    .set-side { width: 210px; flex-shrink: 0; background: var(--bg-2); border-right: 1px solid #3E3E42; padding: 14px 8px; }
+    .set-side-title { font-size: 11px; font-weight: 700; color: var(--dim); text-transform: uppercase; letter-spacing: .5px; padding: 4px 10px 10px; }
+    .set-tab { display: flex; align-items: center; gap: 9px; width: 100%; padding: 9px 12px; border-radius: 6px; border: none; background: none;
+        color: #BBB; font-size: 13.5px; font-family: inherit; cursor: pointer; text-align: left; }
+    .set-tab:hover { background: var(--bg-3); color: #fff; }
+    .set-tab.active { background: rgba(78,91,242,.22); color: #fff; }
+    .set-tab .cnt { margin-left: auto; font-size: 10.5px; color: #888; background: #333; border-radius: 9px; padding: 1px 7px; }
+    .set-main { flex: 1; min-width: 0; overflow-y: auto; padding: 26px 34px 60px; }
+    .set-sec { display: none; max-width: 860px; }
+    .set-sec.active { display: block; }
+    .set-h { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
+    .set-sub { font-size: 13px; color: var(--muted); margin-bottom: 22px; line-height: 1.6; }
+    .set-card { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 18px 20px; margin-bottom: 16px; }
+    .set-card h3 { font-size: 14px; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+    .set-row { display: grid; grid-template-columns: 190px 1fr; gap: 6px 16px; align-items: center; margin-bottom: 12px; }
+    .set-row label { font-size: 13px; color: #BBB; }
+    .set-row .hint { grid-column: 2; font-size: 11.5px; color: var(--dim); margin-top: -4px; line-height: 1.5; }
+    .set-input { width: 100%; height: 34px; padding: 0 10px; border-radius: 5px; border: 1px solid var(--border); background: var(--input-bg);
+        color: var(--text); font-size: 13px; font-family: inherit; outline: none; }
+    .set-input:focus { border-color: #4E5BF2; }
+    .secret-wrap { display: flex; gap: 6px; align-items: center; }
+    .secret-state { font-size: 11.5px; color: #4EC9B0; white-space: nowrap; }
+    .secret-state.none { color: var(--dim); }
+    .set-actions { display: flex; gap: 8px; align-items: center; margin-top: 6px; }
+    .set-msg { font-size: 12.5px; }
+    .set-msg.ok { color: #4EC9B0; } .set-msg.fail { color: #F48771; }
+    .kv { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
+    .kv div { background: var(--bg-3); border-radius: 6px; padding: 10px 12px; }
+    .kv span { display: block; font-size: 11px; color: var(--dim); margin-bottom: 3px; }
+    .kv b { font-size: 14px; font-weight: 600; word-break: break-all; }
+    .prov { display: flex; gap: 10px; margin-bottom: 14px; }
+    .prov label { flex: 1; border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; cursor: pointer; font-size: 13px; line-height: 1.5; }
+    .prov label:has(input:checked) { border-color: #4E5BF2; background: rgba(78,91,242,.12); }
+    .prov input { margin-right: 6px; }
+    .prov small { display: block; color: var(--dim); font-size: 11.5px; margin-top: 3px; }
+    .set-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .set-table th { text-align: left; font-size: 11px; color: var(--dim); font-weight: 700; padding: 8px 10px; border-bottom: 1px solid var(--border); }
+    .set-table td { padding: 8px 10px; border-bottom: 1px solid #333; vertical-align: middle; }
+    .set-table a { color: var(--primary-text); text-decoration: none; }
+    .tag { font-size: 10.5px; padding: 1px 7px; border-radius: 9px; background: #333; color: #BBB; }
+    .tag.del { background: #5A2D2D; color: #F48771; }
+    .tag.ai { background: rgba(78,91,242,.3); color: #C8CCFF; }
+    .log { background: #141414; border: 1px solid #333; border-radius: 6px; padding: 12px; font-family: Consolas, 'D2Coding', monospace;
+        font-size: 12px; line-height: 1.5; white-space: pre-wrap; word-break: break-all; max-height: calc(100vh - 230px); overflow: auto; color: #C8C8C8; }
+    .empty { color: var(--dim); font-size: 13px; padding: 14px 0; }
+</style>
+<body>
+<nav>
+    <div class="nav-brand"><div class="nav-brand-icon">🗂</div>내 메모</div>
+    <a th:href="@{/memos}"     class="nav-link">메모</a>
+    <a th:href="@{/bookmarks}" class="nav-link">북마크</a>
+    <a th:href="@{/calendar}"  class="nav-link">달력</a>
+    <a th:href="@{/pipelines}" class="nav-link">파이프라인</a>
+    <a th:href="@{/http}"      class="nav-link">HTTP</a>
+    <a th:href="@{/settings}"  class="nav-link active">⚙ 설정</a>
+</nav>
+
+<div class="set-wrap">
+    <aside class="set-side">
+        <div class="set-side-title">설정 · 관리</div>
+        <button class="set-tab" data-tab="status">📊 상태</button>
+        <button class="set-tab" data-tab="keys">🔑 공용 키</button>
+        <button class="set-tab" data-tab="assistant">💬 AI 도우미</button>
+        <button class="set-tab" data-tab="timers">⏰ 타이머 <span class="cnt" id="cnt-timers"></span></button>
+        <button class="set-tab" data-tab="backups">🗄 백업 <span class="cnt" id="cnt-backups"></span></button>
+        <button class="set-tab" data-tab="logs">📜 로그</button>
+    </aside>
+
+    <main class="set-main">
+        <!-- 상태 -->
+        <section class="set-sec" id="sec-status">
+            <div class="set-h">상태</div>
+            <div class="set-sub">서버 상태와 데이터 위치입니다.</div>
+            <div class="set-card"><div class="kv" id="status-kv"></div></div>
+            <div class="set-card">
+                <h3>폴더 · 서버</h3>
+                <div class="set-actions">
+                    <button class="btn btn-ghost" onclick="openFolder('data')">📁 데이터 폴더 열기</button>
+                    <button class="btn btn-ghost" onclick="openFolder('logs')">📁 로그 폴더 열기</button>
+                    <span style="flex:1"></span>
+                    <button class="btn btn-danger" onclick="shutdownServer()">⏻ 서버 종료</button>
+                </div>
+                <div class="set-msg" id="status-msg" style="margin-top:10px"></div>
+            </div>
+        </section>
+
+        <!-- 공용 키 -->
+        <section class="set-sec" id="sec-keys">
+            <div class="set-h">공용 키</div>
+            <div class="set-sub">노드에서 키·주소를 비워 두면 여기 값을 씁니다 (노드 → 공용 키 → 환경 변수 순).<br>
+                키는 서버의 <code>data/settings.json</code>에만 저장되고, 이 화면에는 끝 4자리만 보입니다.</div>
+            <div class="set-card">
+                <h3>✨ Gemini</h3>
+                <div class="set-row"><label>API 키</label>
+                    <div class="secret-wrap"><input class="set-input" type="password" autocomplete="new-password" data-secret="credentials.geminiApiKey" placeholder="새 키를 넣을 때만 입력">
+                        <span class="secret-state" data-state="credentials.geminiApiKey"></span></div>
+                    <div class="hint">무료 발급: aistudio.google.com/apikey</div></div>
+            </div>
+            <div class="set-card">
+                <h3>📘 아웃라인</h3>
+                <div class="set-row"><label>주소</label><input class="set-input" data-field="credentials.outlineBaseUrl" placeholder="https://wiki.회사.com" autocomplete="off"></div>
+                <div class="set-row"><label>API 키</label>
+                    <div class="secret-wrap"><input class="set-input" type="password" autocomplete="new-password" data-secret="credentials.outlineApiKey" placeholder="새 키를 넣을 때만 입력">
+                        <span class="secret-state" data-state="credentials.outlineApiKey"></span></div>
+                    <div class="hint">아웃라인 설정 → API 액세스에서 발급</div></div>
+            </div>
+            <div class="set-actions"><button class="btn btn-primary" onclick="saveSettings('keys')">저장</button><span class="set-msg" id="msg-keys"></span></div>
+        </section>
+
+        <!-- AI 도우미 -->
+        <section class="set-sec" id="sec-assistant">
+            <div class="set-h">AI 도우미</div>
+            <div class="set-sub">상단 <b>💬 도우미</b>가 쓸 AI입니다. 파이프라인을 실제로 만들고·고치고·(확인 후) 지웁니다.<br>
+                앱이 노드 설명서를 자동으로 만들어 보내므로, 모듈을 추가해도 따로 가르칠 필요가 없습니다.</div>
+            <div class="prov">
+                <label><input type="radio" name="provider" value="gemini">Gemini (무료 API)<small>인터넷 필요 · 품질 좋음 · 무료 한도 있음</small></label>
+                <label><input type="radio" name="provider" value="openai">OpenAI 호환 (Ollama 등)<small>오프라인 가능 · Ollama, LM Studio, vLLM, OpenRouter …</small></label>
+            </div>
+            <div class="set-card" id="card-gemini">
+                <h3>Gemini</h3>
+                <div class="set-row"><label>모델</label><input class="set-input" data-field="assistant.geminiModel" autocomplete="off">
+                    <div class="hint">예: gemini-flash-latest, gemini-2.5-flash, gemini-2.5-pro</div></div>
+                <div class="set-row"><label>API 키 (선택)</label>
+                    <div class="secret-wrap"><input class="set-input" type="password" autocomplete="new-password" data-secret="assistant.geminiApiKey" placeholder="비우면 공용 Gemini 키">
+                        <span class="secret-state" data-state="assistant.geminiApiKey"></span></div></div>
+            </div>
+            <div class="set-card" id="card-openai">
+                <h3>OpenAI 호환</h3>
+                <div class="set-row"><label>주소 (base URL)</label><input class="set-input" data-field="assistant.openaiBaseUrl" autocomplete="off">
+                    <div class="hint">Ollama: http://localhost:11434/v1 · LM Studio: http://localhost:1234/v1</div></div>
+                <div class="set-row"><label>모델</label><input class="set-input" data-field="assistant.openaiModel" autocomplete="off">
+                    <div class="hint">도구 호출을 지원하는 모델 (Ollama 예: qwen3:8b, qwen2.5:14b, llama3.1:8b)</div></div>
+                <div class="set-row"><label>API 키 (선택)</label>
+                    <div class="secret-wrap"><input class="set-input" type="password" autocomplete="new-password" data-secret="assistant.openaiApiKey" placeholder="Ollama 는 비워 두기">
+                        <span class="secret-state" data-state="assistant.openaiApiKey"></span></div></div>
+            </div>
+            <div class="set-card">
+                <h3>공통</h3>
+                <div class="set-row"><label>온도 (0~2)</label><input class="set-input" type="number" step="0.1" min="0" max="2" data-field="assistant.temperature" data-num>
+                    <div class="hint">낮을수록 일관됨 (권장 0.2)</div></div>
+                <div class="set-row"><label>요청당 최대 도구 호출</label><input class="set-input" type="number" min="2" max="30" data-field="assistant.maxSteps" data-num>
+                    <div class="hint">무료 API 한도를 아끼려면 낮게 (기본 12)</div></div>
+            </div>
+            <div class="set-actions">
+                <button class="btn btn-primary" onclick="saveSettings('assistant')">저장</button>
+                <button class="btn btn-ghost" onclick="testAssistant()">🔌 연결 테스트</button>
+                <span class="set-msg" id="msg-assistant"></span>
+            </div>
+        </section>
+
+        <!-- 타이머 -->
+        <section class="set-sec" id="sec-timers">
+            <div class="set-h">동작 중인 타이머</div>
+            <div class="set-sub">켜져 있는 타이머 노드 전체입니다. 끄려면 해당 파이프라인에서 타이머를 끄고 저장하세요.</div>
+            <div class="set-card" id="timers"></div>
+        </section>
+
+        <!-- 백업 -->
+        <section class="set-sec" id="sec-backups">
+            <div class="set-h">백업</div>
+            <div class="set-sub">파이프라인을 저장·AI 수정·삭제하기 직전 상태가 자동으로 남습니다. <b>복원</b>하면 그 시점으로 되돌립니다
+                (지금 상태도 먼저 백업됨). 삭제된 파이프라인도 되살릴 수 있습니다.</div>
+            <div class="set-card">
+                <div class="set-row" style="margin-bottom:0"><label>파이프라인당 보관 개수</label>
+                    <div class="secret-wrap"><input class="set-input" type="number" min="1" max="200" data-field="backup.keepPerPipeline" data-num style="width:100px">
+                        <button class="btn btn-ghost" onclick="saveSettings('backups')">저장</button><span class="set-msg" id="msg-backups"></span></div></div>
+            </div>
+            <div class="set-card" id="backups"></div>
+        </section>
+
+        <!-- 로그 -->
+        <section class="set-sec" id="sec-logs">
+            <div class="set-h">로그</div>
+            <div class="set-sub" id="log-path">서버 로그 파일의 마지막 300줄입니다.</div>
+            <div class="set-actions" style="margin-bottom:10px"><button class="btn btn-ghost" onclick="loadLogs()">↻ 새로고침</button></div>
+            <div class="log" id="log"></div>
+        </section>
+    </main>
+</div>
+
+<script th:inline="none">
+    var view = null;
+
+    function $(s, r) { return (r || document).querySelector(s); }
+    function $all(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
+    function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+    function get(obj, path) { return path.split('.').reduce(function (o, k) { return o == null ? o : o[k]; }, obj); }
+    function msg(id, text, ok) { var el = $('#' + id); el.textContent = text; el.className = 'set-msg ' + (ok ? 'ok' : 'fail'); }
+    function api(url, opt) {
+        return fetch(url, opt).then(function (r) { return r.json().then(function (b) { if (!r.ok) throw new Error(b.error || ('HTTP ' + r.status)); return b; }); });
+    }
+    function post(url, body) { return api(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body || {}) }); }
+
+    // ── 탭 ──
+    function show(tab) {
+        $all('.set-tab').forEach(function (b) { b.classList.toggle('active', b.dataset.tab === tab); });
+        $all('.set-sec').forEach(function (s) { s.classList.toggle('active', s.id === 'sec-' + tab); });
+        if (location.hash !== '#' + tab) history.replaceState(null, '', '#' + tab);
+        if (tab === 'status') loadStatus();
+        if (tab === 'timers') loadTimers();
+        if (tab === 'backups') loadBackups();
+        if (tab === 'logs') loadLogs();
+    }
+    $all('.set-tab').forEach(function (b) { b.addEventListener('click', function () { show(b.dataset.tab); }); });
+
+    // ── 설정 ──
+    function fill() {
+        $all('[data-field]').forEach(function (el) { var v = get(view.settings, el.dataset.field); el.value = v == null ? '' : v; });
+        $all('[data-secret]').forEach(function (el) { el.value = ''; });
+        $all('[data-state]').forEach(function (el) {
+            var hint = view.secrets[el.dataset.state];
+            el.textContent = hint ? '✓ 설정됨 ' + hint : '비어 있음';
+            el.className = 'secret-state' + (hint ? '' : ' none');
+            if (hint && !el.nextSibling) {
+                var clr = document.createElement('button');
+                clr.type = 'button'; clr.className = 'btn btn-ghost'; clr.style.height = '28px'; clr.textContent = '지우기';
+                clr.onclick = function () { if (confirm('저장된 키를 지울까요?')) clearSecret(el.dataset.state); };
+                el.parentNode.appendChild(clr);
+            }
+            if (!hint && el.nextSibling) el.parentNode.removeChild(el.nextSibling);
+        });
+        var p = view.settings.assistant.provider;
+        $all('input[name=provider]').forEach(function (r) { r.checked = r.value === p; });
+        toggleProvider();
+    }
+    function toggleProvider() {
+        var p = ($('input[name=provider]:checked') || {}).value || 'gemini';
+        $('#card-gemini').style.display = p === 'gemini' ? '' : 'none';
+        $('#card-openai').style.display = p === 'openai' ? '' : 'none';
+    }
+    $all('input[name=provider]').forEach(function (r) { r.addEventListener('change', toggleProvider); });
+
+    function collect() {
+        var body = { credentials: {}, assistant: {}, backup: {} };
+        $all('[data-field]').forEach(function (el) {
+            var p = el.dataset.field.split('.');
+            body[p[0]][p[1]] = el.hasAttribute('data-num') ? Number(el.value) : el.value.trim();
+        });
+        $all('[data-secret]').forEach(function (el) {
+            var p = el.dataset.secret.split('.');
+            body[p[0]][p[1]] = el.value.trim() ? el.value.trim() : null;   // null = 기존 값 유지
+        });
+        body.assistant.provider = ($('input[name=provider]:checked') || {}).value || 'gemini';
+        return body;
+    }
+    function saveSettings(where) {
+        return api('/api/settings', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(collect()) })
+            .then(function (v) { view = v; fill(); msg('msg-' + where, '✓ 저장했습니다', true); })
+            .catch(function (e) { msg('msg-' + where, e.message, false); });
+    }
+    function clearSecret(path) {
+        var body = {}; var p = path.split('.'); body[p[0]] = {}; body[p[0]][p[1]] = '';
+        api('/api/settings', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+            .then(function (v) { view = v; fill(); });
+    }
+    function testAssistant() {
+        msg('msg-assistant', '⏳ 저장 후 연결 확인 중…', true);
+        saveSettings('assistant').then(function () {
+            msg('msg-assistant', '⏳ AI에 물어보는 중…', true);
+            return post('/api/assistant/test');
+        }).then(function (r) { if (r) msg('msg-assistant', (r.ok ? '✅ ' : '❌ ') + (r.model ? r.model + ' — ' : '') + r.message, r.ok); })
+            .catch(function (e) { msg('msg-assistant', e.message, false); });
+    }
+
+    // ── 상태 ──
+    function loadStatus() {
+        api('/api/admin/status').then(function (s) {
+            var rows = [['가동 시간', s.uptime], ['PID', s.pid], ['포트', s.port], ['Java', s.java],
+                ['메모리', s.heapUsedMB + ' / ' + s.heapMaxMB + ' MB'], ['스레드', s.threads],
+                ['파이프라인', s.pipelines + '개'], ['동작 중인 타이머', s.activeTimers + '개'], ['백업', s.backups + '개'],
+                ['데이터 폴더', s.storage + ' (' + s.storageMB + ' MB)'], ['로그 파일', s.logFile || '(콘솔)']];
+            $('#status-kv').innerHTML = rows.map(function (r) { return '<div><span>' + esc(r[0]) + '</span><b>' + esc(r[1]) + '</b></div>'; }).join('');
+            $('#cnt-timers').textContent = s.activeTimers || '';
+            $('#cnt-backups').textContent = s.backups || '';
+            $('#log-path').textContent = '서버 로그 파일의 마지막 300줄입니다' + (s.logFile ? ' — ' + s.logFile : '');
+        });
+    }
+    function openFolder(which) {
+        post('/api/admin/open-folder', { which: which }).then(function () { msg('status-msg', '📁 서버 PC에서 탐색기를 열었습니다', true); })
+            .catch(function (e) { msg('status-msg', e.message, false); });
+    }
+    function shutdownServer() {
+        if (!confirm('서버를 종료할까요? 타이머도 멈춥니다. 다시 켜려면 dist\\백그라운드실행.bat 을 실행하세요.')) return;
+        fetch('/api/app/shutdown', { method: 'POST', headers: { 'X-Workflow-Studio-Shutdown': 'yes' } })
+            .then(function () { msg('status-msg', '서버를 종료했습니다.', true); })
+            .catch(function () { msg('status-msg', '종료 요청 실패', false); });
+    }
+
+    // ── 타이머 ──
+    function loadTimers() {
+        api('/api/admin/timers').then(function (list) {
+            $('#cnt-timers').textContent = list.length || '';
+            if (!list.length) { $('#timers').innerHTML = '<div class="empty">켜져 있는 타이머가 없습니다.</div>'; return; }
+            $('#timers').innerHTML = '<table class="set-table"><tr><th>파이프라인</th><th>일정</th><th>다음 실행</th></tr>' +
+                list.map(function (t) {
+                    return '<tr><td><a href="/pipelines/' + esc(t.pipelineId) + '">' + esc(t.pipelineName) + '</a></td><td>' + esc(t.description) +
+                        '</td><td>' + esc((t.next || '-').replace('T', ' ')) + '</td></tr>';
+                }).join('') + '</table>';
+        });
+    }
+
+    // ── 백업 ──
+    function loadBackups() {
+        api('/api/admin/backups').then(function (list) {
+            $('#cnt-backups').textContent = list.length || '';
+            if (!list.length) { $('#backups').innerHTML = '<div class="empty">아직 백업이 없습니다. 파이프라인을 수정·삭제하면 직전 상태가 여기에 남습니다.</div>'; return; }
+            $('#backups').innerHTML = '<table class="set-table"><tr><th>시각</th><th>파이프라인</th><th>이유</th><th>노드</th><th></th></tr>' +
+                list.slice(0, 300).map(function (b, i) {
+                    var tag = b.reason.indexOf('AI') >= 0 ? 'ai' : b.reason.indexOf('삭제') >= 0 ? 'del' : '';
+                    return '<tr><td>' + esc(b.savedAt) + '</td><td>' + (b.deleted ? esc(b.name) + ' <span class="tag del">삭제됨</span>'
+                            : '<a href="/pipelines/' + esc(b.pipelineId) + '">' + esc(b.name) + '</a>') +
+                        '</td><td><span class="tag ' + tag + '">' + esc(b.reason) + '</span></td><td>' + b.nodeCount +
+                        '</td><td><button class="btn btn-ghost" style="height:28px" data-restore="' + i + '">복원</button></td></tr>';
+                }).join('') + '</table>';
+            $all('[data-restore]').forEach(function (btn) {
+                btn.onclick = function () {
+                    var b = list[+btn.dataset.restore];
+                    if (!confirm('"' + b.name + '"을(를) ' + b.savedAt + ' 상태로 되돌릴까요? (지금 상태도 먼저 백업됩니다)')) return;
+                    post('/api/admin/backups/restore', { pipelineId: b.pipelineId, file: b.file }).then(function (r) {
+                        try { var bc = new BroadcastChannel('workflow-pipelines'); bc.postMessage([{ id: r.id, type: 'updated' }]); bc.close(); } catch (e) {}
+                        loadBackups();
+                        alert('복원했습니다: ' + r.name);
+                    }).catch(function (e) { alert(e.message); });
+                };
+            });
+        });
+    }
+
+    // ── 로그 ──
+    function loadLogs() {
+        api('/api/admin/logs?lines=300').then(function (r) { var el = $('#log'); el.textContent = r.text; el.scrollTop = el.scrollHeight; });
+    }
+
+    api('/api/settings').then(function (v) { view = v; fill(); });
+    loadStatus();
+    show((location.hash || '#status').slice(1));
+</script>
+</body>
+</html>

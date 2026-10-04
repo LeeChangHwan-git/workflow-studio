@@ -1,6 +1,7 @@
 package com.app.workflowstudio.controller;
 
 import com.app.workflowstudio.model.CalendarEvent;
+import com.app.workflowstudio.node.modules.schedule.ScheduleService;
 import com.app.workflowstudio.service.CalendarEventService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -20,10 +21,12 @@ public class CalendarController {
 
     private final CalendarEventService service;
     private final ObjectMapper objectMapper;
+    private final ScheduleService schedules;
 
-    public CalendarController(CalendarEventService service, ObjectMapper objectMapper) {
+    public CalendarController(CalendarEventService service, ObjectMapper objectMapper, ScheduleService schedules) {
         this.service = service;
         this.objectMapper = objectMapper;
+        this.schedules = schedules;
     }
 
     @GetMapping
@@ -68,6 +71,11 @@ public class CalendarController {
             }
             weeks.add(week);
         }
+
+        // 타이머 일정 (화면에 보이는 첫 주 일요일 ~ 마지막 주 토요일) — 예정 + 지난 실행
+        LocalDate gridStart = weeks.get(0).get(0);
+        LocalDate gridEnd = weeks.get(weeks.size() - 1).get(6);
+        model.addAttribute("timersJson", objectMapper.writeValueAsString(schedules.calendar(gridStart, gridEnd)));
 
         YearMonth prevYm = ym.minusMonths(1);
         YearMonth nextYm = ym.plusMonths(1);

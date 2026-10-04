@@ -20,7 +20,7 @@ public class AiController {
         this.memoryStore = memoryStore;
     }
 
-    /** Gemini 모델 목록 {apiKey?} → {models:[...]} | {error} (키가 비면 GEMINI_API_KEY 환경 변수) */
+    /** Gemini 모델 목록 {apiKey?} → {models:[...]} | {error} (키가 비면 설정의 공용 키 → GEMINI_API_KEY 환경 변수) */
     @PostMapping("/gemini/models")
     public ResponseEntity<Map<String, Object>> geminiModels(@RequestBody(required = false) Map<String, String> req) {
         try {
@@ -41,8 +41,7 @@ public class AiController {
         String nodeKey = req != null ? req.get("apiKey") : null;
         String model = req != null && req.get("model") != null ? req.get("model").trim() : "";
         Map<String, Object> res = new LinkedHashMap<>();
-        res.put("keySource", nodeKey != null && !nodeKey.isBlank() ? "node"
-                : (System.getenv("GEMINI_API_KEY") != null && !System.getenv("GEMINI_API_KEY").isBlank() ? "env" : "none"));
+        res.put("keySource", GeminiClient.keySource(nodeKey));
 
         String key;
         try {

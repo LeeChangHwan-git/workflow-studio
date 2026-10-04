@@ -39,7 +39,6 @@ function useOutlineStatus(baseUrl: string, apiKey: string): Entry | undefined {
     }
   }, [])
   useEffect(() => {
-    if (!baseUrl.trim()) return
     const t = window.setTimeout(() => check(baseUrl, apiKey), 800)
     return () => window.clearTimeout(t)
   }, [baseUrl, apiKey])
@@ -59,7 +58,7 @@ export function OutlineConnectionField({
   const status = useOutlineStatus(baseUrl, apiKey)
   const checking = status?.state === 'checking'
   const r = status?.state === 'done' ? status.result : null
-  const source = r ? (r.keySource === 'node' ? '노드에 입력한 키' : r.keySource === 'env' ? 'OUTLINE_API_KEY 환경 변수' : '키 없음') : null
+  const source = r ? (r.keySource === 'node' ? '노드에 입력한 키' : r.keySource === 'settings' ? '⚙ 설정의 공용 키' : r.keySource === 'env' ? 'OUTLINE_API_KEY 환경 변수' : '키 없음') : null
 
   return (
     <div className="cfg-group">
@@ -67,7 +66,7 @@ export function OutlineConnectionField({
       <button
         type="button"
         className="cfg-folder-btn outline-verify-btn"
-        disabled={checking || !baseUrl.trim()}
+        disabled={checking}
         onClick={() => check(baseUrl, apiKey, true)}
       >
         {checking ? '확인 중…' : '🔑 연결 확인'}

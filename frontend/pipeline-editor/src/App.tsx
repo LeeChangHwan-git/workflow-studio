@@ -351,6 +351,37 @@ export default function App({ initialPipelineId }: Props) {
     return () => window.removeEventListener('beforeunload', onBeforeUnload)
   }, [dirty])
 
+  // 💬 도우미(assistant.js)가 이 파이프라인을 바꾸거나 지우면: 변경 없으면 바로 다시 불러오고, 편집 중이면 알림 띄우기
+  const [externalChange, setExternalChange] = useState<'updated' | 'deleted' | null>(null)
+  const reloadFromServer = useCallback(async () => {
+    if (!pipelineId) return
+    const p = await api.getPipeline(pipelineId)
+    applyPipeline(p, nodeTypes)
+    savedSnapshotRef.current = null // 다시 불러온 상태를 새 기준으로
+    setExternalChange(null)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pipelineId, nodeTypes])
+  useEffect(() => {
+    const onChange = (detail: { id: string; type: string }[]) => {
+      const mine = detail.find((d) => d.id === pipelineId)
+      if (!mine) return
+      if (mine.type === 'deleted') setExternalChange('deleted')
+      else if (dirty) setExternalChange('updated')
+      else reloadFromServer()
+    }
+    const onWindow = (e: Event) => onChange((e as CustomEvent).detail ?? [])
+    window.addEventListener('workflow-pipelines-changed', onWindow)
+    let bc: BroadcastChannel | null = null
+    try {
+      bc = new BroadcastChannel('workflow-pipelines')
+      bc.onmessage = (e) => onChange(e.data ?? [])
+    } catch { /* 지원 안 하는 브라우저 */ }
+    return () => {
+      window.removeEventListener('workflow-pipelines-changed', onWindow)
+      bc?.close()
+    }
+  }, [pipelineId, dirty, reloadFromServer])
+
   // 탭 제목 = 파이프라인 이름 (열린 탭 관리 패널에도 이 이름으로 표시)
   useEffect(() => {
     document.title = `${name || '새 파이프라인'} · 파이프라인 — 내 메모`
@@ -456,6 +487,22 @@ export default function App({ initialPipelineId }: Props) {
 
   return (
     <div className="editor-wrap">
+      {externalChange && (
+        <div className="external-change">
+          {externalChange === 'deleted' ? (
+            <>
+              <span>🗑 도우미가 이 파이프라인을 삭제했습니다 (⚙ 설정 → 백업에서 되살릴 수 있음)</span>
+              <button type="button" onClick={handleBackToList}>목록으로</button>
+            </>
+          ) : (
+            <>
+              <span>💬 도우미가 이 파이프라인을 수정했습니다 — 지금 화면엔 저장 안 한 변경이 있습니다</span>
+              <button type="button" onClick={reloadFromServer}>도우미 버전 불러오기</button>
+              <button type="button" className="ghost" onClick={() => setExternalChange(null)}>내 편집 유지</button>
+            </>
+          )}
+        </div>
+      )}
       <div className="editor-main">
         <Palette
           nodeTypes={nodeTypes}

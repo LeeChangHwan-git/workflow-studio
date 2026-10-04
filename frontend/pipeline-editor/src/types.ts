@@ -150,7 +150,7 @@ export type PipelineNodeData = {
 export interface OutlineVerify {
   ok: boolean
   message: string
-  keySource: 'node' | 'env' | 'none'
+  keySource: 'node' | 'settings' | 'env' | 'none'
   user?: string
   team?: string
   collections?: { id: string; name: string }[]
