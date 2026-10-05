@@ -186,6 +186,7 @@ src/main/java/com/app/workflowstudio/
 │       │                            #     GeminiClient, ChatMemoryStore, AiController
 │       ├── http/                    #     HTTP_REQUEST
 │       ├── outline/                 #     OUTLINE 아웃라인 게시판 (Module, Client, Controller)
+│       ├── html/                    #     HTML_SELECT 웹 페이지 추출 (Module, Fetcher, Extractor, 분석기 Controller)
 │       └── filewrite/               #     FILE_WRITE (Windows 전용)
 └── service/
     ├── Memo/Bookmark/CalendarEventService.java
@@ -203,12 +204,29 @@ src/main/resources/
     └── session-closed.html          # 종료된 탭이 보여주는 화면
 frontend/pipeline-editor/            # React 에디터 소스 (빌드 결과 → static/pipeline-editor/)
 docker/outline/                      # 아웃라인 로컬 샘플 (docker-compose, Dex 로그인, seed.js — .env는 git 제외)
-src/test/java/...                    # 모듈별 테스트 (가짜 Gemini·OpenAI·API·Outline 서버 포함, 총 39개)
+src/test/java/...                    # 모듈별 테스트 (가짜 Gemini·OpenAI·API·Outline·게시판 서버 포함, 총 45개)
 ```
 
 ---
 
 ## 변경 이력
+
+### 🔎 웹 페이지 추출 모듈 + 🔍 HTML 분석기 (2026-10-05)
+
+→ 상세: `prd/modules/html-select.md`
+
+- **웹 페이지 추출 노드** (`HTML_SELECT`, 팔레트 "통합"): API 없는 사내 게시판 등에서 CSS 선택자로 목록 추출
+  → `{items:[{제목, 링크, 날짜…}], text}`. EUC-KR 자동 판별, 로그인 쿠키 헤더, 리다이렉트 쿠키 유지, 앞 노드 HTML 입력도 가능
+- **🔍 HTML 분석기**: 페이지를 그대로 보며 글 제목을 **클릭** → 반복 행(게시글 줄)을 찾아 "같은 종류 전부" 선택자 자동 생성,
+  작성자·날짜 등 항목 추가, 색깔 강조 + 미리보기 표 + 서버(jsoup) 확인, 프레임 페이지 안내 → 노드에 적용
+- 파라미터 타입 `secretTextarea` (AI 도우미에게 가림) — HTTP 요청 노드 헤더에도 적용
+- 의존성 jsoup 추가, 테스트 5개 추가 (총 45개 통과), 실제 화면에서 Hacker News 목록으로 확인
+- **글자 없는 요소(로고 등) 처리**: 분석기가 그림·아이콘을 고르면 이미지 주소/HTML 등으로 자동 선택, 값이 빈 항목 경고·자동 고치기,
+  실행 오류도 "요소는 찾았지만 값이 비어 있음"으로 구분
+- **🍪 로그인 쿠키 넣기 쉽게**: 요청 헤더 칸에 개발자 도구의 "cURL로 복사" 내용을 그대로 붙여넣으면 쿠키만 뽑아 `Cookie:` 로 자동 변환
+  (요청 헤더 복사·쿠키 값만도 인식), 값 가림 표시, **❓ 쿠키 찾는 법** 별도 창(`/guide/cookie`) — F12 네트워크 탭에서 어느 줄·어느 값인지 그림 6장으로 안내
+- **에디터 캐시 문제 수정**: 새로 빌드해도 브라우저가 옛 `app.js` 를 써서 새 설정 필드(분석기 버튼)가 안 보이던 문제 →
+  `spring.web.resources.chain.strategy.content` 로 `/pipeline-editor/**` 주소에 내용 해시를 붙임 (`app-<해시>.js`)
 
 ### 📅 달력 ↔ 타이머 연동 (2026-10-04)
 

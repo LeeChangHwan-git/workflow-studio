@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>쿠키 넣는 법 — Workflow Studio</title>
+<style>
+  :root {
+    --bg: #1E1E1E; --card: #252526; --line: #3A3A3E; --text: #DADADA; --muted: #9A9A9A;
+    --accent: #D97706; --accent-2: #FBBF24; --ok: #4EC9B0; --bad: #F48771; --mark: #E5484D;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font: 14px/1.7 'Segoe UI', 'Malgun Gothic', system-ui, sans-serif; }
+  .wrap { max-width: 960px; margin: 0 auto; padding: 28px 28px 80px; }
+  h1 { font-size: 24px; margin-bottom: 4px; }
+  .sub { color: var(--muted); margin-bottom: 18px; }
+  .toc { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 26px; }
+  .toc a { color: #CCC; text-decoration: none; font-size: 12.5px; padding: 4px 11px; border-radius: 14px; border: 1px solid var(--line); background: var(--card); }
+  .toc a:hover { border-color: var(--accent); color: #fff; }
+  h2 { font-size: 18px; margin: 34px 0 10px; display: flex; align-items: center; gap: 10px; scroll-margin-top: 14px; }
+  .num { width: 28px; height: 28px; border-radius: 50%; background: var(--accent); color: #fff; display: grid; place-items: center; font-size: 14px; font-weight: 800; flex-shrink: 0; }
+  p { margin: 6px 0; }
+  b { color: #fff; }
+  .shot b { color: inherit; }
+  kbd { display: inline-block; padding: 0 7px; border-radius: 4px; border: 1px solid #555; border-bottom-width: 3px; background: #333; color: #fff; font: 600 12.5px/1.6 Consolas, monospace; }
+  code { background: #111; padding: 1px 6px; border-radius: 4px; font: 12.5px Consolas, monospace; color: #FFD7A0; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px; margin: 12px 0; }
+  .best { border-color: var(--accent); background: linear-gradient(135deg, rgba(217,119,6,.14), rgba(217,119,6,.04)); }
+  .best h3 { color: var(--accent-2); font-size: 15px; margin-bottom: 6px; }
+  ol.steps { padding-left: 22px; } ol.steps li { margin: 4px 0; }
+  .tip { border-left: 3px solid var(--ok); background: rgba(78,201,176,.08); padding: 8px 12px; border-radius: 0 6px 6px 0; margin: 10px 0; font-size: 13.5px; }
+  .warn { border-left: 3px solid var(--bad); background: rgba(244,135,113,.08); padding: 8px 12px; border-radius: 0 6px 6px 0; margin: 10px 0; font-size: 13.5px; }
+  .caption { font-size: 12px; color: var(--muted); margin-top: 6px; text-align: center; }
+  table.faq { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  table.faq th, table.faq td { border-bottom: 1px solid var(--line); padding: 9px 10px; text-align: left; vertical-align: top; }
+  table.faq th { color: var(--muted); font-size: 12px; }
+  table.faq td:first-child { width: 34%; color: #fff; font-weight: 600; }
+
+  /* ── 크롬 개발자 도구 모양 그림 ── */
+  .shot { border-radius: 8px; overflow: hidden; border: 1px solid #555; box-shadow: 0 10px 30px rgba(0,0,0,.5); margin: 12px 0 4px; background: #fff; color: #202124; font: 12px/1.4 'Segoe UI', 'Malgun Gothic', sans-serif; position: relative; }
+  .chrome-bar { background: #DEE1E6; padding: 7px 10px; display: flex; align-items: center; gap: 8px; }
+  .chrome-dots span { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #C4C7CC; margin-right: 4px; }
+  .chrome-url { flex: 1; background: #fff; border-radius: 14px; padding: 4px 12px; color: #444; font-size: 12px; }
+  .page { padding: 14px 18px; background: #fff; min-height: 70px; }
+  .page .fake-title { font-weight: 700; font-size: 14px; margin-bottom: 6px; }
+  .page .fake-row { height: 9px; background: #ECEDEF; border-radius: 3px; margin: 6px 0; }
+  .page .login-ok { float: right; font-size: 11px; color: #188038; background: #E6F4EA; padding: 1px 8px; border-radius: 9px; }
+  .dt { border-top: 1px solid #CBCDD1; background: #fff; }
+  .dt-tabs { display: flex; background: #F1F3F4; border-bottom: 1px solid #CBCDD1; font-size: 12px; }
+  .dt-tabs span { padding: 6px 12px; color: #5F6368; }
+  .dt-tabs span.on { color: #1A73E8; border-bottom: 2px solid #1A73E8; background: #fff; }
+  .dt-tool { display: flex; align-items: center; gap: 4px; padding: 4px 8px; border-bottom: 1px solid #E0E0E0; font-size: 11.5px; color: #5F6368; flex-wrap: wrap; }
+  .dt-tool .rec { width: 10px; height: 10px; border-radius: 50%; background: #D93025; margin-right: 6px; }
+  .dt-tool .chip { padding: 1px 8px; border-radius: 3px; }
+  .dt-tool .chip.on { background: #D2E3FC; color: #174EA6; font-weight: 700; }
+  .dt-tool .filter { border: 1px solid #DADCE0; border-radius: 3px; padding: 1px 6px; color: #9AA0A6; margin-right: 6px; }
+  .reqs { width: 100%; border-collapse: collapse; font-size: 11.5px; }
+  .reqs th { text-align: left; font-weight: 400; color: #5F6368; background: #F8F9FA; padding: 3px 8px; border-bottom: 1px solid #E0E0E0; border-right: 1px solid #E8EAED; }
+  .reqs td { padding: 3px 8px; border-bottom: 1px solid #F1F3F4; border-right: 1px solid #F1F3F4; white-space: nowrap; }
+  .reqs tr.dim td { color: #B0B3B8; }
+  .reqs tr.sel td { background: #D2E3FC; }
+  .ic { display: inline-block; width: 10px; height: 12px; margin-right: 5px; vertical-align: -2px; border-radius: 1px; }
+  .ic.doc { background: #4285F4; } .ic.css { background: #A142F4; } .ic.js { background: #F9AB00; } .ic.img { background: #34A853; } .ic.xhr { background: #9AA0A6; }
+  .detail { display: grid; grid-template-columns: 200px 1fr; min-height: 180px; }
+  .detail .left { border-right: 1px solid #E0E0E0; }
+  .hdrs { padding: 6px 12px; font-size: 11.5px; }
+  .hdrs .sec { font-weight: 700; color: #202124; margin: 8px 0 3px; }
+  .hdrs .kv { display: grid; grid-template-columns: 130px 1fr; padding: 1px 0; }
+  .hdrs .k { color: #5F6368; } .hdrs .v { color: #202124; word-break: break-all; font-family: Consolas, monospace; font-size: 11px; }
+  .hdrs .struck { text-decoration: line-through; opacity: .55; }
+  .menu { position: absolute; background: #fff; border: 1px solid #CBCDD1; border-radius: 6px; box-shadow: 0 6px 18px rgba(0,0,0,.25); padding: 4px 0; font-size: 12px; min-width: 170px; }
+  .menu div { padding: 4px 14px; color: #202124; display: flex; justify-content: space-between; gap: 16px; }
+  .menu .sep { height: 1px; background: #E0E0E0; padding: 0; margin: 4px 0; }
+  .menu .hl { background: #D2E3FC; }
+  /* 강조 표시 */
+  .box { outline: 3px solid var(--mark); outline-offset: 1px; border-radius: 3px; position: relative; }
+  .badge { position: absolute; width: 22px; height: 22px; border-radius: 50%; background: var(--mark); color: #fff; font: 800 12px/22px 'Segoe UI', sans-serif; text-align: center; box-shadow: 0 2px 6px rgba(0,0,0,.4); z-index: 3; }
+  .callout { position: absolute; background: var(--mark); color: #fff; font: 700 11.5px/1.4 'Malgun Gothic', sans-serif; padding: 4px 9px; border-radius: 6px; white-space: nowrap; box-shadow: 0 2px 8px rgba(0,0,0,.35); z-index: 3; }
+  .callout.gray { background: #5F6368; }
+  /* 우리 앱 모양 */
+  .app { background: #1F1F22; color: #DDD; padding: 12px; font: 12px 'Segoe UI', 'Malgun Gothic', sans-serif; }
+  .app textarea { width: 100%; height: 58px; background: #2A2A2E; color: #E8E8E8; border: 1px solid #555; border-radius: 6px; padding: 7px; font: 11.5px Consolas, monospace; resize: none; }
+  .app .ok { margin-top: 6px; background: #1B3D27; color: #7EE2A8; padding: 5px 8px; border-radius: 5px; }
+  .app .row { display: flex; gap: 6px; align-items: center; margin-bottom: 6px; }
+  .app .pill { border: 1px solid #D97706; color: #FBBF24; border-radius: 12px; padding: 1px 9px; font-size: 11px; }
+  .note-img { font-size: 11.5px; color: var(--muted); margin-top: 26px; text-align: center; }
+  .close { position: fixed; top: 12px; right: 14px; background: #333; color: #ddd; border: 1px solid #555; border-radius: 6px; padding: 4px 12px; cursor: pointer; font-size: 12.5px; }
+</style>
+</head>
+<body>
+<button class="close" onclick="window.close()">닫기 ✕</button>
+<div class="wrap">
+  <h1>🍪 로그인 쿠키 넣는 법</h1>
+  <div class="sub">회사 게시판처럼 <b>로그인해야 보이는 페이지</b>를 가져오려면, 브라우저가 가진 "로그인 증표(쿠키)"를 Workflow Studio 에도 알려줘야 합니다. 1분이면 됩니다.
+    <br>크롬·엣지 모두 같은 방법입니다. 이 창은 옆에 띄워 두고 따라 하세요.</div>
+
+  <div class="toc">
+    <a href="#quick">⚡ 가장 쉬운 방법</a>
+    <a href="#s1">1. 로그인</a><a href="#s2">2. F12 → 네트워크</a><a href="#s3">3. 새로고침 · 문서 고르기</a>
+    <a href="#s4">4. cURL로 복사 → 붙여넣기</a><a href="#s4b">4-B. 값만 직접 복사</a><a href="#s5">5. 확인</a>
+    <a href="#faq">문제 해결</a><a href="#safe">보안</a>
+  </div>
+
+  <div class="card best" id="quick">
+    <h3>⚡ 요약 — 이것만 하면 됩니다</h3>
+    <ol class="steps">
+      <li>평소처럼 게시판에 <b>로그인</b>하고, 가져올 <b>목록 페이지</b>를 엽니다.</li>
+      <li><kbd>F12</kbd> → 위쪽 <b>네트워크(Network)</b> 탭 → <kbd>F5</kbd> 로 새로고침.</li>
+      <li>필터에서 <b>문서(Doc)</b> 를 누르면 남는 <b>첫 줄</b>(목록 페이지 이름)을 <b>마우스 오른쪽 클릭</b></li>
+      <li><b>복사(Copy) → cURL로 복사(bash) / Copy as cURL (bash)</b></li>
+      <li>Workflow Studio 의 <b>🍪 헤더 칸에 <kbd>Ctrl</kbd>+<kbd>V</kbd></b> → 쿠키만 자동으로 뽑혀 들어갑니다. 끝!</li>
+    </ol>
+  </div>
+
+  <!-- 1 -->
+  <h2 id="s1"><span class="num">1</span> 게시판에 로그인하고 목록 페이지 열기</h2>
+  <p>평소 쓰는 브라우저(크롬/엣지)로 회사 게시판에 <b>로그인</b>한 뒤, Workflow Studio 로 가져오고 싶은 <b>글 목록 화면</b>까지 들어갑니다.
+    주소창의 주소가 분석기에 넣을 주소입니다.</p>
+  <div class="shot">
+    <div class="chrome-bar"><span class="chrome-dots"><span></span><span></span><span></span></span>
+      <span class="chrome-url box">http://intranet.회사.com/board/<b>list.jsp</b>?bbs=notice</span></div>
+    <div class="page"><span class="login-ok">홍길동님 로그인됨</span><div class="fake-title">사내 공지 게시판</div>
+      <div class="fake-row" style="width:92%"></div><div class="fake-row" style="width:85%"></div><div class="fake-row" style="width:88%"></div></div>
+    <span class="callout" style="top:44px;left:300px">① 이 페이지 주소 = 분석기에 넣을 주소</span>
+  </div>
+  <div class="caption">그림 1. 로그인한 상태로 목록 페이지를 연다</div>
+
+  <!-- 2 -->
+  <h2 id="s2"><span class="num">2</span> <kbd>F12</kbd> 누르고 「네트워크」 탭 열기</h2>
+  <p>키보드 <kbd>F12</kbd> (또는 <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>I</kbd>) → 개발자 도구가 열립니다. 위쪽 탭 중 <b>네트워크</b>(영어: <b>Network</b>)를 누르세요.</p>
+  <div class="shot">
+    <div class="dt">
+      <div class="dt-tabs"><span>요소</span><span>콘솔</span><span>소스</span><span class="on box">네트워크</span><span>성능</span><span>메모리</span><span>애플리케이션</span><span>»</span></div>
+      <div class="dt-tool"><span class="rec"></span><span>🚫</span><span class="filter">필터</span><span style="color:#9AA0A6">(비어 있음 — 아직 기록 없음)</span></div>
+      <div style="padding:18px;color:#80868B;text-align:center;font-size:12px">네트워크 활동을 기록하는 중…<br>요청을 기록하려면 <b>페이지를 새로고침(Ctrl+R)</b> 하세요</div>
+    </div>
+    <span class="callout" style="top:5px;left:560px">← ② 네트워크(Network)</span>
+  </div>
+  <div class="caption">그림 2. 개발자 도구 → 네트워크 탭. 탭이 안 보이면 <b>»</b> 를 눌러 찾으세요</div>
+  <div class="tip">처음 열면 목록이 비어 있습니다 — <b>정상</b>입니다. 개발자 도구를 연 <b>뒤에</b> 일어난 요청만 기록되기 때문입니다.</div>
+
+  <!-- 3 -->
+  <h2 id="s3"><span class="num">3</span> <kbd>F5</kbd> 새로고침 → 「문서(Doc)」 필터 → 첫 줄</h2>
+  <p>네트워크 탭을 연 채로 <kbd>F5</kbd> 를 누르면 줄이 <b>수십~수백 개</b> 쏟아집니다 (그림·스타일·스크립트 파일 등). 대부분 <b>필요 없습니다</b>.
+    위쪽 필터에서 <b>문서</b>(<b>Doc</b>)를 누르면 페이지 본문 요청만 남습니다.</p>
+  <div class="shot">
+    <div class="dt">
+      <div class="dt-tabs"><span>요소</span><span>콘솔</span><span>소스</span><span class="on">네트워크</span><span>성능</span><span>애플리케이션</span></div>
+      <div class="dt-tool"><span class="rec"></span><span class="filter">필터</span>
+        <span class="chip">전체</span><span class="chip">Fetch/XHR</span><span class="chip on box">문서</span><span class="chip">CSS</span><span class="chip">JS</span><span class="chip">글꼴</span><span class="chip">이미지</span><span class="chip">미디어</span><span class="chip">기타</span></div>
+      <table class="reqs">
+        <tr><th style="width:38%">이름</th><th>상태</th><th>유형</th><th>시작점</th><th>크기</th><th>시간</th></tr>
+        <tr class="sel"><td class="box"><span class="ic doc"></span><b>list.jsp?bbs=notice</b></td><td>200</td><td><b>document</b></td><td>기타</td><td>18.2 kB</td><td>84 ms</td></tr>
+        <tr class="dim"><td><span class="ic css"></span>board.css</td><td>200</td><td>stylesheet</td><td>list.jsp</td><td>4.1 kB</td><td>9 ms</td></tr>
+        <tr class="dim"><td><span class="ic js"></span>jquery-1.8.min.js</td><td>200</td><td>script</td><td>list.jsp</td><td>(메모리 캐시)</td><td>0 ms</td></tr>
+        <tr class="dim"><td><span class="ic img"></span>logo.gif</td><td>200</td><td>gif</td><td>list.jsp</td><td>2.3 kB</td><td>5 ms</td></tr>
+        <tr class="dim"><td><span class="ic xhr"></span>getAlarmCount.do</td><td>200</td><td>xhr</td><td>common.js</td><td>312 B</td><td>41 ms</td></tr>
+        <tr class="dim"><td style="color:#B0B3B8">… 그 외 87개 (문서 필터를 누르면 사라짐)</td><td></td><td></td><td></td><td></td><td></td></tr>
+      </table>
+    </div>
+    <span class="callout" style="top:58px;left:205px">③ 문서(Doc)</span>
+    <span class="callout" style="top:112px;left:330px">④ 이 줄! — 유형이 document, 이름이 주소창 페이지 이름</span>
+  </div>
+  <div class="caption">그림 3. 필터 「문서」를 누르면 보통 한 줄만 남습니다 — 그 줄이 목록 페이지 요청입니다</div>
+  <div class="card">
+    <b>어느 줄인지 헷갈리면</b> 이 세 가지를 확인하세요:
+    <ul style="padding-left:20px;margin-top:4px">
+      <li><b>유형(Type)</b> 이 <code>document</code></li>
+      <li><b>이름(Name)</b> 이 주소창 주소의 마지막 부분과 같음 (예: <code>list.jsp?bbs=notice</code>)</li>
+      <li>보통 <b>맨 위</b>에 있음</li>
+    </ul>
+    문서가 여러 줄이면(프레임으로 된 옛날 게시판) <b>글 목록이 들어 있는 쪽 이름</b>(list, board 등)을 고르세요. 어느 쪽이든 쿠키는 대부분 같습니다.
+  </div>
+
+  <!-- 4 -->
+  <h2 id="s4"><span class="num">4</span> 오른쪽 클릭 → 복사 → 「cURL로 복사(bash)」 → 붙여넣기 <span style="font-size:12px;color:var(--accent-2)">추천</span></h2>
+  <p>그 줄을 <b>마우스 오른쪽 클릭</b> → <b>복사</b>(Copy) → <b>cURL로 복사(bash)</b>(영어: <b>Copy as cURL (bash)</b>).
+    요청 전체가 복사되는데, 걱정 마세요 — 붙여넣으면 <b>쿠키만</b> 알아서 골라 넣습니다. <span style="color:var(--muted)">(cmd 형식으로 복사해도 됩니다)</span></p>
+  <div class="shot" style="height:250px">
+    <div class="dt">
+      <table class="reqs">
+        <tr><th style="width:38%">이름</th><th>상태</th><th>유형</th><th>크기</th></tr>
+        <tr class="sel"><td><span class="ic doc"></span><b>list.jsp?bbs=notice</b></td><td>200</td><td>document</td><td>18.2 kB</td></tr>
+      </table>
+    </div>
+    <div class="menu" style="top:40px;left:120px">
+      <div>새 탭에서 열기</div><div class="sep"></div><div>브라우저 캐시 지우기</div><div>브라우저 쿠키 지우기</div><div class="sep"></div>
+      <div class="hl box">복사 <span>▸</span></div><div class="sep"></div><div>요청 차단</div><div>재정의 저장</div>
+    </div>
+    <div class="menu" style="top:118px;left:300px">
+      <div>URL 복사</div><div>cURL로 복사(cmd)</div><div class="hl box"><b>cURL로 복사(bash)</b></div><div>PowerShell로 복사</div><div>fetch로 복사</div>
+      <div class="sep"></div><div>요청 헤더 복사</div><div>응답 헤더 복사</div><div>응답 복사</div>
+    </div>
+    <span class="callout" style="top:130px;left:20px">⑤ 복사 ▸</span>
+    <span class="callout" style="top:162px;left:480px">⑥ cURL로 복사(bash)</span>
+  </div>
+  <div class="caption">그림 4. 오른쪽 클릭 메뉴 → 복사 → cURL로 복사 (메뉴 이름은 브라우저 버전에 따라 조금 다를 수 있음)</div>
+
+  <p style="margin-top:14px">이제 Workflow Studio 로 돌아와 <b>🔍 분석기의 🍪 헤더</b> 칸(또는 노드 설정의 요청 헤더 칸)을 클릭하고 <kbd>Ctrl</kbd>+<kbd>V</kbd>.</p>
+  <div class="shot">
+    <div class="app">
+      <div class="row"><span style="color:#9CDCFE;flex:1">🍪 쿠키 12개</span><span class="pill">❓ 쿠키 찾는 법</span></div>
+      <textarea readonly>Cookie: ●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●</textarea>
+      <div class="ok">✓ cURL에서 쿠키 12개를 찾아 "Cookie:" 줄로 넣었습니다</div>
+    </div>
+    <span class="callout" style="top:8px;left:250px">⑦ 붙여넣으면 자동 변환 — 값은 가려서 보여 줌</span>
+  </div>
+  <div class="caption">그림 5. 붙여넣으면 cURL 에서 쿠키만 뽑아 <code>Cookie: …</code> 한 줄로 넣습니다 ("값 보기"로 확인 가능)</div>
+
+  <!-- 4-B -->
+  <h2 id="s4b"><span class="num" style="background:#5F6368">4B</span> (다른 방법) 쿠키 값만 직접 복사</h2>
+  <p>cURL 메뉴가 없거나 값만 넣고 싶을 때: 그 줄을 <b>왼쪽 클릭</b> → 오른쪽에 열린 <b>헤더(Headers)</b> 탭 → 아래로 내려 <b>요청 헤더(Request Headers)</b> →
+    <b>Cookie</b> 줄의 <b>값 전체</b>를 드래그해서 복사 → 헤더 칸에 붙여넣기 (앞에 <code>Cookie:</code> 를 안 붙여도 자동으로 붙음).</p>
+  <div class="shot">
+    <div class="dt">
+      <div class="detail">
+        <div class="left"><table class="reqs"><tr><th>이름</th></tr><tr class="sel"><td><span class="ic doc"></span><b>list.jsp?bbs=notice</b></td></tr>
+          <tr class="dim"><td><span class="ic css"></span>board.css</td></tr><tr class="dim"><td><span class="ic js"></span>jquery-1.8.min.js</td></tr></table></div>
+        <div>
+          <div class="dt-tabs"><span>✕</span><span class="on">헤더</span><span>페이로드</span><span>미리보기</span><span>응답</span><span>시작점</span><span>타이밍</span><span>쿠키</span></div>
+          <div class="hdrs">
+            <div class="sec">▸ 일반</div>
+            <div class="sec">▾ 응답 헤더</div>
+            <div class="kv struck"><span class="k">Set-Cookie</span><span class="v">WMONID=a8F2kQ…; Path=/</span></div>
+            <div class="sec box" style="display:inline-block;padding:0 4px">▾ 요청 헤더</div>
+            <div class="kv"><span class="k">Accept</span><span class="v">text/html,application/xhtml+xml,…</span></div>
+            <div class="kv"><span class="k">Accept-Language</span><span class="v">ko-KR,ko;q=0.9</span></div>
+            <div class="kv"><span class="k">Connection</span><span class="v">keep-alive</span></div>
+            <div class="kv box" style="background:#FFF3E0"><span class="k"><b>Cookie</b></span><span class="v"><b>JSESSIONID=8F3A9C…E21; WMONID=a8F2kQ…; SSO_TOKEN=eyJhbGci…</b></span></div>
+            <div class="kv"><span class="k">Host</span><span class="v">intranet.회사.com</span></div>
+            <div class="kv"><span class="k">Referer</span><span class="v">http://intranet.회사.com/main.jsp</span></div>
+            <div class="kv"><span class="k">User-Agent</span><span class="v">Mozilla/5.0 (Windows NT 10.0; …)</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <span class="callout" style="top:113px;left:380px">← ⑧ 「요청 헤더」 안에서 찾기</span>
+    <span class="callout" style="top:224px;left:560px">↑ ⑨ Cookie 값 전체 (세미콜론으로 이어진 긴 줄 끝까지)</span>
+    <span class="callout gray" style="top:68px;left:560px">✕ 「응답 헤더」의 Set-Cookie 는 아님</span>
+  </div>
+  <div class="caption">그림 6. 헤더 탭 → 요청 헤더 → Cookie. 값이 길어서 여러 줄로 보일 수 있습니다 — 전부 복사하세요</div>
+  <div class="warn"><b>자주 하는 실수</b> — ① 「응답 헤더」의 <code>Set-Cookie</code> 를 복사함 (❌, 반드시 <b>요청 헤더</b>의 <code>Cookie</code>)
+    ② 값 일부만 복사함 (긴 값의 끝이 잘림) ③ 이미지·CSS 줄을 골라서 Cookie 가 다름 → <b>cURL 복사 방법</b>을 쓰면 이런 실수가 없습니다.</div>
+
+  <!-- 5 -->
+  <h2 id="s5"><span class="num">5</span> 잘 됐는지 확인</h2>
+  <p>분석기에서 <b>불러오기</b>를 다시 누르세요.</p>
+  <ul style="padding-left:20px">
+    <li>✅ 로그인했을 때와 같은 <b>글 목록</b>(또는 내 이름)이 보이면 성공 — 이제 글 제목을 클릭해서 고르면 됩니다.</li>
+    <li>❌ <b>로그인 화면</b>이나 "권한이 없습니다", <b>HTTP 401/403</b> 이 나오면 쿠키가 틀렸거나 만료된 것 → 3~4단계를 다시.</li>
+  </ul>
+
+  <h2 id="faq">🔧 문제 해결</h2>
+  <div class="card">
+    <table class="faq">
+      <tr><th>증상</th><th>원인과 해결</th></tr>
+      <tr><td>네트워크 탭이 비어 있어요</td><td>개발자 도구를 연 <b>다음</b>에 <kbd>F5</kbd> 로 새로고침해야 기록됩니다. 왼쪽 위 빨간 ● 기록 버튼이 켜져 있는지도 확인.</td></tr>
+      <tr><td>「문서」를 눌렀더니 아무것도 없어요</td><td>필터 칸에 글자가 들어 있지 않은지 확인하고, 「전체」를 눌러 맨 위 줄(유형 document)을 찾으세요.</td></tr>
+      <tr><td>요청 헤더에 Cookie 줄이 없어요</td><td>로그인이 안 된 상태이거나 다른 줄을 골랐습니다. 로그인 후 목록 페이지에서 다시 <kbd>F5</kbd>.
+        (사이트에 따라 「⚠ 임시 헤더가 표시됩니다」가 보이면 캐시 때문 → 「캐시 사용 중지」 체크 후 새로고침)</td></tr>
+      <tr><td>붙여넣었더니 "Cookie 가 없습니다"</td><td>cURL 이 아니라 URL 만 복사했거나, 이미지/스크립트 줄을 복사했습니다. 유형이 <code>document</code> 인 줄에서 다시 복사.</td></tr>
+      <tr><td>어제는 됐는데 오늘 실패해요</td><td>쿠키(세션)가 <b>만료</b>됐습니다 — 다시 로그인해서 같은 방법으로 새 쿠키를 넣으세요. 로그인 화면의 「로그인 상태 유지」를 켜 두면 오래 갑니다.
+        타이머로 매일 돌릴 거라면 실패 시 알 수 있게 결과를 확인하세요.</td></tr>
+      <tr><td>쿠키를 넣어도 로그인 화면이 나와요</td><td>일부 사이트는 쿠키 외에 <code>Referer</code> 등을 확인합니다. 헤더 칸에 <code>Referer: (목록 페이지가 열리기 직전 주소)</code> 줄을 직접 추가해 보세요.
+        회사 보안 정책상 IP·기기 확인을 하는 사이트는 막힐 수 있습니다.</td></tr>
+      <tr><td>로그인 후 회사 SSO 로 여러 번 이동해요</td><td>상관없습니다 — 최종 목록 페이지의 요청(문서)에서 복사하면 됩니다. 이동 중에 받는 쿠키도 Workflow Studio 가 이어서 처리합니다.</td></tr>
+      <tr><td>목록이 비어 보여요 (쿠키는 맞는데)</td><td>목록을 자바스크립트로 그리는 페이지일 수 있습니다. 「문서」 대신 「Fetch/XHR」 필터에서 글 목록 데이터를 주는 요청을 찾아,
+        그 주소를 <b>HTTP 요청</b> 노드로 가져오는 방법을 쓰세요.</td></tr>
+    </table>
+  </div>
+
+  <h2 id="safe">🔒 보안 — 꼭 읽어 주세요</h2>
+  <div class="warn" style="font-size:14px">
+    쿠키는 <b>로그인 그 자체</b>입니다. 쿠키를 가진 사람은 비밀번호 없이 내 계정으로 들어갈 수 있습니다.
+    <ul style="padding-left:20px;margin-top:4px">
+      <li>메신저·메일·문서로 <b>다른 사람에게 보내지 마세요</b>. 화면 캡처에도 값이 찍히지 않게 주의하세요.</li>
+      <li>Workflow Studio 에서는 이 PC의 <code>data</code> 폴더(파이프라인 파일)에만 저장되고, 화면에서는 가려서 보여 주며, 💬 도우미 AI 에게는 <code>***</code> 로 가려서 보냅니다.</li>
+      <li>파이프라인을 <b>내보내기(ZIP)</b> 해서 남에게 줄 때는 헤더 칸을 비우고 보내세요.</li>
+      <li>회사 보안 규정상 자동 수집이 허용되는 게시판인지 확인하고 쓰세요.</li>
+    </ul>
+  </div>
+
+  <div class="note-img">※ 그림은 크롬 개발자 도구를 본떠 그린 것입니다 (실제 화면을 캡처하면 로그인 쿠키 값이 그림에 남기 때문).
+    엣지도 같은 위치·이름입니다. 영어로 된 브라우저는 Network · Doc · Copy · Copy as cURL (bash) · Request Headers 입니다.</div>
+</div>
+</body>
+</html>

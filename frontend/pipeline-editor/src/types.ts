@@ -4,7 +4,7 @@ export interface NodeParam {
   type:
     | 'text' | 'textarea' | 'select' | 'number' | 'image' | 'password' | 'folder' | 'file'
     | 'webhookUrls' | 'webhookTemplate' | 'geminiModel' | 'memoryInfo' | 'httpOpen' | 'scheduleInfo'
-    | 'outlineConnection' | 'outlineCollection'
+    | 'outlineConnection' | 'outlineCollection' | 'htmlPicker' | 'secretTextarea'
   defaultValue: unknown
   options: string[] | null
   showWhen?: string | null  // "다른파라미터=값" 일 때만 표시

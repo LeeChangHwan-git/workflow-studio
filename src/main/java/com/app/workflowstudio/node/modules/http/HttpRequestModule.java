@@ -44,7 +44,7 @@ public class HttpRequestModule implements NodeModule {
                         List.of("GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS")),
                 new NodeParam("url", "URL (${...} 사용 가능)", "text", "https://", null),
                 new NodeParam("headers", "헤더 — 한 줄에 하나씩 \"이름: 값\" (예: Authorization: Bearer ${token})",
-                        "textarea", "", null),
+                        "secretTextarea", "", null),
                 new NodeParam("bodyType", "바디", "select", BODY_NONE, List.of(BODY_NONE, BODY_JSON, BODY_TEXT, BODY_FORM)),
                 new NodeParam("body", "바디 내용 (${...} 사용 가능)", "textarea", "", null, "bodyType!=" + BODY_NONE),
                 new NodeParam("timeoutSec", "제한 시간 (초)", "number", 30, null),
@@ -105,7 +105,7 @@ public class HttpRequestModule implements NodeModule {
     }
 
     /** "이름: 값" 줄 목록 → 헤더 (빈 줄·#주석 무시) */
-    static List<HttpSender.Header> parseHeaders(String text) throws Exception {
+    public static List<HttpSender.Header> parseHeaders(String text) throws Exception {
         List<HttpSender.Header> list = new ArrayList<>();
         if (text == null) return list;
         int lineNo = 0;

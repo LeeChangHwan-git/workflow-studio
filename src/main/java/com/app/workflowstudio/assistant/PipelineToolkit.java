@@ -32,7 +32,9 @@ public class PipelineToolkit {
     public static final String MASK = "***";
     /** 화면 표시 전용 파라미터 타입 — AI에게 보여 주지 않음 */
     static final Set<String> DISPLAY_TYPES =
-            Set.of("webhookUrls", "memoryInfo", "httpOpen", "scheduleInfo", "outlineConnection");
+            Set.of("webhookUrls", "memoryInfo", "httpOpen", "scheduleInfo", "outlineConnection", "htmlPicker");
+    /** 비밀값 파라미터 타입 — AI에게 *** 로 보이고, *** 를 돌려받으면 원래 값 유지 */
+    static final Set<String> SECRET_TYPES = Set.of("password", "secretTextarea");
     private static final Pattern NODE_ID = Pattern.compile("[A-Za-z0-9_-]{1,40}");
     /** 이만큼 작으면 설명서 전체를 시스템 프롬프트에 넣고, 크면 목록만 넣고 상세는 도구로 */
     static final int INLINE_SPEC_LIMIT = 14_000;
@@ -105,6 +107,7 @@ public class PipelineToolkit {
             pm.put("label", p.label());
             pm.put("type", switch (p.type()) {
                 case "select", "number", "textarea", "password" -> p.type();
+                case "secretTextarea" -> "textarea";
                 case "geminiModel", "outlineCollection", "webhookTemplate", "folder", "file", "image" -> "text";
                 default -> "text";
             });
@@ -141,7 +144,7 @@ public class PipelineToolkit {
                 for (Map.Entry<String, Object> e : n.getConfig().entrySet()) {
                     NodeParam param = t == null ? null : param(t, e.getKey());
                     if (param != null && DISPLAY_TYPES.contains(param.type())) continue;
-                    boolean secret = param != null && "password".equals(param.type());
+                    boolean secret = param != null && SECRET_TYPES.contains(param.type());
                     Object v = e.getValue();
                     cfg.put(e.getKey(), secret && v instanceof String s && !s.isBlank() ? MASK : v);
                 }
@@ -308,7 +311,7 @@ public class PipelineToolkit {
             } else if (v.isMissingNode() || v.isNull()) {
                 value = prevCfg.containsKey(p.name()) ? prevCfg.get(p.name())
                         : p.defaultValue() != null ? p.defaultValue() : "number".equals(p.type()) ? 0 : "";
-            } else if ("password".equals(p.type()) && MASK.equals(v.asText())) {
+            } else if (SECRET_TYPES.contains(p.type()) && MASK.equals(v.asText())) {
                 value = prevCfg.getOrDefault(p.name(), "");   // 가려진 비밀값 → 원래 값 유지
             } else if ("number".equals(p.type())) {
                 if (v.isNumber()) value = v.numberValue();

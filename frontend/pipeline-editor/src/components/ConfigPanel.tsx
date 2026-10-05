@@ -7,6 +7,8 @@ import { WebhookHistory } from './WebhookHistory'
 import { WebhookTemplateField } from './WebhookTemplateField'
 import { ScheduleInfoField } from './ScheduleInfoField'
 import { OutlineCollectionField, OutlineConnectionField } from './OutlineFields'
+import { HtmlAnalyzer, fieldLines, parseFieldLines } from './HtmlAnalyzer'
+import { HeadersField } from './HeadersField'
 
 interface Props {
   nodeId: string | null
@@ -199,6 +201,8 @@ export function ConfigPanel({ nodeId, pipelineId, dirty, nodeType, config, onCha
                 apiKey={String(config.apiKey ?? '')}
                 onChange={(v) => onChange(param.name, v)}
               />
+            ) : param.type === 'htmlPicker' ? (
+              <HtmlPickerField key={param.name} label={param.label} config={config} onChange={onChange} />
             ) : param.type === 'httpOpen' ? (
               <HttpOpenField key={param.name} label={param.label} config={config} />
             ) : param.type === 'webhookUrls' ? (
@@ -278,10 +282,15 @@ function ParamField({
   return (
     <div className="cfg-group">
       <label className="cfg-label">{param.label}</label>
+      {param.type === 'secretTextarea' && (
+        <HeadersField value={String(value ?? '')} onChange={(v) => onChange(v)} className="cfg-textarea" />
+      )}
       {param.type === 'textarea' && (
         <textarea
           className="cfg-textarea"
           value={String(value ?? '')}
+          autoComplete="off"
+          spellCheck={param.type === 'textarea'}
           onChange={(e) => onChange(e.target.value)}
         />
       )}
@@ -539,6 +548,50 @@ function GeminiModelField({
             </>
           )}
         </div>
+      )}
+    </div>
+  )
+}
+
+/** 웹 페이지 추출 노드 — 🔍 분석기 열기 + 지금 설정 요약 */
+function HtmlPickerField({
+  label,
+  config,
+  onChange,
+}: {
+  label: string
+  config: Record<string, unknown>
+  onChange: (key: string, value: unknown) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const fields = parseFieldLines(String(config.fields ?? ''))
+  const row = String(config.rowSelector ?? '')
+  const fromInput = String(config.source ?? '').startsWith('앞 노드')
+  return (
+    <div className="cfg-group">
+      <label className="cfg-label">{label}</label>
+      <button type="button" className="wh-test-btn html-pick-btn" onClick={() => setOpen(true)} disabled={fromInput}>
+        🔍 분석기 열기 — 페이지를 보며 클릭으로 고르기
+      </button>
+      {fromInput ? (
+        <div className="wh-url-hint">"앞 노드 출력(HTML)"일 때는 분석기 대신 선택자를 직접 입력하세요.</div>
+      ) : (
+        <div className="wh-url-hint">
+          {fields.length ? `${row ? '반복 행 + ' : ''}항목 ${fields.length}개: ${fields.map((f) => f.name).join(', ')}` : '아직 고른 항목이 없습니다'}
+        </div>
+      )}
+      {open && (
+        <HtmlAnalyzer
+          initial={{ url: String(config.url ?? ''), headers: String(config.headers ?? ''), rowSelector: row, fields }}
+          onClose={() => setOpen(false)}
+          onApply={(v) => {
+            onChange('url', v.url)
+            onChange('headers', v.headers)
+            onChange('rowSelector', v.rowSelector)
+            onChange('fields', fieldLines(v.fields))
+            setOpen(false)
+          }}
+        />
       )}
     </div>
   )

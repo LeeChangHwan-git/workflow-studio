@@ -83,6 +83,25 @@ export const api = {
       body: JSON.stringify({ apiKey }),
     }).then((r) => r.json() as Promise<{ models?: string[]; error?: string }>),
 
+  /** 🔍 분석기: 페이지 가져오기 (스크립트 뺀 HTML) */
+  htmlFetch: (url: string, headers: string) =>
+    fetch('/api/html/fetch', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url, headers }),
+    }).then((r) => r.json() as Promise<{
+      ok: boolean; message?: string; html?: string; finalUrl?: string; title?: string
+      charset?: string; frames?: string[]; bytes?: number; status?: number
+    }>),
+
+  /** 🔍 분석기: 실제 실행과 같은 기준(jsoup)으로 추출해 보기 */
+  htmlTest: (url: string, headers: string, rowSelector: string, fields: string) =>
+    fetch('/api/html/test', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url, headers, rowSelector, fields, limit: '200' }),
+    }).then((r) => r.json() as Promise<{ ok: boolean; message?: string; count?: number; items?: Record<string, string>[] }>),
+
   /** 아웃라인 연결 확인 (실행 없이) — 키 확인 + 컬렉션 목록 */
   verifyOutline: (baseUrl: string, apiKey: string) =>
     fetch('/api/outline/verify', {
