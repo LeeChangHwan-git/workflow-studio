@@ -3,6 +3,7 @@ package com.app.workflowstudio.assistant;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
 import java.util.Map;
 
 /** 💬 파이프라인 도우미 API */
@@ -22,8 +23,11 @@ public class AssistantController {
         try {
             return ResponseEntity.ok(assistant.chat(req.get("conversationId"), req.get("message"), req.get("currentPipelineId")));
         } catch (Exception e) {
-            return ResponseEntity.ok(Map.of("error", e.getMessage() == null ? "처리 중 오류" : e.getMessage(),
-                    "conversationId", req.getOrDefault("conversationId", "")));
+            Map<String, Object> body = new HashMap<>();
+            body.put("error", e.getMessage() == null ? "처리 중 오류" : e.getMessage());
+            String conv = req.get("conversationId");
+            body.put("conversationId", conv == null ? "" : conv);
+            return ResponseEntity.ok(body);
         }
     }
 

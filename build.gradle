@@ -26,6 +26,9 @@ dependencies {
     implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
     // HTML 해석 (웹 페이지 추출 노드)
     implementation 'org.jsoup:jsoup:1.18.3'
+    // 파일 가져오기 노드: pdf / docx·xlsx·pptx 에서 텍스트 추출
+    implementation 'org.apache.pdfbox:pdfbox:2.0.31'
+    implementation 'org.apache.poi:poi-ooxml:5.2.5'
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
     testImplementation 'org.springframework.boot:spring-boot-starter-test'

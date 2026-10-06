@@ -9,6 +9,7 @@
 | `WEBHOOK` | 웹훅 | 트리거 | ✅ 완료 (2026-10-01) | [webhook.md](webhook.md) |
 | `SCHEDULE` | 타이머 (간격·요일 시각·cron·1회) | 트리거 | ✅ 완료 (2026-10-03) | [schedule.md](schedule.md) |
 | `FILE_WRITE` | 파일 쓰기 (Windows 전용) | 파일 | ✅ 완료 (2026-10-02) | [file-write.md](file-write.md) |
+| `FILE_IMPORT` | 파일 가져오기 (txt/html/pdf/docx/xlsx/pptx → AI로) | 파일 | ✅ 완료 (2026-10-07) | [file-import.md](file-import.md) |
 | `HTTP_REQUEST` | HTTP 요청 (REST API 호출) | 통합 | ✅ 완료 (2026-10-03) | [http-request.md](http-request.md) |
 | `HTML_SELECT` | 웹 페이지 추출 + 🔍 HTML 분석기 (클릭으로 선택자) | 통합 | ✅ 완료 (2026-10-05) | [html-select.md](html-select.md) |
 | `OUTLINE` | 아웃라인 게시판 (조회·검색·가져오기·등록·수정) | 통합 | ✅ 완료 (2026-10-04) | [outline.md](outline.md) |

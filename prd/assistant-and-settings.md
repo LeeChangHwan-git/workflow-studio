@@ -92,6 +92,9 @@ AI 형식 (저장 형식보다 단순, 위치 없음):
 | `POST` | `/api/admin/backups/restore` · `/api/admin/open-folder` | 복원 · 탐색기 열기 |
 
 ## 함께 바뀐 것
+- **(2026-10-07 버그 수정)** `/api/assistant/chat` 오류 응답이 `Map.of(..., "conversationId", null)`로 만들어져
+  (첫 메시지는 `conversationId`가 명시적 `null`이라 `getOrDefault`가 기본값 대신 `null`을 그대로 돌려줌) `Map.of`가 null을 거부하며
+  `NullPointerException` → 500으로 **원래 오류 메시지(예: "Gemini API 키가 없습니다")가 가려지던 문제**를 고침. 이제 `HashMap`으로 담아 항상 200 + `{error}`
 - **기본 변수**: 모든 노드에서 `${date}`(2026-10-05) `${time}`(09:00) `${datetime}`(2026-10-05 09:00) `${timestamp}` (`NodeContext.builtins`).
   파일 쓰기 노드는 파일명용 형식(`09-00-00`, `20261005_090000`)으로 덮어씀
 - 공용 키: `GeminiClient.resolveKey`, `OutlineClient.conn` 이 설정 값을 사용, 연결 확인에 "⚙ 설정의 공용 키" 표시.

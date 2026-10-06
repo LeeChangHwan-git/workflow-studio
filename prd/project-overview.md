@@ -79,7 +79,8 @@
 
 ### 파이프라인 자동화 (핵심)
 노드 모듈을 처음부터 하나씩 설계 중 → `prd/modules/README.md`
-- 현재 모듈: 🪝 웹훅 · ⏰ 타이머 (트리거), 🤖 AI 에이전트 (+ 부품: ✨ Gemini 모델 · 🧠 대화 메모리 · 📜 지시문), 🌐 HTTP 요청, 💾 파일 쓰기 (Windows 전용)
+- 현재 모듈: 🪝 웹훅 · ⏰ 타이머 (트리거), 🤖 AI 에이전트 (+ 부품: ✨ Gemini 모델 · 🧠 대화 메모리 · 📜 지시문), 🌐 HTTP 요청,
+  📂 파일 가져오기, 💾 파일 쓰기 (Windows 전용)
 
 ### 💬 파이프라인 도우미 · ⚙ 설정
 말로 요청하면 AI가 파이프라인을 실제로 만들고·고치고·(확인 후) 지움. AI는 Gemini(무료) 또는 OpenAI 호환(Ollama 등 오프라인).
@@ -187,6 +188,7 @@ src/main/java/com/app/workflowstudio/
 │       ├── http/                    #     HTTP_REQUEST
 │       ├── outline/                 #     OUTLINE 아웃라인 게시판 (Module, Client, Controller)
 │       ├── html/                    #     HTML_SELECT 웹 페이지 추출 (Module, Fetcher, Extractor, 분석기 Controller)
+│       ├── fileimport/              #     FILE_IMPORT 파일 가져오기 (Module, TextExtractor — pdf/docx/xlsx/pptx/html/텍스트)
 │       └── filewrite/               #     FILE_WRITE (Windows 전용)
 └── service/
     ├── Memo/Bookmark/CalendarEventService.java
@@ -210,6 +212,21 @@ src/test/java/...                    # 모듈별 테스트 (가짜 Gemini·OpenA
 ---
 
 ## 변경 이력
+
+### 📂 파일 가져오기 모듈 (2026-10-07)
+
+→ 상세: `prd/modules/file-import.md`
+
+- **파일 가져오기 노드** (`FILE_IMPORT`, 팔레트 "파일"): 지정한 파일을 읽어 다음 노드(주로 AI 에이전트)로 넘김
+  → `{path, fileName, extension, bytes, charCount, truncated, content}`, 다음 노드는 `${file.content}`로 사용
+- 확장자별 추출: txt/md/csv/json/log 등 텍스트 계열은 그대로, `html`/`htm`은 jsoup으로 태그·스크립트 제거한 본문만,
+  `pdf`는 PDFBox, `docx`/`xlsx`·`xlsm`/`pptx`는 Apache POI로 텍스트화. 모르는 확장자는 텍스트로 시도하고
+  진짜 바이너리(NUL 바이트 있음, git과 같은 판별법)면 명확한 오류로 거부
+- `maxChars` 로 AI 컨텍스트 보호 (기본 20000자, 넘으면 앞부분만 자르고 `truncated` 표시)
+- **읽기 전용이라 OS 제약 없음** — `FILE_WRITE`(쓰기, Windows 전용)와 달리 `%ENV%`/`~`/Windows `C:\...`/Unix `/...` 경로를 모두
+  현재 OS 그대로 처리해 Mac/Linux에서도 동작·테스트 가능
+- 의존성 `pdfbox:2.0.31`, `poi-ooxml:5.2.5` 추가. 테스트 19개 추가 (추출기 단위 9개 + 노드 실행 통합 10개, 전부 cross-OS)
+- 예시 파이프라인 **"예시: 파일 가져오기 → AI 요약 → 저장"** 추가 (파일 가져오기 → AI 에이전트(Gemini 모델·지시문 부품) → 파일 쓰기)
 
 ### 🔎 웹 페이지 추출 모듈 + 🔍 HTML 분석기 (2026-10-05)
 
