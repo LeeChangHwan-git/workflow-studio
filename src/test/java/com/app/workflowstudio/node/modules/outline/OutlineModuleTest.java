@@ -42,6 +42,10 @@ class OutlineModuleTest {
     static final String KEY = "ol_api_test";
     static final String BOARD = "11111111-1111-1111-1111-111111111111";
     static final String OTHER = "22222222-2222-2222-2222-222222222222";
+    /** 여러 단계(문서 아래 문서) 테스트용 컬렉션 */
+    static final String TEAM = "33333333-3333-3333-3333-333333333333";
+    static final java.util.concurrent.atomic.AtomicInteger seq = new java.util.concurrent.atomic.AtomicInteger();
+    static final java.util.concurrent.atomic.AtomicInteger rateLimited = new java.util.concurrent.atomic.AtomicInteger();
     static HttpServer api;
     static String base;
     static final ObjectMapper OM = new ObjectMapper();
@@ -80,6 +84,19 @@ class OutlineModuleTest {
         return d;
     }
 
+    /** 아웃라인 문서 트리 모양 [{id, title, url, children}] — 만든 순서대로 */
+    static List<Map<String, Object>> tree(String collectionId, String parentId) {
+        List<Map<String, Object>> out = new ArrayList<>();
+        List<Map<String, Object>> ordered = new ArrayList<>(docs);
+        Collections.reverse(ordered);
+        for (Map<String, Object> d : ordered) {
+            if (!collectionId.equals(d.get("collectionId")) || !Objects.equals(parentId, d.get("parentDocumentId"))) continue;
+            out.add(Map.of("id", d.get("id"), "title", d.get("title"), "url", d.get("url"),
+                    "children", tree(collectionId, (String) d.get("id"))));
+        }
+        return out;
+    }
+
     @SuppressWarnings("unchecked")
     static void handle(HttpExchange ex) throws java.io.IOException {
         String method = ex.getRequestURI().getPath().substring("/api/".length());
@@ -95,7 +112,14 @@ class OutlineModuleTest {
             switch (method) {
                 case "auth.info" -> result = Map.of("data", Map.of("user", Map.of("name", "테스터"), "team", Map.of("name", "회사")));
                 case "collections.list" -> result = Map.of("data", offset > 0 ? List.of() : List.of(
-                        Map.of("id", BOARD, "name", "사내 게시판"), Map.of("id", OTHER, "name", "기타")));
+                        Map.of("id", BOARD, "name", "사내 게시판"), Map.of("id", OTHER, "name", "기타"), Map.of("id", TEAM, "name", "FW팀")));
+                case "collections.documents" -> result = Map.of("data", tree((String) body.get("id"), null));
+                case "documents.move" -> {
+                    Map<String, Object> d = docs.stream().filter(x -> x.get("id").equals(body.get("id"))).findFirst().orElseThrow();
+                    d.put("collectionId", body.get("collectionId"));
+                    d.put("parentDocumentId", body.get("parentDocumentId"));
+                    result = Map.of("data", Map.of("documents", List.of(d)));
+                }
                 case "documents.list" -> {
                     List<Map<String, Object>> list = docs.stream()
                             .filter(d -> body.get("collectionId") == null || body.get("collectionId").equals(d.get("collectionId")))
@@ -116,9 +140,19 @@ class OutlineModuleTest {
                     else result = Map.of("data", d.get());
                 }
                 case "documents.create" -> {
-                    Map<String, Object> d = doc("new" + docs.size(), (String) body.get("title"), (String) body.get("text"),
+                    if ("rate-limit".equals(body.get("title")) && rateLimited.getAndIncrement() == 0) {
+                        // 처음 한 번은 "요청이 너무 많음" (Retry-After 1초)
+                        byte[] busy = OM.writeValueAsBytes(Map.of("ok", false, "error", "rate_limit_exceeded", "message", "Rate limit exceeded"));
+                        ex.getResponseHeaders().add("Retry-After", "1");
+                        ex.sendResponseHeaders(429, busy.length);
+                        ex.getResponseBody().write(busy);
+                        ex.close();
+                        return;
+                    }
+                    Map<String, Object> d = doc("new" + seq.incrementAndGet(), (String) body.get("title"), (String) body.get("text"),
                             (String) body.get("collectionId"), OffsetDateTime.now(ZoneOffset.UTC).toString());
                     d.put("publish", body.get("publish"));
+                    d.put("parentDocumentId", body.get("parentDocumentId"));
                     docs.add(0, d);
                     result = Map.of("data", d);
                 }
@@ -209,7 +243,78 @@ class OutlineModuleTest {
         JsonNode v = objectMapper.readTree(res);
         assertThat(v.get("ok").asBoolean()).isTrue();
         assertThat(v.get("message").asText()).contains("회사").contains("테스터");
-        assertThat(v.get("collections")).hasSize(2);
+        assertThat(v.get("collections")).hasSize(3);
+    }
+
+    @Test
+    void 여러_단계_위치에_등록_조회_검색_가져오기_이동() throws Exception {
+        String u = UUID.randomUUID().toString().substring(0, 6);   // 테스트끼리 겹치지 않게
+        String place = "FW팀/회의록-" + u + "/2026년/10월";
+
+        // 상위 문서가 없으면 오류 + 있는 문서 안내
+        RunLog missing = runLog(Map.of("action", OutlineModule.ACT_CREATE, "collection", place, "title", "회의 A", "text", "본문"), "x");
+        assertThat(missing.getStatus()).isEqualTo("error");
+        assertThat(missing.getMessage()).contains("'FW팀' 아래에 '회의록-" + u + "' 문서가 없습니다").contains("없는 상위 문서는 만들기");
+
+        // 만들기: 회의록-u / 2026년 / 10월 을 차례로 만들고 그 아래 등록
+        JsonNode a = run(Map.of("action", OutlineModule.ACT_CREATE, "collection", place, "title", "회의 A", "text", "본문 A",
+                "createParents", OutlineModule.PARENTS_CREATE), "x");
+        assertThat(a.get("action").asText()).isEqualTo("created");
+        assertThat(a.get("path").asText()).isEqualTo(place + "/회의 A");
+        assertThat(a.get("createdParents")).extracting(JsonNode::asText).containsExactly("회의록-" + u, "2026년", "10월");
+        Map<String, Object> created = docs.stream().filter(d -> d.get("id").equals(a.get("id").asText())).findFirst().orElseThrow();
+        Map<String, Object> month = docs.stream().filter(d -> d.get("id").equals(created.get("parentDocumentId"))).findFirst().orElseThrow();
+        assertThat(month.get("title")).isEqualTo("10월");
+
+        // 같은 위치에 한 번 더 — 상위 문서는 다시 안 만들고, 같은 제목 처리 옵션
+        JsonNode b = run(Map.of("action", OutlineModule.ACT_CREATE, "collection", place, "title", "회의 B", "text", "본문 B 부트로더"), "x");
+        assertThat(b.get("createdParents")).isEmpty();
+        JsonNode skip = run(Map.of("action", OutlineModule.ACT_CREATE, "collection", place, "title", "회의 A", "text", "다른 본문",
+                "ifExists", OutlineModule.EXISTS_SKIP), "x");
+        assertThat(skip.get("action").asText()).isEqualTo("skipped");
+        JsonNode replaced = run(Map.of("action", OutlineModule.ACT_CREATE, "collection", place, "title", "회의 A", "text", "새 본문",
+                "ifExists", OutlineModule.EXISTS_REPLACE), "x");
+        assertThat(replaced.get("action").asText()).isEqualTo("replaced");
+        assertThat(replaced.get("id").asText()).isEqualTo(a.get("id").asText());
+        assertThat(created.get("text")).isEqualTo("새 본문");
+
+        // 조회: 하위 전부 vs 바로 아래만 (경로 포함)
+        String root = "FW팀/회의록-" + u;
+        JsonNode all = run(Map.of("action", OutlineModule.ACT_LIST, "collection", root), "x");
+        assertThat(all.get("documents")).extracting(d -> d.get("path").asText())
+                .containsExactlyInAnyOrder(root + "/2026년", root + "/2026년/10월", place + "/회의 A", place + "/회의 B");
+        assertThat(all.get("titles").asText()).contains("2026년/10월/회의 A (").doesNotContain("FW팀/");   // 조회 위치 기준 경로
+        JsonNode direct = run(Map.of("action", OutlineModule.ACT_LIST, "collection", root, "depth", OutlineModule.DEPTH_DIRECT), "x");
+        assertThat(direct.get("documents")).extracting(d -> d.get("title").asText()).containsExactly("2026년");
+
+        // 검색: 이 위치 아래에서만
+        JsonNode found = run(Map.of("action", OutlineModule.ACT_SEARCH, "collection", root, "query", "회의"), "x");
+        assertThat(found.get("documents")).extracting(d -> d.get("path").asText()).containsExactlyInAnyOrder(place + "/회의 A", place + "/회의 B");
+
+        // 가져오기: 경로로 문서 지정
+        JsonNode got = run(Map.of("action", OutlineModule.ACT_GET, "documentId", place + "/회의 B"), "x");
+        assertThat(got.get("text").asText()).isEqualTo("본문 B 부트로더");
+
+        // 이동: 다른 컬렉션의 새 위치로 (없는 상위 만들기)
+        JsonNode moved = run(Map.of("action", OutlineModule.ACT_MOVE, "documentId", place + "/회의 B",
+                "collection", "기타/보관-" + u, "createParents", OutlineModule.PARENTS_CREATE), "x");
+        assertThat(moved.get("action").asText()).isEqualTo("moved");
+        assertThat(moved.get("path").asText()).isEqualTo("기타/보관-" + u + "/회의 B");
+        assertThat(moved.get("from").asText()).isEqualTo("FW팀");
+        Map<String, Object> bDoc = docs.stream().filter(d -> d.get("id").equals(b.get("id").asText())).findFirst().orElseThrow();
+        assertThat(bDoc.get("collectionId")).isEqualTo(OTHER);
+        JsonNode after = run(Map.of("action", OutlineModule.ACT_LIST, "collection", place), "x");
+        assertThat(after.get("documents")).extracting(d -> d.get("title").asText()).containsExactly("회의 A");
+    }
+
+    @Test
+    void 요청이_너무_많으면_잠시_쉬었다_다시_시도한다() throws Exception {
+        long t = System.currentTimeMillis();
+        JsonNode out = run(Map.of("action", OutlineModule.ACT_CREATE, "collection", "기타", "title", "rate-limit", "text", "x"), "x");
+        assertThat(out.get("action").asText()).isEqualTo("created");
+        assertThat(rateLimited.get()).isEqualTo(2);                       // 429 한 번 → 재시도 성공
+        assertThat(System.currentTimeMillis() - t).isGreaterThanOrEqualTo(900);   // Retry-After 1초 지킴
+        assertThat(OutlineClient.retryAfterMillis(Map.of(), 1)).isEqualTo(6000);
     }
 
     @Test

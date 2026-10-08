@@ -135,7 +135,7 @@ public class NodeContext {
     }
 
     /**
-     * 모든 노드에서 쓸 수 있는 기본 변수: ${date} 2026-10-05 · ${time} 09:00 · ${datetime} 2026-10-05 09:00 · ${timestamp}.
+     * 모든 노드에서 쓸 수 있는 기본 변수: ${date} 2026-10-05 · ${time} 09:00 · ${datetime} 2026-10-05 09:00 · ${timestamp} · ${year} 2026 · ${month} 10 · ${day} 05.
      * (파일 쓰기 노드는 파일명에 쓸 수 있게 ${time}·${datetime} 을 09-00-00 / 20261005_090000 형식으로 덮어씀)
      */
     public static Map<String, Object> builtins() {
@@ -144,6 +144,9 @@ public class NodeContext {
                 "date", now.format(DateTimeFormatter.ofPattern("yyyy-MM-dd")),
                 "time", now.format(DateTimeFormatter.ofPattern("HH:mm")),
                 "datetime", now.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")),
-                "timestamp", String.valueOf(System.currentTimeMillis()));
+                "timestamp", String.valueOf(System.currentTimeMillis()),
+                "year", now.format(DateTimeFormatter.ofPattern("yyyy")),
+                "month", now.format(DateTimeFormatter.ofPattern("MM")),
+                "day", now.format(DateTimeFormatter.ofPattern("dd")));
     }
 }

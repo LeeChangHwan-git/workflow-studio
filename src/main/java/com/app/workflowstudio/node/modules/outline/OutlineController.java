@@ -35,6 +35,8 @@ public class OutlineController {
             res.put("user", user);
             res.put("team", team);
             res.put("collections", client.collections(c));
+            // 위치 자동완성용: 컬렉션 + 그 아래 문서 경로 ("FW팀/회의록/2026년")
+            res.put("paths", client.paths(c, 500));
             res.put("ok", true);
             res.put("message", "연결 정상 — " + team + " 워크스페이스 · " + user);
         } catch (Exception e) {

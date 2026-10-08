@@ -132,6 +132,58 @@ class FileImportModuleTest {
         assertThat(out.get("content").asText()).isEqualTo("env var ok");
     }
 
+    @Test
+    void 폴더의_회의록_Word_파일을_순서대로_마크다운으로_합친다() throws Exception {
+        Path folder = Files.createDirectories(dir.resolve("회의록"));
+        DocxMarkdownTest.writeMeeting(folder.resolve("2026-10-06_FW회의.docx"), "FW 회의 1", "결정 A");
+        DocxMarkdownTest.writeMeeting(folder.resolve("2026-10-07_FW회의.DOCX"), "FW 회의 2", "결정 B");   // 대문자 확장자
+        Files.writeString(folder.resolve("메모.txt"), "패턴에 안 맞음");
+        Files.writeString(folder.resolve("~$2026-10-07_FW회의.docx"), "Word 임시 파일");                      // 제외
+
+        JsonNode out = om.readTree(module.execute(ctx(Map.of("mode", FileImportModule.MODE_FOLDER,
+                "folder", folder.toString(), "pattern", "*.docx", "maxChars", 0))));
+
+        assertThat(out.get("count").asInt()).isEqualTo(2);
+        assertThat(out.get("files").get(0).get("fileName").asText()).isEqualTo("2026-10-06_FW회의.docx");
+        String md = out.get("content").asText();
+        // 파일 이름이 ## 제목, 문서 안의 제목은 두 단계 내려감, 표·목록 유지
+        assertThat(md).startsWith("## 2026-10-06_FW회의\n\n### FW 회의 1\n");
+        assertThat(md).contains("\n## 2026-10-07_FW회의\n\n### FW 회의 2\n");
+        assertThat(md).contains("| 홍길동 | FW 리드 |").contains("1. 결정 A").contains("1. 결정 B");
+        assertThat(md.indexOf("결정 A")).isLessThan(md.indexOf("결정 B"));
+        assertThat(out.get("items").get(1).get("title").asText()).isEqualTo("2026-10-07_FW회의");
+        assertThat(out.get("items").get(1).get("content").asText()).startsWith("# FW 회의 2");   // 파일별 원래 내용
+    }
+
+    @Test
+    void 폴더_모드_정렬_최근_N일_최대_개수_구분선() throws Exception {
+        Path folder = Files.createDirectories(dir.resolve("notes"));
+        Path old = Files.writeString(folder.resolve("a.txt"), "오래된");
+        Path mid = Files.writeString(folder.resolve("b.txt"), "중간");
+        Path neu = Files.writeString(folder.resolve("c.txt"), "최신");
+        long now = System.currentTimeMillis();
+        Files.setLastModifiedTime(old, java.nio.file.attribute.FileTime.fromMillis(now - 10L * 86_400_000));
+        Files.setLastModifiedTime(mid, java.nio.file.attribute.FileTime.fromMillis(now - 2L * 86_400_000));
+        Files.setLastModifiedTime(neu, java.nio.file.attribute.FileTime.fromMillis(now - 3_600_000));
+
+        JsonNode newest = om.readTree(module.execute(ctx(Map.of("mode", FileImportModule.MODE_FOLDER, "folder", folder.toString(),
+                "pattern", "*.txt", "sort", FileImportModule.SORT_NEW, "join", FileImportModule.JOIN_PLAIN))));
+        assertThat(newest.get("content").asText()).isEqualTo("최신\n\n---\n\n중간\n\n---\n\n오래된");
+
+        JsonNode recent = om.readTree(module.execute(ctx(Map.of("mode", FileImportModule.MODE_FOLDER, "folder", folder.toString(),
+                "pattern", "*.txt", "recentDays", 7))));
+        assertThat(recent.get("count").asInt()).isEqualTo(2);
+
+        JsonNode limited = om.readTree(module.execute(ctx(Map.of("mode", FileImportModule.MODE_FOLDER, "folder", folder.toString(),
+                "pattern", "*.txt", "maxFiles", 1))));
+        assertThat(limited.get("items").get(0).get("fileName").asText()).isEqualTo("a.txt");
+
+        assertThatThrownBy(() -> module.execute(ctx(Map.of("mode", FileImportModule.MODE_FOLDER, "folder", folder.toString(),
+                "pattern", "*.docx")))).hasMessageContaining("'*.docx' 에 맞는 파일이 없습니다");
+        assertThatThrownBy(() -> module.execute(ctx(Map.of("mode", FileImportModule.MODE_FOLDER,
+                "folder", folder.resolve("없음").toString())))).hasMessageContaining("폴더를 찾을 수 없습니다");
+    }
+
     private NodeContext ctx(Map<String, Object> config) {
         PipelineNode node = new PipelineNode();
         node.setId("import");

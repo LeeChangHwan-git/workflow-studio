@@ -12,7 +12,8 @@ import org.apache.poi.xslf.usermodel.XMLSlideShow;
 import org.apache.poi.xslf.usermodel.XSLFShape;
 import org.apache.poi.xslf.usermodel.XSLFSlide;
 import org.apache.poi.xslf.usermodel.XSLFTextShape;
-import org.apache.poi.xwpf.extractor.XWPFWordExtractor;
+import org.apache.poi.hwpf.HWPFDocument;
+import org.apache.poi.hwpf.extractor.WordExtractor;
 import org.apache.poi.xwpf.usermodel.XWPFDocument;
 import org.jsoup.Jsoup;
 
@@ -26,13 +27,14 @@ final class FileTextExtractor {
 
     private FileTextExtractor() {}
 
-    static final String UNSUPPORTED_HINT = " — 지원: 텍스트 계열(txt/md/csv/json/log 등), html, pdf, docx, xlsx, pptx";
+    static final String UNSUPPORTED_HINT = " — 지원: 텍스트 계열(txt/md/csv/json/log 등), html, pdf, docx·doc, xlsx, pptx";
 
     /** 확장자(점 없이, 소문자)에 맞게 텍스트를 뽑는다. 알려지지 않은 확장자는 텍스트로 시도하고, 바이너리로 보이면 오류 */
     static String extract(Path file, String ext, Charset charset) throws Exception {
         return switch (ext) {
             case "pdf" -> pdf(file);
             case "docx" -> docx(file);
+            case "doc" -> doc(file);
             case "xlsx", "xlsm" -> xlsx(file);
             case "pptx" -> pptx(file);
             case "html", "htm" -> html(file);
@@ -47,11 +49,24 @@ final class FileTextExtractor {
         }
     }
 
+    /** Word → 마크다운 (제목·목록·표·굵게·링크 유지) */
     private static String docx(Path file) throws Exception {
         try (FileInputStream fis = new FileInputStream(file.toFile());
-             XWPFDocument doc = new XWPFDocument(fis);
-             XWPFWordExtractor ex = new XWPFWordExtractor(doc)) {
-            return ex.getText();
+             XWPFDocument doc = new XWPFDocument(fis)) {
+            return DocxMarkdown.convert(doc);
+        } catch (org.apache.poi.EncryptedDocumentException e) {
+            throw new Exception("암호로 잠긴 Word 파일은 열 수 없습니다: " + file.getFileName());
+        }
+    }
+
+    /** 옛날 Word(97~2003, .doc) — 서식 없이 글자만 */
+    private static String doc(Path file) throws Exception {
+        try (FileInputStream fis = new FileInputStream(file.toFile());
+             HWPFDocument doc = new HWPFDocument(fis);
+             WordExtractor ex = new WordExtractor(doc)) {
+            return ex.getText().replace("\r\n", "\n").replace('\r', '\n');
+        } catch (IllegalArgumentException e) {   // OfficeXmlFileException(실제로는 docx) 포함
+            throw new Exception(".doc 파일을 열 수 없습니다 (실제로는 docx 이거나 손상됨): " + file.getFileName());
         }
     }
 

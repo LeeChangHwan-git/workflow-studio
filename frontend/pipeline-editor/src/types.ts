@@ -154,4 +154,6 @@ export interface OutlineVerify {
   user?: string
   team?: string
   collections?: { id: string; name: string }[]
+  /** 위치 자동완성: 컬렉션 + 그 아래 문서 경로 ("FW팀/회의록/2026년") */
+  paths?: string[]
 }

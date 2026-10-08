@@ -29,6 +29,8 @@ dependencies {
     // 파일 가져오기 노드: pdf / docx·xlsx·pptx 에서 텍스트 추출
     implementation 'org.apache.pdfbox:pdfbox:2.0.31'
     implementation 'org.apache.poi:poi-ooxml:5.2.5'
+    // 옛날 Word(.doc, 97~2003)
+    implementation 'org.apache.poi:poi-scratchpad:5.2.5'
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
     testImplementation 'org.springframework.boot:spring-boot-starter-test'

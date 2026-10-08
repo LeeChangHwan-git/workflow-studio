@@ -286,7 +286,7 @@ public class PipelineAssistantService {
                 - 템플릿: ${input} = 직전 노드 출력, ${출력변수명} 또는 ${출력변수명.필드.하위[0]} = 앞 노드 출력(JSON)의 값.
                   각 노드의 outputVar 가 출력변수명 (기본: webhook, timer, agent, http, file, outline …).
                   WEBHOOK 의 outputTemplate 는 요청 JSON 키로 조합 (예: "${q}"), 요청 전체는 ${webhook.request.body.키}.
-                  모든 노드의 글자 설정에서 ${date}(2026-10-05) ${time}(09:00) ${datetime}(2026-10-05 09:00) 사용 가능
+                  모든 노드의 글자 설정에서 ${date}(2026-10-05) ${time}(09:00) ${datetime}(2026-10-05 09:00) ${year} ${month} ${day} 사용 가능
                   (FILE_WRITE 파일명에서는 파일명용 형식으로 바뀜). SCHEDULE 출력: ${timer.firedAt}.
                 - 비밀값(API 키 등)은 모르면 비워 둔다 → 사용자가 ⚙ 설정의 공용 키를 쓰거나 직접 넣는다. 지어내지 말 것.
                 - 웹훅 path 는 다른 파이프라인과 겹치지 않게 의미 있는 영문으로. 타이머는 사용자가 원할 때만 active 를 켠다.

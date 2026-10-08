@@ -96,7 +96,7 @@ ${items[0].name}         → 배열 인덱스 + 중첩 필드
 ${n1.output}             → outputVar가 없는 노드의 출력
 ```
 - `${input}`이 전역 변수보다 우선. 따라서 `input`은 outputVar 이름으로 쓰지 말 것
-- 기본 변수(모든 노드): `${date}` 2026-10-05 · `${time}` 09:00 · `${datetime}` 2026-10-05 09:00 · `${timestamp}` (`NodeContext.builtins`, 가장 마지막에 찾음).
+- 기본 변수(모든 노드): `${date}` 2026-10-05 · `${time}` 09:00 · `${datetime}` 2026-10-05 09:00 · `${timestamp}` · `${year}` 2026 · `${month}` 10 · `${day}` 05 (`NodeContext.builtins`, 가장 마지막에 찾음).
   파일 쓰기 노드는 파일명용 형식으로 덮어씀
 - 해석하지 못한 참조는 원문(`${...}`) 그대로 남는다
 - 구현: `node/Templates.resolve(text, scopes, objectMapper)` — scope(Map) 목록을 순서대로 탐색.

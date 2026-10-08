@@ -81,7 +81,7 @@ export function OutlineConnectionField({
                 <div>{r.ok ? '✅' : '❌'} {r.message}</div>
                 <div className="verify-sub">
                   {source}
-                  {r.ok && ` · 컬렉션 ${r.collections?.length ?? 0}개`}
+                  {r.ok && ` · 컬렉션 ${r.collections?.length ?? 0}개 · 위치 ${r.paths?.length ?? 0}곳`}
                 </div>
               </>
             )
@@ -109,7 +109,10 @@ export function OutlineCollectionField({
   const status = useOutlineStatus(baseUrl, apiKey)
   const collections = status?.state === 'done' && status.result.ok ? status.result.collections ?? [] : []
   const listId = useRef(`outline-cols-${Math.random().toString(36).slice(2)}`).current
-  const known = !value.trim() || value.includes('${') || collections.some((c) => c.name === value || c.id === value)
+  const paths = status?.state === 'done' && status.result.ok ? status.result.paths ?? collections.map((c) => c.name) : []
+  // 첫 조각(컬렉션)만 맞으면 OK — 아래 문서는 실행 때 확인하거나 "없는 상위 문서는 만들기"로 만들 수 있음
+  const v = value.trim()
+  const known = !v || v.includes('${') || collections.some((c) => c.id === v.split('/')[0].trim() || v === c.name || v.startsWith(c.name + '/'))
 
   return (
     <div className="cfg-group">
@@ -120,17 +123,20 @@ export function OutlineCollectionField({
         autoComplete="off"
         spellCheck={false}
         list={listId}
-        placeholder={collections.length ? '입력칸을 눌러 고르기' : '컬렉션 이름'}
+        placeholder={collections.length ? '입력칸을 눌러 고르기 (예: FW팀/회의록)' : '컬렉션 이름 또는 컬렉션/상위 문서'}
         value={value}
         onChange={(e) => onChange(e.target.value)}
       />
       <datalist id={listId}>
-        {collections.map((c) => (
-          <option key={c.id} value={c.name} />
+        {paths.map((p) => (
+          <option key={p} value={p} />
         ))}
       </datalist>
+      {paths.length > 0 && v && !v.includes('${') && known && !paths.includes(v) && (
+        <div className="wh-url-hint">ℹ️ 아직 없는 위치입니다 — 등록·이동에서 "없는 상위 문서는 만들기"를 고르면 자동으로 만듭니다</div>
+      )}
       {collections.length > 0 && !known && (
-        <div className="wh-url-hint">⚠️ 이 이름의 컬렉션이 없습니다 — 있는 컬렉션: {collections.map((c) => c.name).join(', ')}</div>
+        <div className="wh-url-hint">⚠️ 맨 앞 컬렉션 이름이 없습니다 — 있는 컬렉션: {collections.map((c) => c.name).join(', ')}</div>
       )}
     </div>
   )
