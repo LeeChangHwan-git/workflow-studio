@@ -51,6 +51,27 @@ public class GeminiClient {
         return env != null && !env.isBlank() ? "env" : "none";
     }
 
+    /** 생성 요청 한 번의 최대 대기 (Gemini 응답 시간이 들쭉날쭉해 넉넉히) */
+    static final int GENERATE_TIMEOUT_SEC = 180;
+    /** 일시적 실패(시간 초과 · 429 · 500/502/503/504) 때 다시 시도하기 전 대기 */
+    static long retryDelayMs = 3000;
+
+    /** 보내기 — 시간 초과나 일시적 오류면 한 번 더 시도 */
+    private HttpResponse<String> sendWithRetry(HttpRequest req) throws Exception {
+        for (int attempt = 1; ; attempt++) {
+            try {
+                HttpResponse<String> resp = http.send(req, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+                int s = resp.statusCode();
+                boolean transientError = s == 429 || s == 500 || s == 502 || s == 503 || s == 504;
+                if (!transientError || attempt >= 2) return resp;
+            } catch (java.net.http.HttpTimeoutException e) {
+                if (attempt >= 2)
+                    throw new Exception("Gemini 응답이 없습니다 (" + GENERATE_TIMEOUT_SEC / 60 + "분씩 2번 기다림) — 잠시 뒤 다시 실행하거나, 모델을 gemini-flash-lite-latest 처럼 빠른 것으로 바꿔 보세요");
+            }
+            Thread.sleep(retryDelayMs);
+        }
+    }
+
     /** 응답 텍스트 생성 */
     public String generate(String apiKey, String model, String system, List<Message> history,
                            String userText, Double temperature) throws Exception {
@@ -68,12 +89,12 @@ public class GeminiClient {
 
         String url = baseUrl + "/v1beta/models/" + modelId(model) + ":generateContent";
         HttpRequest req = HttpRequest.newBuilder(URI.create(url))
-                .timeout(Duration.ofSeconds(120))
+                .timeout(Duration.ofSeconds(GENERATE_TIMEOUT_SEC))
                 .header("Content-Type", "application/json")
                 .header("x-goog-api-key", apiKey)
                 .POST(HttpRequest.BodyPublishers.ofString(om.writeValueAsString(body), StandardCharsets.UTF_8))
                 .build();
-        HttpResponse<String> resp = http.send(req, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+        HttpResponse<String> resp = sendWithRetry(req);
         JsonNode json = parse(resp);
 
         JsonNode candidates = json.path("candidates");

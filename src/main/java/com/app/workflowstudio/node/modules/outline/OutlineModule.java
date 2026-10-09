@@ -78,7 +78,7 @@ public class OutlineModule implements NodeModule {
                 new NodeParam("depth", "범위", "select", DEPTH_ALL, List.of(DEPTH_ALL, DEPTH_DIRECT), "action=" + ACT_LIST),
                 new NodeParam("include", "가져올 내용", "select", INCLUDE_TITLE, List.of(INCLUDE_TITLE, INCLUDE_TEXT), read),
                 new NodeParam("limit", "최대 개수", "number", 50, null, read),
-                new NodeParam("recentDays", "최근 N일 안에 수정된 문서만 (0 = 기간 제한 없음)", "number", 0, null,
+                new NodeParam("recentDays", "최근 N일 안에 수정된 문서만 (1 = 오늘 0시부터 · 7 = 오늘 포함 7일 · 0 = 제한 없음)", "number", 0, null,
                         "action=" + ACT_LIST),
                 new NodeParam("createParents", "위치의 상위 문서가 없으면", "select", PARENTS_FAIL,
                         List.of(PARENTS_FAIL, PARENTS_CREATE), "action=" + ACT_CREATE + "|" + ACT_MOVE),
@@ -119,7 +119,9 @@ public class OutlineModule implements NodeModule {
         OutlineClient.Location loc = client.resolve(c, where, false);
         int limit = limit(ctx);
         int recentDays = Math.max(0, ctx.intVal("recentDays", 0));
-        OffsetDateTime since = recentDays > 0 ? OffsetDateTime.now().minusDays(recentDays) : null;
+        // 1 = 오늘 0시부터, N = 오늘 포함 N일 (날짜 단위 — "금일" 통계가 어제 저녁 문서까지 세지 않도록)
+        OffsetDateTime since = recentDays > 0
+                ? java.time.LocalDate.now().minusDays(recentDays - 1L).atStartOfDay(ZoneId.systemDefault()).toOffsetDateTime() : null;
         boolean withText = INCLUDE_TEXT.equals(ctx.raw("include", INCLUDE_TITLE));
         Map<String, String> colNames = collectionNames(c);
 
@@ -165,7 +167,10 @@ public class OutlineModule implements NodeModule {
             out.put("location", loc.path());
             out.put("depth", ctx.raw("depth", DEPTH_ALL));
         }
-        if (recentDays > 0) out.put("recentDays", recentDays);
+        if (recentDays > 0) {
+            out.put("recentDays", recentDays);
+            out.put("since", since.atZoneSameInstant(ZoneId.systemDefault()).toLocalDateTime().toString());
+        }
         out.put("titles", titles(docs, loc));
         out.put("documents", docs);
         return out;

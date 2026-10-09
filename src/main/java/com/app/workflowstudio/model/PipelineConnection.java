@@ -4,6 +4,7 @@ package com.app.workflowstudio.model;
  * 노드 연결.
  * <ul>
  *   <li>{@code toHandle == null} : 일반 실행 흐름 (화살표) — 앞 노드 출력이 다음 노드로 전달</li>
+ *   <li>{@code fromHandle} : 출력이 여러 개인 노드(분기·확인 요청)에서 어느 출력에서 나온 화살표인지 (없으면 기본 출력)</li>
  *   <li>{@code toHandle != null} : 부품 연결 — 부품 노드(모델·메모리·지시문 등)를 대상 노드의 소켓(toHandle)에 끼움.
  *       실행 순서·${input}과 무관</li>
  * </ul>
@@ -12,6 +13,7 @@ public class PipelineConnection {
     private String fromNodeId;
     private String toNodeId;
     private String toHandle;
+    private String fromHandle;
 
     public PipelineConnection() {}
 
@@ -29,6 +31,8 @@ public class PipelineConnection {
     public void setFromNodeId(String fromNodeId) { this.fromNodeId = fromNodeId; }
     public String getToNodeId() { return toNodeId; }
     public void setToNodeId(String toNodeId) { this.toNodeId = toNodeId; }
+    public String getFromHandle() { return fromHandle; }
+    public void setFromHandle(String fromHandle) { this.fromHandle = fromHandle; }
     public String getToHandle() { return toHandle; }
     public void setToHandle(String toHandle) { this.toHandle = toHandle; }
 

@@ -2,18 +2,7 @@
 <html xmlns:th="http://www.thymeleaf.org">
 <head th:replace="fragments/layout :: head('북마크 작성')"></head>
 <body>
-<nav>
-    <div class="nav-brand">
-        <div class="nav-brand-icon">🗂</div>
-        내 메모
-    </div>
-    <a th:href="@{/memos}"     class="nav-link">메모</a>
-    <a th:href="@{/bookmarks}" class="nav-link active">북마크</a>
-    <a th:href="@{/calendar}"  class="nav-link">달력</a>
-    <a th:href="@{/pipelines}" class="nav-link">파이프라인</a>
-    <a th:href="@{/http}"      class="nav-link">HTTP</a>
-    <a th:href="@{/settings}"  class="nav-link">⚙ 설정</a>
-</nav>
+<nav th:replace="~{fragments/nav :: nav('bookmarks')}"></nav>
 <div class="container" style="max-width:640px;">
     <div class="page-header">
         <div>

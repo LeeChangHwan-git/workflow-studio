@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('로고 고르기')}"></head>
+<style>
+    .br { max-width: 1100px; margin: 0 auto; padding: 30px 28px 60px; }
+    .br h1 { font-size: 22px; color: #F2F2F2; margin-bottom: 6px; }
+    .br h1 b { color: #FFBC00; }
+    .br-sub { color: var(--muted); font-size: 13px; margin-bottom: 24px; line-height: 1.6; }
+    .br-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+    .br-card { border: 1px solid var(--border); background: var(--card); border-radius: 12px; padding: 22px; display: flex; flex-direction: column; gap: 16px; }
+    .br-card.on { border-color: #FFBC00; box-shadow: 0 0 0 1px #FFBC00 inset; }
+    .br-top { display: flex; align-items: center; gap: 20px; }
+    .br-big svg { width: 96px; height: 96px; display: block; }
+    .br-title { font-size: 16px; font-weight: 800; color: #F2F2F2; }
+    .br-desc { font-size: 12.5px; color: var(--muted); margin-top: 4px; line-height: 1.6; }
+    .br-preview { background: #3C3C3C; border-radius: 8px; padding: 10px 14px; display: flex; align-items: center; gap: 10px; }
+    .br-preview svg { width: 32px; height: 32px; display: block; }
+    .br-small { display: flex; gap: 10px; align-items: center; margin-left: auto; }
+    .br-small svg { width: 16px; height: 16px; }
+    .br-actions { display: flex; align-items: center; gap: 10px; }
+    .btn-kb { background: #FFBC00; color: #1E1E1E; }
+    .btn-kb:hover { background: #FFCB3D; }
+    .br-cur { color: #FFBC00; font-size: 13px; font-weight: 700; }
+    .wb-word { display: flex; flex-direction: column; line-height: 1; }
+    .wb-name { font-size: 18px; font-weight: 800; color: #F2F2F2; letter-spacing: -.4px; }
+    .wb-name b { color: #FFBC00; font-weight: 900; }
+    .wb-sub { font-size: 10px; color: #8E96A3; letter-spacing: .6px; margin-top: 3px; font-family: 'Consolas', 'D2Coding', monospace; }
+    @media (max-width: 800px) { .br-grid { grid-template-columns: 1fr; } }
+</style>
+<body>
+<nav th:replace="~{fragments/nav :: nav('settings')}"></nav>
+
+<div class="br">
+    <h1>🎨 wor<b>KB</b>ench 로고 고르기</h1>
+    <div class="br-sub">
+        노드를 끌어다 조립하는 "작업대"를 네 가지로 그려 봤습니다. 회색 = 조립 중인 노드, <b style="color:#FFBC00">노란색 = KB</b>.<br>
+        <b>이걸로 쓰기</b>를 누르면 모든 화면 왼쪽 위 로고가 바뀝니다 (⚙ 설정에 저장 — 언제든 다시 바꿀 수 있음).
+    </div>
+
+    <div class="br-grid">
+        <div class="br-card" th:each="c : ${ {'bench','blocks','table','flow'} }" th:attr="data-logo=${c}"
+             th:classappend="${c == brandLogo} ? 'on'">
+            <div class="br-top">
+                <div class="br-big" th:insert="~{fragments/nav :: logo(${c})}"></div>
+                <div>
+                    <div class="br-title" th:text="${c == 'bench'} ? 'A. 노드 작업대' : (${c == 'blocks'} ? 'B. 조립 블록' : (${c == 'table'} ? 'C. 작업대 위의 흐름' : 'D. W 플로우'))"></div>
+                    <div class="br-desc" th:text="${c == 'bench'} ? '두 노드가 하나(노란 KB 블록)로 모이는 흐름 + 아래 작업대 선. 기본안 — 작게 줄여도 가장 잘 읽힘' :
+                         (${c == 'blocks'} ? '회색 블록 두 개를 노란 블록에 끼워 맞추는 모양. 가장 단순하고 각진 느낌' :
+                         (${c == 'table'} ? '노란 상판의 작업대 위에서 노드 세 개가 이어짐. 이름 뜻(작업대)이 가장 직접적' :
+                         '노드 다섯 개를 이은 선이 W(workBench)를 그림, 가운데 노란 노드가 KB. 글자 느낌이 강함'))"></div>
+                </div>
+            </div>
+            <div class="br-preview">
+                <th:block th:insert="~{fragments/nav :: logo(${c})}"></th:block>
+                <span class="wb-word"><span class="wb-name">wor<b>KB</b>ench</span><span class="wb-sub">workflow-studio</span></span>
+                <span class="br-small" title="브라우저 탭 크기(16px)">
+                    <th:block th:insert="~{fragments/nav :: logo(${c})}"></th:block>
+                </span>
+            </div>
+            <div class="br-actions">
+                <button class="btn btn-kb" type="button" th:if="${c != brandLogo}" th:attr="data-pick=${c}">이걸로 쓰기</button>
+                <span class="br-cur" th:if="${c == brandLogo}">✓ 지금 쓰는 로고</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('click', function (e) {
+    var b = e.target.closest('[data-pick]'); if (!b) return;
+    b.disabled = true;
+    fetch('/api/settings', { method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ appearance: { logo: b.dataset.pick } }) })
+        .then(function (r) { if (!r.ok) throw 0; location.reload(); })
+        .catch(function () { b.disabled = false; alert('저장하지 못했습니다'); });
+});
+</script>
+</body>
+</html>

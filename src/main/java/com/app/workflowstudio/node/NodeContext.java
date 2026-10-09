@@ -45,6 +45,44 @@ public class NodeContext {
         this.objectMapper = objectMapper;
     }
 
+    // ── 분기 · 실행 정보 (실행 엔진이 채움) ─────────────────────
+
+    private java.util.Set<String> routes;
+    private String executionId, pipelineId, pipelineName;
+    private java.util.function.BiConsumer<String, String> statusListener;
+
+    /** 실행 엔진이 실행 정보와 진행 상태 표시 방법을 넘겨줌 */
+    public NodeContext withRun(String executionId, String pipelineId, String pipelineName,
+                               java.util.function.BiConsumer<String, String> statusListener) {
+        this.executionId = executionId;
+        this.pipelineId = pipelineId;
+        this.pipelineName = pipelineName;
+        this.statusListener = statusListener;
+        return this;
+    }
+
+    /**
+     * 이번에 흘려보낼 출력 고르기 (출력이 여러 개인 노드 — {@link NodeTypeInfo#outputs()}).
+     * 고른 출력의 화살표만 다음 노드로 이어지고 나머지 쪽 노드는 "건너뜀". 부르지 않으면 모든 출력으로 흐른다.
+     */
+    public void route(java.util.Collection<String> outputIds) {
+        this.routes = new java.util.LinkedHashSet<>(outputIds);
+    }
+
+    /** 고른 출력 (null = 고르지 않음 → 전부) */
+    public java.util.Set<String> routes() {
+        return routes;
+    }
+
+    public String executionId() { return executionId; }
+    public String pipelineId() { return pipelineId; }
+    public String pipelineName() { return pipelineName; }
+
+    /** 실행 중 상태 표시 바꾸기 (예: "waiting", "확인 대기 중") — 하단 패널·노드 카드에 바로 보임 */
+    public void status(String status, String message) {
+        if (statusListener != null) statusListener.accept(status, message);
+    }
+
     /** 소켓(socketId)에 끼워진 부품 노드들 (연결된 순서, 없으면 빈 목록) */
     public List<PipelineNode> parts(String socketId) {
         return parts.getOrDefault(socketId, List.of());

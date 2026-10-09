@@ -3,7 +3,8 @@
 <head th:fragment="head(title)">
     <meta charset="UTF-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title th:text="${title} + ' — 내 메모'">내 메모</title>
+    <title th:text="${title} + ' — worKBench'">worKBench</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg"/>
     <script>
         // 파이프라인 탭의 마지막 위치 기억: 다른 메뉴에서 '파이프라인'을 누르면 마지막으로 보던
         // 목록/편집 화면으로 이동 (편집 화면 주소는 에디터(React)가 저장)
@@ -23,9 +24,11 @@
 
     </script>
     <!-- 서버 재시작 감지(→ 새로고침) + 열린 앱 탭 관리(상단 "탭 N/M" 배지). 공유 워커로 브라우저당 연결 1개 -->
-    <script src="/js/app-session.js?v=2" defer></script>
+    <script src="/js/app-session.js?v=3" defer></script>
     <!-- 💬 파이프라인 도우미 (모든 화면 오른쪽 아래) -->
     <script src="/js/assistant.js?v=1" defer></script>
+    <!-- 🙋 확인 요청 창 (파이프라인이 사람의 승인을 기다릴 때 저절로 뜸) -->
+    <script src="/js/approvals.js?v=2" defer></script>
     <style>
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 

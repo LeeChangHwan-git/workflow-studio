@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+
+<!-- 로고 후보 4종 (32×32). logo(kind) 로 하나만 그림 — 후보 보기·고르기: /brand -->
+<th:block th:fragment="logo(kind)">
+    <svg xmlns="http://www.w3.org/2000/svg" th:if="${kind == 'blocks'}" class="wb-logo" viewBox="0 0 32 32" aria-hidden="true">
+        <rect width="32" height="32" rx="8" fill="#20242C"/>
+        <rect x="5" y="7" width="10" height="8" rx="2" fill="#5B6577"/>
+        <rect x="5" y="18" width="10" height="8" rx="2" fill="#5B6577"/>
+        <rect x="19" y="12" width="9" height="9" rx="2" fill="#FFBC00"/>
+        <path d="M15 11h2.5v5H19M15 22h2.5v-5" stroke="#9AA3B2" stroke-width="1.6" fill="none"/>
+    </svg>
+    <svg xmlns="http://www.w3.org/2000/svg" th:if="${kind == 'table'}" class="wb-logo" viewBox="0 0 32 32" aria-hidden="true">
+        <rect width="32" height="32" rx="8" fill="#20242C"/>
+        <path d="M10 13.5h5.5M19 13.5h3" stroke="#9AA3B2" stroke-width="1.6"/>
+        <circle cx="8" cy="13.5" r="2.6" fill="#5B6577"/>
+        <rect x="15.5" y="11" width="4.5" height="5" rx="1.2" fill="#5B6577"/>
+        <circle cx="24.5" cy="13.5" r="2.6" fill="#FFBC00"/>
+        <rect x="4" y="19.5" width="24" height="3" rx="1.5" fill="#FFBC00"/>
+        <path d="M7.5 22.5v5M24.5 22.5v5" stroke="#9AA3B2" stroke-width="2" stroke-linecap="round"/>
+    </svg>
+    <svg xmlns="http://www.w3.org/2000/svg" th:if="${kind == 'flow'}" class="wb-logo" viewBox="0 0 32 32" aria-hidden="true">
+        <rect width="32" height="32" rx="8" fill="#20242C"/>
+        <path d="M5.5 9.5 10.5 22.5 16 13 21.5 22.5 26.5 9.5" stroke="#9AA3B2" stroke-width="2" fill="none" stroke-linejoin="round"/>
+        <circle cx="5.5" cy="9.5" r="2.4" fill="#5B6577"/>
+        <circle cx="10.5" cy="22.5" r="2.4" fill="#5B6577"/>
+        <circle cx="16" cy="13" r="3.2" fill="#FFBC00"/>
+        <circle cx="21.5" cy="22.5" r="2.4" fill="#5B6577"/>
+        <circle cx="26.5" cy="9.5" r="2.4" fill="#5B6577"/>
+    </svg>
+    <svg xmlns="http://www.w3.org/2000/svg" th:if="${kind != 'blocks' and kind != 'table' and kind != 'flow'}" class="wb-logo" viewBox="0 0 32 32" aria-hidden="true">
+        <rect width="32" height="32" rx="8" fill="#20242C"/>
+        <path d="M9.5 10.5 16 16.5M9.5 21.5 16 16.5M16 16.5h6" stroke="#9AA3B2" stroke-width="1.6"/>
+        <rect x="5.5" y="7" width="7" height="7" rx="2" fill="#5B6577"/>
+        <rect x="5.5" y="18" width="7" height="7" rx="2" fill="#5B6577"/>
+        <rect x="19.5" y="12" width="8" height="9" rx="2.2" fill="#FFBC00"/>
+        <rect x="4" y="27.5" width="24" height="2" rx="1" fill="#FFBC00" opacity=".55"/>
+    </svg>
+</th:block>
+
+<!-- 상단 메뉴 — active: home | pipelines | calendar | http | memos | bookmarks | settings -->
+<nav th:fragment="nav(active)">
+    <style>
+        .nav-brand { text-decoration: none; margin-right: 22px !important; gap: 10px !important; }
+        .wb-logo { width: 32px; height: 32px; flex-shrink: 0; display: block; }
+        .wb-word { display: flex; flex-direction: column; line-height: 1; }
+        .wb-name { font-size: 18px; font-weight: 800; color: #F2F2F2; letter-spacing: -.4px; }
+        .wb-name b { color: #FFBC00; font-weight: 900; }
+        .wb-sub { font-size: 10px; color: #8E96A3; letter-spacing: .6px; margin-top: 3px;
+                  font-family: 'Consolas', 'D2Coding', monospace; }
+        .nav-sep { width: 1px; height: 22px; background: #555; margin: 0 6px; }
+    </style>
+    <a th:href="@{/}" class="nav-brand" title="홈 대시보드">
+        <th:block th:replace="~{fragments/nav :: logo(${brandLogo})}"></th:block>
+        <span class="wb-word">
+            <span class="wb-name">wor<b>KB</b>ench</span>
+            <span class="wb-sub">workflow-studio</span>
+        </span>
+    </a>
+    <a th:href="@{/}"          class="nav-link" th:classappend="${active == 'home'} ? 'active'">홈</a>
+    <a th:href="@{/pipelines}" class="nav-link" th:classappend="${active == 'pipelines'} ? 'active'">파이프라인</a>
+    <a th:href="@{/calendar}"  class="nav-link" th:classappend="${active == 'calendar'} ? 'active'">달력</a>
+    <a th:href="@{/http}"      class="nav-link" th:classappend="${active == 'http'} ? 'active'">HTTP</a>
+    <span class="nav-sep"></span>
+    <a th:href="@{/memos}"     class="nav-link" th:classappend="${active == 'memos'} ? 'active'">메모</a>
+    <a th:href="@{/bookmarks}" class="nav-link" th:classappend="${active == 'bookmarks'} ? 'active'">북마크</a>
+    <a th:href="@{/settings}"  class="nav-link" th:classappend="${active == 'settings'} ? 'active'">⚙ 설정</a>
+</nav>
+
+</body>
+</html>

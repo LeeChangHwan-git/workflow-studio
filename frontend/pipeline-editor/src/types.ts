@@ -4,7 +4,7 @@ export interface NodeParam {
   type:
     | 'text' | 'textarea' | 'select' | 'number' | 'image' | 'password' | 'folder' | 'file'
     | 'webhookUrls' | 'webhookTemplate' | 'geminiModel' | 'memoryInfo' | 'httpOpen' | 'scheduleInfo'
-    | 'outlineConnection' | 'outlineCollection' | 'htmlPicker' | 'secretTextarea'
+    | 'outlineConnection' | 'outlineCollection' | 'htmlPicker' | 'secretTextarea' | 'branchRules' | 'approvalInfo' | 'messengerGroups'
   defaultValue: unknown
   options: string[] | null
   showWhen?: string | null  // "다른파라미터=값" 일 때만 표시
@@ -29,6 +29,40 @@ export interface NodeTypeInfo {
   trigger?: boolean  // 트리거 노드 (입력 연결 없음, 파이프라인 시작점)
   sockets?: NodeSocket[]     // 아래쪽 소켓 (AI 에이전트 등)
   provides?: string | null   // 부품 노드라면 부품 종류 (ai_model 등) — 단독 실행 안 됨
+  outputs?: NodeOutputInfo[]  // 오른쪽 출력이 여러 개인 노드 (분기·확인 요청)
+  outputsParam?: string | null // 출력이 설정값(규칙 목록)에서 정해지는 노드면 그 파라미터 이름
+}
+
+export interface NodeOutputInfo {
+  id: string
+  label: string
+}
+
+/** 분기 규칙 (BRANCH 노드 rules 설정값 = 이 목록의 JSON) */
+export interface BranchRule {
+  id: string
+  label: string
+  op: string
+  value?: string
+  subject?: string
+}
+
+export const BRANCH_ELSE = 'else'
+
+/** 이 노드의 출력 연결점 목록 — 없으면 [] (출력 하나: 기본) */
+export function nodeOutputs(nodeType: NodeTypeInfo, config: Record<string, unknown>): NodeOutputInfo[] {
+  if (nodeType.outputsParam) {
+    let rules: BranchRule[] = []
+    try {
+      const raw = config[nodeType.outputsParam]
+      const def = nodeType.params.find((p) => p.name === nodeType.outputsParam)?.defaultValue
+      rules = JSON.parse(String(raw ?? def ?? '[]'))
+    } catch {
+      rules = []
+    }
+    return [...rules.filter((r) => r && r.id).map((r) => ({ id: r.id, label: r.label || r.id })), { id: BRANCH_ELSE, label: '그 외' }]
+  }
+  return nodeType.outputs ?? []
 }
 
 /** 부품 노드의 위쪽 연결점 id */
@@ -60,6 +94,7 @@ export interface PipelineConnectionDto {
   fromNodeId: string
   toNodeId: string
   toHandle?: string | null  // 소켓 id (부품 연결), 없으면 일반 실행 흐름
+  fromHandle?: string | null // 출력이 여러 개인 노드에서 나온 화살표면 그 출력 id
 }
 
 export interface PipelineDto {
@@ -73,10 +108,11 @@ export interface PipelineDto {
 export interface RunLog {
   nodeId: string
   nodeType: string
-  status: 'running' | 'success' | 'error'
+  status: 'running' | 'success' | 'error' | 'waiting' | 'skipped'
   message: string
   output?: string
   outputVar?: string
+  route?: string[]  // 분기 노드가 고른 출력
 }
 
 export type RunMode = 'manual' | 'test' | 'prod' | 'schedule'

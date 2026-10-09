@@ -282,6 +282,10 @@ public class PipelineAssistantService {
                 - 트리거(WEBHOOK, SCHEDULE 등)가 시작점. 트리거로 들어가는 화살표는 없다.
                 - 화살표(socket 없음) = 실행 흐름, 앞 노드의 출력이 다음 노드의 ${input} 이 된다.
                 - 부품 노드(kind=part:…)는 화살표 흐름에 넣지 않고 {"from":부품,"to":본체,"socket":소켓id} 로 본체 소켓에 끼운다.
+                - 출력이 여러 개인 노드(설명서에 outputs 가 있는 BRANCH 분기·APPROVAL 확인 요청)에서 나가는 화살표는
+                  {"from","to","output":출력id} 로 어느 출력인지 지정한다. 고른 출력 쪽만 실행되고 나머지 쪽 노드는 건너뛴다.
+                  BRANCH 의 rules 는 JSON 문자열(규칙 id 마다 출력, "else" = 그 외), APPROVAL 은 approve/retry/reject.
+                  사람의 확인이 필요하면 APPROVAL 을 넣고, "다시" 때 AI 가 고치게 하려면 APPROVAL 의 model 소켓에 GEMINI_MODEL 을 끼운다.
                   예: AI_AGENT 는 model 소켓에 GEMINI_MODEL 필수, instruction 소켓에 AI_INSTRUCTION(지시문), memory 소켓에 CHAT_MEMORY(선택).
                 - 템플릿: ${input} = 직전 노드 출력, ${출력변수명} 또는 ${출력변수명.필드.하위[0]} = 앞 노드 출력(JSON)의 값.
                   각 노드의 outputVar 가 출력변수명 (기본: webhook, timer, agent, http, file, outline …).

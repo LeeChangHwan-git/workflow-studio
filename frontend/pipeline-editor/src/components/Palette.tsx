@@ -13,7 +13,7 @@ interface Props {
 }
 
 // 그룹 표시 순서 (여기 없는 그룹은 모듈 등록 순서대로 뒤에 붙음)
-const CATEGORY_ORDER: string[] = ['트리거', 'AI', 'AI 부품', '통합', '파일']
+const CATEGORY_ORDER: string[] = ['트리거', '흐름', 'AI', 'AI 부품', '통합', '파일']
 
 export function Palette({ nodeTypes, draggingTypeId, onStartDrag, onAddAtCenter, onBack }: Props) {
   const [query, setQuery] = useState('')

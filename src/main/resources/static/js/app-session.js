@@ -71,7 +71,7 @@
 
     // ── 페이지 상태 알림 ─────────────────────────────────────
     function pageTitle() {
-        return (document.title || location.pathname).replace(/\s*—\s*내 메모\s*$/, '');
+        return (document.title || location.pathname).replace(/\s*—\s*(worKBench|내 메모)\s*$/, '');
     }
 
     function watchTitle() {

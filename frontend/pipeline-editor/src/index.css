@@ -819,3 +819,69 @@ body.resizing-row .bottom-panel { transition: none; }
 .hz-stat { font-size: 11px; color: #888; margin-top: 4px; line-height: 1.5; }
 .hz-stat.bad { color: #F48771; }
 .hz-stat b { color: #F48771; }
+
+/* ── 출력이 여러 개인 노드 (분기 · 확인 요청) ── */
+.pnode.has-outputs { min-width: 200px; }
+.pnode-outputs { border-top: 1px solid #3E3E42; padding: 3px 0; }
+.pnode-output { position: relative; display: flex; justify-content: flex-end; padding: 3px 16px 3px 10px; font-size: 11px; color: #BBB; }
+.pnode-output.else .pnode-output-label { color: #888; font-style: italic; }
+.pnode-output.chosen { background: rgba(78,201,176,.14); }
+.pnode-output.chosen .pnode-output-label { color: #4EC9B0; font-weight: 700; }
+.pnode-output .pnode-handle-out.react-flow__handle { width: 10px; height: 10px; }
+.react-flow__edge.edge-branch .react-flow__edge-text { font-size: 10px; fill: #DDD; }
+.react-flow__edge.edge-branch .react-flow__edge-textbg { fill: #2D2D30; }
+/* 실행 상태: 확인 대기 · 건너뜀 */
+.pnode.run-waiting { border-color: #DB2777; animation: pulse-wait 1.4s ease-in-out infinite; }
+@keyframes pulse-wait { 0%, 100% { box-shadow: 0 0 0 1px #DB2777; } 50% { box-shadow: 0 0 0 5px rgba(219,39,119,.35); } }
+.pnode.run-skipped { opacity: .45; border-style: dashed; }
+.pnode-run-icon.waiting, .pnode-run-icon.skipped { color: rgba(255,255,255,.95); }
+
+/* ── 분기 규칙 편집 ── */
+.br-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+.br-rule { border: 1px solid #3A3A3E; border-left: 3px solid #0891B2; border-radius: 6px; padding: 6px 7px; margin-bottom: 6px; background: #242428; }
+.br-rule.hit { border-color: #4EC9B0; border-left-color: #4EC9B0; background: rgba(78,201,176,.08); }
+.br-rule.else { border-left-color: #666; }
+.br-row { display: flex; gap: 4px; align-items: center; }
+.br-row + .br-row { margin-top: 5px; }
+.br-no { width: 18px; text-align: center; font-size: 11px; color: #888; flex-shrink: 0; }
+.br-name { flex: 1; min-width: 0; height: 26px; padding: 0 7px; border-radius: 4px; border: 1px solid #454545; background: #2D2D30; color: #fff; font-size: 12.5px; font-weight: 700; }
+.br-icon { width: 22px; height: 24px; border: none; background: none; color: #888; cursor: pointer; flex-shrink: 0; }
+.br-icon:hover { color: #fff; }
+.br-icon.del:hover { color: #F14C4C; }
+.br-op { width: 132px; flex-shrink: 0; height: 28px; border-radius: 4px; border: 1px solid #454545; background: #2D2D30; color: #D4D4D4; font-size: 12px; }
+.br-val { flex: 1; min-width: 0; height: 28px; padding: 0 8px; border-radius: 4px; border: 1px solid #454545; background: #2A2A2E; color: #E8E8E8; font-size: 12.5px; }
+.br-val.mono, .br-subject { font-family: Consolas, monospace; font-size: 12px; }
+.br-subject { width: 100%; margin-top: 5px; height: 26px; padding: 0 8px; border-radius: 4px; border: 1px dashed #555; background: #26262A; color: #DDD; }
+.br-link { margin: 4px 0 0 22px; background: none; border: none; color: #7FB8D6; font-size: 11px; cursor: pointer; padding: 0; }
+.br-else { font-size: 12px; color: #999; font-style: italic; }
+.br-add { width: 100%; height: 28px; border-radius: 6px; border: 1px dashed #555; background: none; color: #BBB; font-size: 12px; cursor: pointer; }
+.br-add:hover { border-color: #0891B2; color: #7FDBF0; }
+.br-test { margin-top: 10px; border-top: 1px solid #333; padding-top: 8px; }
+.br-test-title { font-size: 11.5px; color: #9CDCFE; margin-bottom: 5px; }
+.br-test textarea { width: 100%; height: 52px; resize: vertical; padding: 6px 8px; border-radius: 5px; border: 1px solid #454545; background: #2A2A2E; color: #E8E8E8; font-size: 12.5px; }
+.br-result { margin-top: 5px; font-size: 12.5px; color: #BBB; }
+.br-result b { color: #4EC9B0; }
+.br-err { margin-top: 4px; font-size: 11.5px; color: #F48771; }
+
+/* ── 확인 요청: 설정 안내 · 카드 버튼 · 하단 패널 버튼 ── */
+.apv-info { border: 1px solid #5B2245; background: rgba(219,39,119,.08); border-radius: 8px; padding: 10px 12px; font-size: 12.5px; line-height: 1.6; color: #D8C2CF; }
+.apv-info.waiting { border-color: #DB2777; background: rgba(219,39,119,.18); animation: pulse-wait 1.4s ease-in-out infinite; }
+.apv-info-title { font-weight: 700; color: #F9A8D4; margin-bottom: 4px; }
+.apv-info ol { padding-left: 18px; margin: 4px 0 6px; }
+.apv-info-sub { font-size: 11.5px; color: #A8939F; }
+.apv-info-btn { margin-top: 8px; width: 100%; height: 34px; border-radius: 7px; border: none; background: #DB2777; color: #fff; font-weight: 700; font-size: 13px; cursor: pointer; }
+.apv-info-btn:hover { background: #E8458D; }
+.pnode-approve-btn { display: block; width: calc(100% - 16px); margin: 0 8px 7px; height: 26px; border-radius: 6px; border: none;
+  background: #DB2777; color: #fff; font-size: 12px; font-weight: 700; cursor: pointer; }
+.pnode-approve-btn:hover { background: #E8458D; }
+.bp-log-preview.waiting { color: #F9A8D4; }
+.bp-approve-btn { margin-left: 8px; height: 22px; padding: 0 10px; border-radius: 5px; border: none; background: #DB2777; color: #fff; font-size: 11.5px; font-weight: 700; cursor: pointer; flex-shrink: 0; }
+
+/* ── 쪽지 노드: 메신저 그룹 칩 ── */
+.mg-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 4px; }
+.mg-chip { border: 1px solid #4B5563; background: #2A2D33; color: #D1D5DB; border-radius: 14px; padding: 4px 10px; font-size: 12px; cursor: pointer; }
+.mg-chip span { color: #9CA3AF; font-size: 11px; margin-left: 2px; }
+.mg-chip:hover { border-color: #6B7FE8; }
+.mg-chip.on { background: rgba(59,76,202,.35); border-color: #6B7FE8; color: #fff; }
+
+.wh-url-hint a { color: #8FA3FF; }

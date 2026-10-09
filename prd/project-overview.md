@@ -188,6 +188,9 @@ src/main/java/com/app/workflowstudio/
 │       ├── http/                    #     HTTP_REQUEST
 │       ├── outline/                 #     OUTLINE 아웃라인 게시판 (Module, Client, Controller)
 │       ├── html/                    #     HTML_SELECT 웹 페이지 추출 (Module, Fetcher, Extractor, 분석기 Controller)
+│       ├── messenger/               #     MESSENGER 사내 메신저 쪽지 + 시연용 메신저(쪽지 창 NotePopup, /demo-messenger)
+│       ├── branch/                  #     BRANCH 분기 (Module, Rules, 시험 API·설명서 Controller)
+│       ├── approval/                #     APPROVAL 확인 요청 (Module, Service 대기열, Controller)
 │       ├── fileimport/              #     FILE_IMPORT 파일 가져오기 (Module, TextExtractor — pdf/docx/xlsx/pptx/html/텍스트)
 │       └── filewrite/               #     FILE_WRITE (Windows 전용)
 └── service/
@@ -203,15 +206,83 @@ src/main/resources/
     ├── js/app-live-worker.js        # 공유 워커: 서버 연결 1개 + 열린 탭 목록
     ├── js/app-session.js            # 상단 "탭 N/M" 배지·관리 패널
     ├── js/assistant.js              # 💬 도우미 서랍 (모든 화면)
+    ├── js/approvals.js              # 🙋 확인 요청 창 (모든 화면, 요청이 오면 자동으로 뜸)
     └── session-closed.html          # 종료된 탭이 보여주는 화면
 frontend/pipeline-editor/            # React 에디터 소스 (빌드 결과 → static/pipeline-editor/)
 docker/outline/                      # 아웃라인 로컬 샘플 (docker-compose, Dex 로그인, seed.js — .env는 git 제외)
-src/test/java/...                    # 모듈별 테스트 (가짜 Gemini·OpenAI·API·Outline·게시판 서버 포함, 총 45개)
+src/test/java/...                    # 모듈별 테스트 (가짜 Gemini·OpenAI·API·Outline·게시판·메신저 서버 포함, 총 82개)
 ```
 
 ---
 
+## 🎬 최종 시연
+시연에 넣을 항목과 진행 순서·설명 포인트는 `prd/demo-scenarios.md` 에 따로 정리 (현재: ✉️ 사내 메신저 쪽지)
+
 ## 변경 이력
+
+### 🏠 홈 슬로건 · 📅 달력 칸 정렬 (2026-10-10)
+
+- **홈 대시보드 머리말**: 시간대별 인사말 대신 앱 소개 — "wor<KB>ench · WORKFLOW STUDIO" /
+  슬로건 **"끌어다 놓고, 이어 붙이면, 일이 돌아갑니다."** / 설명(반복 업무를 노드로 조립하는 내 PC 속 작업대, 게시판·회의록·아웃라인·메신저를 AI와 잇고 중요한 순간엔 사람이 확인) /
+  기능 칩 🧩 끌어다 조립 · 🤖 AI가 읽고 정리 · 🔀 조건 따라 분기 · 🙋 사람이 확인 · ⏰ 알아서 반복
+- **달력**: 일정·타이머가 많은 날 주(행)가 늘어나 칸이 어긋나던 문제 — 모든 주 높이 고정(`grid-template-rows: minmax(0,1fr)`, `min-height: 0`),
+  칸마다 실제 높이를 재서 들어가는 만큼만 보이고 나머지는 "+N개 더" (창 크기 변경·타이머 표시 켜기/끄기 때 다시 계산), 긴 제목은 … + 마우스 올리면 전체
+
+### 🎬 최종 파이프라인 5종 + 👥 메신저 그룹 + 🏢 시연용 사내 게시판 (2026-10-09)
+
+→ 상세·테스트 결과: `prd/final-pipelines.md`, 시연 진행: `prd/demo-scenarios.md`
+
+- 최종 5개만 남기고 삭제: ① 사내 게시판 → 내 직무 관련 글만 쪽지 · ② 회의록 → 확인 → 아웃라인 · ③ 아웃라인 오늘의 문서 → @FW팀 ·
+  ④ CI 빌드 결과 → 분기 알림 · ⑤ 주간 보고서 → 확인 → 아웃라인 + @리더 (타이머 ①③⑤ 켜짐) — 5개 모두 실제 실행 테스트 통과
+- **👥 메신저 그룹**: ⚙ 설정에서 그룹 관리, 쪽지 노드에서 `@그룹` + 그룹 칩 (`prd/modules/messenger.md`)
+- **🏢 시연용 사내 게시판** `/demo-board` (`demo/DemoBoardController`): 로그인 쿠키가 있어야 보이는 옛날식 그룹웨어 게시판, 글 14개(날짜는 오늘 기준)
+- 아웃라인 "최근 N일"을 날짜 단위로(1 = 오늘 0시부터), Gemini 생성 대기 180초 + 시간 초과·429·5xx 한 번 재시도
+- 시연용 메신저: 나(20240001)에게 온 쪽지만 쪽지 창, 웹훅 바디 한글 인코딩 자동 판별(UTF-8 / CP949)
+
+### 🧰 이름 변경 worKBench + 🏠 홈 대시보드 (2026-10-09)
+
+- **이름**: "내 메모" → **wor<KB>ench** (작업대 — 노드를 끌어다 조립하는 도구, KB 는 회사 노란색 #FFBC00 강조), 아래에 작게 `workflow-studio`.
+  창 제목 "… — worKBench". (`AppInfoController.APP_NAME = workflow-studio` 는 실행 확인용이라 그대로)
+- **상단 메뉴 하나로**: `templates/fragments/nav.html` — `nav('home'|'pipelines'|…)` 를 모든 화면이 사용. 순서 홈 · 파이프라인 · 달력 · HTTP │ 메모 · 북마크 · ⚙ 설정
+- **로고 4종**(SVG, `fragments/nav :: logo(kind)`): A 노드 작업대(기본) · B 조립 블록 · C 작업대 위의 흐름 · D W 플로우.
+  `/brand` 에서 비교하고 "이걸로 쓰기" → `settings.json` `appearance.logo` (⚙ 설정 왼쪽 "🎨 로고 바꾸기"). 탭 아이콘 `/favicon.svg` 도 같은 로고
+- **🏠 홈 대시보드** `/` (n8n 개요 화면 참고): 기간 24시간/7일/30일 — 실행 수 · 실패 · 실패율 · 평균 실행 시간(지난 기간 대비 ▲▼) · 확인 대기/실행 중,
+  성공/실패 막대 차트(시간별/일별), 탭 [파이프라인(검색·정렬, 노드 아이콘, 트리거·타이머 켜짐·실행 중 배지, 마지막 실행, ▶ 바로 실행) |
+  실행 기록(실행 중 + 최근, 실패 노드·메시지, 확인 대기면 🙋 버튼) | 예정된 타이머], 5초마다 갱신, 파이프라인이 없으면 "첫 파이프라인 만들기"
+- **실행 기록 파일**: `ExecutionHistoryStore` — 끝난 실행 요약을 `{storage}/executions.json` 에 최신순 1000건 (서버를 다시 켜도 남음).
+  `GET /api/dashboard` 가 최근 60일 기록 + 파이프라인 요약 + 실행 중 + 타이머 + 확인 대기 수를 내려 줌
+
+### 🔀 분기 + 🙋 확인 요청(승인) 모듈, 엔진 분기 실행 (2026-10-09)
+
+→ 상세: `prd/modules/branch.md`, `prd/modules/approval.md`, 엔진은 `prd/engine-and-editor.md` "분기 실행"
+
+- **엔진**: 노드 출력 여러 개(`outputs`/`outputsParam`), 화살표에 출력 id(`fromHandle`), `ctx.route()` 로 고른 쪽만 실행·나머지 "건너뜀",
+  실행 중 기다리기(`ctx.status("waiting")`). 기존 파이프라인은 그대로 동작
+- **🔀 분기**(팔레트 "흐름"): 규칙마다 출력 + 그 외 — 포함·같음·시작/끝·다음 중 하나·정규식·비어 있음·숫자 비교·글자 수·**식(SpEL 읽기 전용 안전 모드)**,
+  처음 하나만/모두, 규칙 편집기 + 🧪 시험해 보기 + **❓ 표현식 설명서**(별도 창 `/guide/branch`)
+- **🙋 확인 요청**(팔레트 "흐름"): 내용을 보여 주고 결정을 기다림 → 승인/다시/거절 출력. **모든 화면에 확인 창이 저절로 뜸**(마크다운 표·목록, 알림음, 배지),
+  ✏️ 직접 고쳐서 승인, 🔁 다시 + 의견 → 모델 소켓에 AI가 있으면 노드 안에서 고쳐 다시 보여 줌(반복), 없으면 다시 출력, 시간 초과 처리
+- 확인 창을 닫았거나 못 봤을 때 다시 열기: 노드 카드 **🙋 확인하기** 버튼 · 하단 실행 패널 **🙋 확인 창 열기** · 노드 설정 맨 위 사용법 안내(대기 중이면 **확인 창 열기** 버튼) · 상단 배지.
+  하단 패널 실행 중 줄에 실제 상태 메시지(예: "AI가 의견을 반영해 다시 쓰는 중…") 표시
+- 노드 카드: 출력 목록·고른 출력 강조·확인 대기 깜박임·건너뜀 흐리게, 화살표에 출력 이름, 하단 패널 🙋/⏭️
+- 💬 도우미 AI 도 출력 지정 화살표(`output`)를 만들고 검증
+- 예시 파이프라인: "회의록 정리 → 확인 → 게시판 등록"(브라우저에서 다시→AI 수정→승인→아웃라인·쪽지 확인), "분기 테스트 — 1 / 2 / 그 외"(3갈래 확인)
+- 테스트 5개 추가 (총 79개 통과)
+
+### 🎬 최종 시연 목록 + 쪽지 원리 정리, 예시 파이프라인 정리 (2026-10-09)
+
+- `prd/demo-scenarios.md` 신설 — 최종 시연 항목별 준비·진행·보여 줄 장면·설명 포인트·정리 + 공통 준비 체크리스트. 1번: 사내 메신저 쪽지
+- `prd/modules/messenger.md` 에 "원리 — 어디까지 진짜이고 어디가 시연용인가" 추가 (HTTP 요청은 진짜, 메신저 서버·사원·쪽지 창은 시연용)
+- 기존 예시 파이프라인 5개 삭제(백업 있음), "사내 메신저 쪽지 보내기" 하나만 남김
+
+### ✉️ 사내 메신저 쪽지 모듈 + 시연용 메신저 (2026-10-09)
+
+→ 상세: `prd/modules/messenger.md`
+
+- **쪽지 노드** (`MESSENGER`, 팔레트 "통합"): 사번(여러 명)·메시지·보내는 사람 → 메신저 API 로 POST. 회사 메신저용 주소·바디 형식(JSON 안전 치환)·인증 헤더 설정
+- **시연용 메신저**: 주소를 비우면 이 앱의 `/demo-messenger` 로 보내 **이 PC 화면 오른쪽 아래에 쪽지 창**(Swing, 알림음, 여러 개 쌓임)이 뜸 + 받은 쪽지함 화면
+- 예시 파이프라인 "사내 메신저 쪽지 보내기 (시연)" (웹훅 {empId, message}) — 실제 쪽지 창 화면 캡처로 확인
+- 테스트 3개 추가 (총 74개 통과)
 
 ### 📘 아웃라인: 여러 단계 위치(컬렉션/문서/하위 문서) 정밀 제어 + 이동 (2026-10-08)
 

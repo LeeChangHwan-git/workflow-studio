@@ -9,6 +9,9 @@ import { ScheduleInfoField } from './ScheduleInfoField'
 import { OutlineCollectionField, OutlineConnectionField } from './OutlineFields'
 import { HtmlAnalyzer, fieldLines, parseFieldLines } from './HtmlAnalyzer'
 import { HeadersField } from './HeadersField'
+import { BranchRulesField } from './BranchRulesField'
+import { ApprovalInfoField } from './ApprovalInfoField'
+import { MessengerGroupsField } from './MessengerGroupsField'
 
 interface Props {
   nodeId: string | null
@@ -200,6 +203,19 @@ export function ConfigPanel({ nodeId, pipelineId, dirty, nodeType, config, onCha
                 baseUrl={String(config.baseUrl ?? '')}
                 apiKey={String(config.apiKey ?? '')}
                 onChange={(v) => onChange(param.name, v)}
+              />
+            ) : param.type === 'messengerGroups' ? (
+              <MessengerGroupsField key={param.name} label={param.label} empIds={String(config.empIds ?? '')} onChange={(v) => onChange('empIds', v)} />
+            ) : param.type === 'approvalInfo' ? (
+              <ApprovalInfoField key={param.name} nodeId={nodeId!} pipelineId={pipelineId} />
+            ) : param.type === 'branchRules' ? (
+              <BranchRulesField
+                key={param.name}
+                label={param.label}
+                value={String(config[param.name] ?? param.defaultValue ?? '[]')}
+                onChange={(v) => onChange(param.name, v)}
+                mode={String(config.mode ?? '')}
+                ignoreCase={String(config.ignoreCase ?? '')}
               />
             ) : param.type === 'htmlPicker' ? (
               <HtmlPickerField key={param.name} label={param.label} config={config} onChange={onChange} />

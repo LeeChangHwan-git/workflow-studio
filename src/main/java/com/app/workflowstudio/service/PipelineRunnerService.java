@@ -19,16 +19,19 @@ public class PipelineRunnerService {
     private final PipelineService pipelineService;
     private final NodeTypeRegistry nodeTypeRegistry;
     private final ObjectMapper objectMapper;
+    private final ExecutionHistoryStore history;
 
     // executionId -> execution state
     private final Map<String, ExecutionState> executions = new ConcurrentHashMap<>();
 
     public PipelineRunnerService(PipelineService pipelineService,
                                  NodeTypeRegistry nodeTypeRegistry,
-                                 ObjectMapper objectMapper) {
+                                 ObjectMapper objectMapper,
+                                 ExecutionHistoryStore history) {
         this.pipelineService = pipelineService;
         this.nodeTypeRegistry = nodeTypeRegistry;
         this.objectMapper = objectMapper;
+        this.history = history;
     }
 
     /** 메모리에 보관할 최대 실행 기록 수 (초과 시 끝난 실행부터 오래된 순으로 제거) */
@@ -73,12 +76,24 @@ public class PipelineRunnerService {
         ExecutionState state = new ExecutionState(execId, pipeline.getId(), mode, triggerNodeId);
         executions.put(execId, state);
 
-        Thread t = new Thread(() -> executePipeline(pipeline, state, triggerData), "pipeline-runner-" + execId);
+        Thread t = new Thread(() -> {
+            try {
+                executePipeline(pipeline, state, triggerData);
+            } finally {
+                if ("running".equals(state.status)) state.status = "error";
+                record(pipeline, state);
+            }
+        }, "pipeline-runner-" + execId);
         t.setDaemon(true);
         state.thread = t;
         t.start();
 
         return execId;
+    }
+
+    /** 지금 실행 중인 실행들 (홈 대시보드) */
+    public List<ExecutionState> running() {
+        return executions.values().stream().filter(st -> "running".equals(st.status)).toList();
     }
 
     public ExecutionState getState(String executionId) {
@@ -113,14 +128,54 @@ public class PipelineRunnerService {
         return true;
     }
 
+    /** 끝난 실행 요약을 파일 기록에 남김 (홈 대시보드 통계용) */
+    private void record(Pipeline pipeline, ExecutionState state) {
+        try {
+            ExecutionHistoryStore.Entry e = new ExecutionHistoryStore.Entry();
+            LocalDateTime end = LocalDateTime.now();
+            e.executionId = state.executionId;
+            e.pipelineId = pipeline.getId();
+            e.pipelineName = pipeline.getName();
+            e.mode = state.mode.name();
+            e.status = state.status;
+            e.startedAt = state.startedAt.withNano(0).toString();
+            e.endedAt = end.withNano(0).toString();
+            e.durationMs = java.time.Duration.between(state.startedAt, end).toMillis();
+            List<RunLog> logs;
+            synchronized (state.logs) { logs = new ArrayList<>(state.logs); }
+            e.nodes = (int) logs.stream().filter(l -> "success".equals(l.getStatus())).count();
+            logs.stream().filter(l -> "error".equals(l.getStatus())).findFirst().ifPresent(l -> {
+                e.errorNode = nodeName(pipeline, l.getNodeId());
+                e.message = l.getMessage();
+            });
+            history.add(e);
+        } catch (Exception ignore) {
+            // 기록 실패는 무시
+        }
+    }
+
+    private static String nodeName(Pipeline pipeline, String nodeId) {
+        return pipeline.getNodes().stream().filter(n -> n.getId().equals(nodeId)).findFirst().map(n -> {
+            Object nm = n.getConfig() == null ? null : n.getConfig().get("name");
+            return nm instanceof String str && !str.isBlank() ? str : n.getType();
+        }).orElse(nodeId);
+    }
+
     // ── 실행 엔진 ──────────────────────────────────────────────
 
     private void executePipeline(Pipeline pipeline, ExecutionState state, Object triggerData) {
         Map<String, Object> vars = new HashMap<>();     // outputVar / nodeId.output → value
         Map<String, String> outputs = new HashMap<>();  // nodeId → 이번 실행 출력 (${input} 계산용)
-        Map<String, List<String>> upstream = upstreamMap(pipeline);
         Set<String> reachable = state.triggerNodeId != null
                 ? reachableFrom(pipeline, state.triggerNodeId) : null;
+        // 분기: 노드가 고른 출력(없으면 전부) — 고르지 않은 출력 쪽 화살표는 흐르지 않음
+        Map<String, List<PipelineConnection>> incoming = new HashMap<>();
+        for (PipelineConnection c : flowConnections(pipeline)) {
+            if (reachable != null && !reachable.contains(c.getFromNodeId())) continue;
+            incoming.computeIfAbsent(c.getToNodeId(), k -> new ArrayList<>()).add(c);
+        }
+        Set<String> executed = new HashSet<>();
+        Map<String, Set<String>> routes = new HashMap<>();
 
         Map<String, Map<String, List<PipelineNode>>> partsByNode = partsMap(pipeline);
 
@@ -132,6 +187,16 @@ public class PipelineRunnerService {
                 return;
             }
 
+            // 들어오는 화살표가 있는데 하나도 흐르지 않았으면(분기에서 다른 쪽이 선택됨) 건너뜀
+            List<PipelineConnection> ins = incoming.getOrDefault(node.getId(), List.of());
+            List<String> activeSources = ins.stream().filter(c -> flows(c, executed, routes))
+                    .map(PipelineConnection::getFromNodeId).distinct().toList();
+            if (!ins.isEmpty() && activeSources.isEmpty()) {
+                state.logs.add(new RunLog(node.getId(), node.getType(), "skipped",
+                        "[" + node.getType() + "] 건너뜀 — 앞 분기에서 이 쪽이 선택되지 않음"));
+                continue;
+            }
+
             RunLog log = new RunLog(node.getId(), node.getType(), "running",
                     "[" + node.getType() + "] 실행 중...");
             state.logs.add(log);
@@ -140,17 +205,28 @@ public class PipelineRunnerService {
                 NodeModule module = nodeTypeRegistry.find(node.getType());
                 if (module == null) throw new Exception("등록되지 않은 노드 타입: " + node.getType());
 
-                String input = upstream.getOrDefault(node.getId(), List.of()).stream()
+                String input = activeSources.stream()
                         .map(outputs::get)
                         .filter(Objects::nonNull)
                         .reduce((a, b) -> a + "\n" + b)
                         .orElse(null);
                 Object nodeTrigger = node.getId().equals(state.triggerNodeId) ? triggerData : null;
 
-                String output = module.execute(new NodeContext(node, vars, input, state.mode, nodeTrigger,
-                        partsByNode.getOrDefault(node.getId(), Map.of()), objectMapper));
+                NodeContext ctx = new NodeContext(node, vars, input, state.mode, nodeTrigger,
+                        partsByNode.getOrDefault(node.getId(), Map.of()), objectMapper)
+                        .withRun(state.executionId, pipeline.getId(), pipeline.getName(), (st, msg) -> {
+                            log.setStatus(st);
+                            log.setMessage(msg);
+                        });
+                String output = module.execute(ctx);
+                executed.add(node.getId());
+                if (ctx.routes() != null) {
+                    routes.put(node.getId(), ctx.routes());
+                    log.setRoute(new ArrayList<>(ctx.routes()));
+                }
                 log.setStatus("success");
-                log.setMessage("[" + node.getType() + "] 완료");
+                log.setMessage("[" + node.getType() + "] 완료"
+                        + (ctx.routes() != null ? " → " + String.join(", ", outputLabels(module, node, ctx.routes())) : ""));
                 log.setOutput(output);
                 if (output != null) {
                     outputs.put(node.getId(), output);
@@ -177,6 +253,22 @@ public class PipelineRunnerService {
         }
 
         state.status = "done";
+    }
+
+    /** 이 화살표로 흐르는지: 앞 노드가 실행됐고, 출력을 골랐다면 그 출력에서 나온 화살표 */
+    static boolean flows(PipelineConnection c, Set<String> executed, Map<String, Set<String>> routes) {
+        if (!executed.contains(c.getFromNodeId())) return false;
+        Set<String> r = routes.get(c.getFromNodeId());
+        return r == null || (c.getFromHandle() != null && r.contains(c.getFromHandle()));
+    }
+
+    /** 고른 출력 id → 화면 이름 (정적 출력은 모듈 정보, 규칙 기반 출력은 노드 설정) */
+    private List<String> outputLabels(NodeModule module, PipelineNode node, Set<String> ids) {
+        Map<String, String> names = new HashMap<>();
+        for (var o : module.info().outputs() == null ? List.<com.app.workflowstudio.node.NodeOutput>of() : module.info().outputs())
+            names.put(o.id(), o.label());
+        if (module instanceof com.app.workflowstudio.node.DynamicOutputs d) names.putAll(d.outputLabels(node));
+        return ids.stream().map(id -> names.getOrDefault(id, id)).toList();
     }
 
     // ── 그래프 헬퍼 ───────────────────────────────────────────
@@ -206,15 +298,6 @@ public class PipelineRunnerService {
             map.computeIfAbsent(c.getToNodeId(), k -> new LinkedHashMap<>())
                .computeIfAbsent(c.getToHandle(), k -> new ArrayList<>())
                .add(part);
-        }
-        return map;
-    }
-
-    /** nodeId → 화살표로 이 노드에 들어오는 노드 id 목록 */
-    private Map<String, List<String>> upstreamMap(Pipeline pipeline) {
-        Map<String, List<String>> map = new HashMap<>();
-        for (PipelineConnection c : flowConnections(pipeline)) {
-            map.computeIfAbsent(c.getToNodeId(), k -> new ArrayList<>()).add(c.getFromNodeId());
         }
         return map;
     }

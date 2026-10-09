@@ -106,15 +106,7 @@
     .j-key { color: #9CDCFE; } .j-str { color: #CE9178; } .j-num { color: #B5CEA8; } .j-bool { color: #569CD6; } .j-null { color: #808080; }
 </style>
 <body>
-<nav>
-    <div class="nav-brand"><div class="nav-brand-icon">🗂</div>내 메모</div>
-    <a th:href="@{/memos}"     class="nav-link">메모</a>
-    <a th:href="@{/bookmarks}" class="nav-link">북마크</a>
-    <a th:href="@{/calendar}"  class="nav-link">달력</a>
-    <a th:href="@{/pipelines}" class="nav-link">파이프라인</a>
-    <a th:href="@{/http}"      class="nav-link active">HTTP</a>
-    <a th:href="@{/settings}"  class="nav-link">⚙ 설정</a>
-</nav>
+<nav th:replace="~{fragments/nav :: nav('http')}"></nav>
 
 <div class="http-wrap">
     <!-- 히스토리 -->

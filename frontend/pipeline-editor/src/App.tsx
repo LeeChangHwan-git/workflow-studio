@@ -8,7 +8,7 @@ import {
   type Edge,
 } from '@xyflow/react'
 import { api } from './api'
-import { nodeDisplayName, OFF, ON, PART_HANDLE, WEBHOOK_TYPE } from './types'
+import { nodeDisplayName, nodeOutputs, OFF, ON, PART_HANDLE, WEBHOOK_TYPE } from './types'
 import type { NodeTypeInfo, PipelineDto, RunLog, RunMode } from './types'
 import type { PipelineFlowNode } from './components/PipelineNodeCard'
 import { Palette } from './components/Palette'
@@ -22,8 +22,20 @@ const BOTTOM_DEFAULT_HEIGHT = 200
 import { usePaletteDrag } from './usePaletteDrag'
 import { DragGhost } from './components/DragGhost'
 
-/** 연결선 생성 — 소켓(부품) 연결은 점선·화살표 없음, 일반 실행 흐름은 실선 화살표 */
-function makeEdge(source: string, target: string, targetHandle?: string | null): Edge {
+/**
+ * 연결선 생성 — 소켓(부품) 연결은 점선·화살표 없음, 일반 실행 흐름은 실선 화살표.
+ * sourceHandle: 출력이 여러 개인 노드(분기·확인 요청)에서 나온 화살표면 그 출력 id
+ */
+/** 분기 화살표가 아직 있는 출력에서 나오는지 (규칙을 지우면 그 화살표는 버림) */
+function validOutput(e: Edge, nodes: PipelineFlowNode[]): boolean {
+  if (e.targetHandle || !e.sourceHandle) return true
+  const n = nodes.find((x) => x.id === e.source)
+  if (!n) return false
+  const outs = nodeOutputs(n.data.nodeType, n.data.config)
+  return outs.length === 0 || outs.some((o) => o.id === e.sourceHandle)
+}
+
+function makeEdge(source: string, target: string, targetHandle?: string | null, sourceHandle?: string | null): Edge {
   if (targetHandle) {
     return {
       id: `${source}-${target}-${targetHandle}`,
@@ -33,6 +45,16 @@ function makeEdge(source: string, target: string, targetHandle?: string | null):
       targetHandle,
       className: 'edge-socket',
       style: { strokeDasharray: '5 4', stroke: '#8B8B8B' },
+    }
+  }
+  if (sourceHandle) {
+    return {
+      id: `${source}-${sourceHandle}-${target}`,
+      source,
+      target,
+      sourceHandle,
+      markerEnd: { type: MarkerType.ArrowClosed },
+      className: 'edge-branch',
     }
   }
   return { id: `${source}-${target}`, source, target, markerEnd: { type: MarkerType.ArrowClosed } }
@@ -146,7 +168,7 @@ export default function App({ initialPipelineId }: Props) {
         data: { nodeType: typeMap.get(n.type)!, config: n.config },
       })),
     )
-    setEdges(pipeline.connections.map((c) => makeEdge(c.fromNodeId, c.toNodeId, c.toHandle)))
+    setEdges(pipeline.connections.map((c) => makeEdge(c.fromNodeId, c.toNodeId, c.toHandle, c.fromHandle)))
   }
 
   /** 실행 하나를 폴링하며 하단 패널/노드 상태에 반영 */
@@ -286,6 +308,18 @@ export default function App({ initialPipelineId }: Props) {
     [nodes],
   )
 
+  // 화면에 그릴 연결선: 분기 화살표에 출력 이름 표시, 없어진 출력의 화살표는 숨김
+  const displayEdges = useMemo(
+    () =>
+      edges.filter((e) => validOutput(e, nodes)).map((e) => {
+        if (e.targetHandle || !e.sourceHandle) return e
+        const n = nodes.find((x) => x.id === e.source)
+        const label = n ? nodeOutputs(n.data.nodeType, n.data.config).find((o) => o.id === e.sourceHandle)?.label : undefined
+        return label ? { ...e, label, labelBgPadding: [6, 3] as [number, number], labelBgBorderRadius: 4 } : e
+      }),
+    [edges, nodes],
+  )
+
   const handleConnect = useCallback(
     (connection: Connection) => {
       if (!isValidConnection(connection)) return
@@ -297,7 +331,8 @@ export default function App({ initialPipelineId }: Props) {
         const kept = socket && !socket.multiple
           ? eds.filter((e) => !(e.target === connection.target && e.targetHandle === connection.targetHandle))
           : eds
-        return addEdge(makeEdge(connection.source, connection.target, connection.targetHandle), kept)
+        return addEdge(makeEdge(connection.source, connection.target, connection.targetHandle,
+          connection.targetHandle ? null : connection.sourceHandle), kept)
       })
     },
     [isValidConnection, nodes, setEdges],
@@ -327,7 +362,14 @@ export default function App({ initialPipelineId }: Props) {
         posY: n.position.y,
         config: n.data.config,
       })),
-      connections: edges.map((e) => ({ fromNodeId: e.source, toNodeId: e.target, toHandle: e.targetHandle ?? null })),
+      connections: edges
+        .filter((e) => validOutput(e, nodeList))
+        .map((e) => ({
+          fromNodeId: e.source,
+          toNodeId: e.target,
+          toHandle: e.targetHandle ?? null,
+          fromHandle: e.targetHandle ? null : (e.sourceHandle ?? null),
+        })),
     }),
     [name, description, nodes, edges],
   )
@@ -384,7 +426,7 @@ export default function App({ initialPipelineId }: Props) {
 
   // 탭 제목 = 파이프라인 이름 (열린 탭 관리 패널에도 이 이름으로 표시)
   useEffect(() => {
-    document.title = `${name || '새 파이프라인'} · 파이프라인 — 내 메모`
+    document.title = `${name || '새 파이프라인'} · 파이프라인 — worKBench`
   }, [name])
 
   // 다른 메뉴에서 '파이프라인' 탭을 누르면 이 화면으로 돌아오도록 기억 (layout.html 스크립트와 같은 키)
@@ -513,7 +555,7 @@ export default function App({ initialPipelineId }: Props) {
         />
         <PipelineCanvas
           nodes={nodes}
-          edges={edges}
+          edges={displayEdges}
           wrapperRef={canvasWrapperRef}
           dragOver={!!ghost?.overCanvas}
           runStatusMap={runStatusMap}

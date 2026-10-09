@@ -1,7 +1,8 @@
 import { Handle, Position, type NodeProps } from '@xyflow/react'
 import type { Node } from '@xyflow/react'
-import { nodeDisplayName, ON, PART_HANDLE, SCHEDULE_TYPE, WEBHOOK_TYPE, type PipelineNodeData } from '../types'
+import { nodeDisplayName, nodeOutputs, ON, PART_HANDLE, SCHEDULE_TYPE, WEBHOOK_TYPE, type PipelineNodeData } from '../types'
 import { useNodeActions } from '../NodeActionsContext'
+import { openApprovalWindow } from './ApprovalInfoField'
 import { useRunStatus } from '../RunStatusContext'
 import { useSocketStatus } from '../SocketStatusContext'
 
@@ -11,6 +12,8 @@ const STATUS_ICON: Record<string, string> = {
   running: '●',
   success: '✓',
   error:   '✕',
+  waiting: '⏳',
+  skipped: '–',
 }
 
 export function PipelineNodeCard({ id, data, selected }: NodeProps<PipelineFlowNode>) {
@@ -23,6 +26,9 @@ export function PipelineNodeCard({ id, data, selected }: NodeProps<PipelineFlowN
   const { nodeType, config } = data
   const isPart = !!nodeType.provides
   const sockets = nodeType.sockets ?? []
+  // 출력이 여러 개(분기·확인 요청)면 오른쪽에 출력마다 연결점 — 이번 실행에서 고른 출력은 강조
+  const outputs = isPart ? [] : nodeOutputs(nodeType, config)
+  const chosen = new Set(runLog?.route ?? [])
 
   // 웹훅 수신 중 표시: 테스트(수신 대기) / 운영 URL 중 하나라도 켜져 있으면 초록 LIVE
   const isWebhook = nodeType.id === WEBHOOK_TYPE
@@ -39,6 +45,7 @@ export function PipelineNodeCard({ id, data, selected }: NodeProps<PipelineFlowN
     live && 'live',
     isPart && 'part',
     sockets.length > 0 && 'has-sockets',
+    outputs.length > 0 && 'has-outputs',
   ].filter(Boolean).join(' ')
 
   return (
@@ -94,6 +101,32 @@ export function PipelineNodeCard({ id, data, selected }: NodeProps<PipelineFlowN
         </div>
       )}
 
+      {/* 확인 요청이 기다리는 중이면 카드에서 바로 확인 창 열기 */}
+      {runStatus === 'waiting' && (
+        <button
+          type="button"
+          className="pnode-approve-btn nodrag"
+          onClick={(e) => {
+            e.stopPropagation()
+            openApprovalWindow(id)
+          }}
+        >
+          🙋 확인하기
+        </button>
+      )}
+
+      {/* 오른쪽 출력 여러 개 (분기 규칙 · 승인/다시/거절) */}
+      {outputs.length > 0 && (
+        <div className="pnode-outputs">
+          {outputs.map((o) => (
+            <div key={o.id} className={`pnode-output${chosen.has(o.id) ? ' chosen' : ''}${o.id === 'else' ? ' else' : ''}`}>
+              <span className="pnode-output-label">{o.label}</span>
+              <Handle type="source" id={o.id} position={Position.Right} className="pnode-handle pnode-handle-out" />
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* 아래쪽 소켓 (AI 에이전트: 모델 · 메모리 · 지시문) */}
       {sockets.length > 0 && (
         <div className="pnode-sockets">
@@ -119,7 +152,7 @@ export function PipelineNodeCard({ id, data, selected }: NodeProps<PipelineFlowN
         </div>
       )}
 
-      {!isPart && (
+      {!isPart && outputs.length === 0 && (
         <Handle type="source" position={Position.Right} className="pnode-handle pnode-handle-out" />
       )}
     </div>

@@ -87,6 +87,22 @@ public class SettingsService {
         s.assistant.maxSteps = Math.max(2, Math.min(30, s.assistant.maxSteps));
         s.assistant.temperature = Math.max(0, Math.min(2, s.assistant.temperature));
         s.backup.keepPerPipeline = Math.max(1, Math.min(200, s.backup.keepPerPipeline));
+        if (s.appearance == null) s.appearance = new AppSettings.Appearance();
+        if (s.demo == null) s.demo = new AppSettings.Demo();
+        if (s.messenger == null) s.messenger = new AppSettings.Messenger();
+        if (s.messenger.groups == null) s.messenger.groups = new java.util.ArrayList<>();
+        s.messenger.groups.removeIf(g -> g == null || g.name == null);
+        for (var g : s.messenger.groups) {
+            g.name = g.name.replaceAll("^[@\\s]+|\\s+$", "").replaceAll("[\\s,;@]+", "_");
+            if (g.members == null) g.members = "";
+            if (g.description == null) g.description = "";
+            g.members = String.join(", ", g.memberIds());
+        }
+        java.util.Set<String> seen = new java.util.HashSet<>();
+        s.messenger.groups.removeIf(g -> g.name.isEmpty() || !seen.add(g.name.toLowerCase()));
+        if (s.demo.messengerMyId == null || s.demo.messengerMyId.isBlank()) s.demo.messengerMyId = new AppSettings.Demo().messengerMyId;
+        s.demo.messengerMyId = s.demo.messengerMyId.trim();
+        if (!AppSettings.Appearance.LOGOS.contains(s.appearance.logo)) s.appearance.logo = AppSettings.Appearance.LOGOS.get(0);
     }
 
     private AppSettings load() {
@@ -96,6 +112,7 @@ public class SettingsService {
             if (s.credentials == null) s.credentials = new AppSettings.Credentials();
             if (s.assistant == null) s.assistant = new AppSettings.Assistant();
             if (s.backup == null) s.backup = new AppSettings.Backup();
+            if (s.appearance == null) s.appearance = new AppSettings.Appearance();
             sanitize(s);
             return s;
         } catch (IOException e) {

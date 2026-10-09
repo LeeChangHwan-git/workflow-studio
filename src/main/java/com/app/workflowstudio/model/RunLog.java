@@ -10,6 +10,11 @@ public class RunLog {
     private String output;
     private String outputVar;
     private LocalDateTime timestamp;
+    /** 분기 노드가 고른 출력 id 목록 (화면 표시용, 분기 없으면 null) */
+    private java.util.List<String> route;
+
+    public java.util.List<String> getRoute() { return route; }
+    public void setRoute(java.util.List<String> route) { this.route = route; }
 
     public RunLog() {}
 

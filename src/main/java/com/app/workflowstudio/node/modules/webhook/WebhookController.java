@@ -43,8 +43,9 @@ public class WebhookController {
 
     @RequestMapping({"/webhook/{path}", "/webhook-test/{path}"})
     public ResponseEntity<Map<String, Object>> receive(@PathVariable String path,
-                                                       @RequestBody(required = false) String body,
+                                                       @RequestBody(required = false) byte[] rawBody,
                                                        HttpServletRequest req) {
+        String body = decodeBody(rawBody, req.getContentType());
         RunMode mode = req.getRequestURI().startsWith(TEST_PREFIX) ? RunMode.TEST : RunMode.PROD;
         String modeLabel = mode == RunMode.TEST ? "테스트" : "운영";
 
@@ -153,6 +154,34 @@ public class WebhookController {
         e.message = message;
         e.payload = payload;
         historyStore.add(node.getId(), e);
+    }
+
+    /**
+     * 받은 바디 글자로 바꾸기 — Content-Type 에 charset 이 있으면 그대로, 없으면 UTF-8,
+     * UTF-8 로 읽을 수 없는 바이트면 윈도우 한글(MS949/CP949)로 읽는다
+     * (PowerShell 5·cmd curl 처럼 한글을 CP949 로 보내는 도구에서도 글자가 깨지지 않게)
+     */
+    static String decodeBody(byte[] raw, String contentType) {
+        if (raw == null || raw.length == 0) return null;
+        if (contentType != null) {
+            var m = java.util.regex.Pattern.compile("charset=\\s*\"?([\\w.:-]+)", java.util.regex.Pattern.CASE_INSENSITIVE).matcher(contentType);
+            if (m.find()) {
+                try {
+                    java.nio.charset.Charset cs = java.nio.charset.Charset.forName(m.group(1));
+                    if (!cs.equals(StandardCharsets.UTF_8)) return new String(raw, cs);
+                } catch (Exception ignore) {
+                    // 모르는 charset → 아래 자동 판별
+                }
+            }
+        }
+        try {
+            return StandardCharsets.UTF_8.newDecoder()
+                    .onMalformedInput(java.nio.charset.CodingErrorAction.REPORT)
+                    .onUnmappableCharacter(java.nio.charset.CodingErrorAction.REPORT)
+                    .decode(java.nio.ByteBuffer.wrap(raw)).toString();
+        } catch (java.nio.charset.CharacterCodingException e) {
+            return new String(raw, java.nio.charset.Charset.forName("MS949"));
+        }
     }
 
     private Map<String, Object> buildPayload(HttpServletRequest req, String path, RunMode mode, String body) {

@@ -99,18 +99,7 @@
     .btn-del:hover  { background: #5A2D2D; }
 </style>
 <body>
-<nav>
-    <div class="nav-brand">
-        <div class="nav-brand-icon">🗂</div>
-        내 메모
-    </div>
-    <a th:href="@{/memos}"     class="nav-link active">메모</a>
-    <a th:href="@{/bookmarks}" class="nav-link">북마크</a>
-    <a th:href="@{/calendar}"  class="nav-link">달력</a>
-    <a th:href="@{/pipelines}" class="nav-link">파이프라인</a>
-    <a th:href="@{/http}"      class="nav-link">HTTP</a>
-    <a th:href="@{/settings}"  class="nav-link">⚙ 설정</a>
-</nav>
+<nav th:replace="~{fragments/nav :: nav('memos')}"></nav>
 
 <div class="container">
     <div class="page-header">

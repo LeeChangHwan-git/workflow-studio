@@ -12,6 +12,9 @@
 | `FILE_IMPORT` | 파일 가져오기 (txt/html/pdf/docx/xlsx/pptx → AI로) | 파일 | ✅ 완료 (2026-10-07) | [file-import.md](file-import.md) |
 | `HTTP_REQUEST` | HTTP 요청 (REST API 호출) | 통합 | ✅ 완료 (2026-10-03) | [http-request.md](http-request.md) |
 | `HTML_SELECT` | 웹 페이지 추출 + 🔍 HTML 분석기 (클릭으로 선택자) | 통합 | ✅ 완료 (2026-10-05) | [html-select.md](html-select.md) |
+| `MESSENGER` | 사내 메신저 쪽지 (사번·메시지, 시연용 메신저 포함) | 통합 | ✅ 완료 (2026-10-09) | [messenger.md](messenger.md) |
+| `BRANCH` | 분기 (규칙마다 출력 + 그 외, 표현식 설명서) | 흐름 | ✅ 완료 (2026-10-09) | [branch.md](branch.md) |
+| `APPROVAL` | 확인 요청 (승인 / 고쳐서 승인 / 다시 → AI 수정 / 거절) | 흐름 | ✅ 완료 (2026-10-09) | [approval.md](approval.md) |
 | `OUTLINE` | 아웃라인 게시판 (조회·검색·가져오기·등록·수정) | 통합 | ✅ 완료 (2026-10-04) | [outline.md](outline.md) |
 | `AI_AGENT` | AI 에이전트 (소켓: 모델·메모리·지시문) | AI | ✅ 1차 (2026-10-02) | [ai-agent.md](ai-agent.md) |
 | `GEMINI_MODEL` · `CHAT_MEMORY` · `AI_INSTRUCTION` | Gemini 모델 · 대화 메모리 · 지시문 (부품) | AI 부품 | ✅ 1차 (2026-10-02) | [ai-agent.md](ai-agent.md) |

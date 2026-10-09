@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('홈')}"></head>
+<style>
+    .db { max-width: 1240px; margin: 0 auto; padding: 28px 28px 60px; }
+    .db-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 22px; }
+    .db-eyebrow { font-size: 11.5px; font-weight: 700; letter-spacing: 1.5px; color: #8E96A3; font-family: Consolas, 'D2Coding', monospace; }
+    .db-eyebrow b { color: #FFBC00; }
+    .db-hello { font-size: 26px; font-weight: 800; color: #F2F2F2; letter-spacing: -.6px; margin-top: 6px; line-height: 1.3; }
+    .db-hello em { font-style: normal; color: #FFBC00; }
+    .db-sub { font-size: 13.5px; color: var(--muted); margin-top: 6px; line-height: 1.6; max-width: 640px; }
+    .db-sub b { color: #D4D4D4; font-weight: 600; }
+    .db-feats { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+    .db-feat { font-size: 12px; color: #C8C8C8; background: #2A2A2D; border: 1px solid #3C3C40; border-radius: 14px; padding: 3px 10px; }
+    .db-actions { display: flex; gap: 8px; align-items: center; }
+    .btn-kb { background: #FFBC00; color: #1E1E1E; }
+    .btn-kb:hover { background: #FFCB3D; }
+
+    /* 기간 */
+    .db-period { display: inline-flex; background: var(--bg-3); border: 1px solid var(--border); border-radius: 7px; padding: 2px; }
+    .db-period button { background: none; border: none; color: var(--muted); font: inherit; font-size: 12.5px; font-weight: 600;
+        padding: 6px 12px; border-radius: 5px; cursor: pointer; }
+    .db-period button.on { background: #45454A; color: #fff; }
+
+    /* 통계 카드 */
+    .db-stats { display: grid; grid-template-columns: repeat(5, 1fr); border: 1px solid var(--border); border-radius: 10px;
+        background: var(--card); overflow: hidden; margin-bottom: 16px; }
+    .db-stat { padding: 16px 18px; border-right: 1px solid var(--border); min-width: 0; }
+    .db-stat:last-child { border-right: none; }
+    .db-stat-label { font-size: 12px; color: var(--muted); font-weight: 600; display: flex; align-items: center; gap: 6px; }
+    .db-stat-value { font-size: 26px; font-weight: 800; color: #F2F2F2; margin-top: 6px; letter-spacing: -.5px; }
+    .db-stat-value small { font-size: 13px; color: var(--muted); font-weight: 600; margin-left: 2px; }
+    .db-delta { font-size: 11.5px; font-weight: 700; margin-top: 4px; color: var(--dim); }
+    .db-delta.up { color: #4EC9B0; } .db-delta.down { color: #F14C4C; }
+    .db-stat.alert .db-stat-value { color: #F9A8D4; }
+    .db-stat.clickable { cursor: pointer; } .db-stat.clickable:hover { background: var(--bg-3); }
+
+    /* 차트 */
+    .db-chart-card { border: 1px solid var(--border); border-radius: 10px; background: var(--card); padding: 14px 18px 10px; margin-bottom: 22px; }
+    .db-chart-head { display: flex; justify-content: space-between; align-items: center; font-size: 13px; font-weight: 700; color: var(--text); margin-bottom: 10px; }
+    .db-legend { display: flex; gap: 14px; font-size: 11.5px; color: var(--muted); font-weight: 500; }
+    .db-legend i { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
+    .db-chart { display: flex; align-items: flex-end; gap: 3px; height: 120px; border-bottom: 1px solid var(--border); position: relative; }
+    .db-bar { flex: 1; display: flex; flex-direction: column-reverse; min-width: 0; height: 100%; justify-content: flex-start; position: relative; }
+    .db-bar span { display: block; width: 100%; }
+    .db-bar .ok { background: #4EC9B0; border-radius: 0 0 2px 2px; }
+    .db-bar .err { background: #F14C4C; }
+    .db-bar .ok + .err, .db-bar > span:last-child { border-radius: 2px 2px 0 0; }
+    .db-bar:hover { background: rgba(255,255,255,.04); }
+    .db-bar-tip { display: none; position: absolute; bottom: calc(100% + 6px); left: 50%; transform: translateX(-50%); white-space: nowrap;
+        background: #111; border: 1px solid #444; border-radius: 6px; padding: 5px 8px; font-size: 11.5px; color: #ddd; z-index: 5; pointer-events: none; }
+    .db-bar:hover .db-bar-tip { display: block; }
+    .db-axis { display: flex; gap: 3px; margin-top: 5px; }
+    .db-axis span { flex: 1; font-size: 10.5px; color: var(--dim); text-align: center; white-space: nowrap; overflow: visible; min-width: 0; }
+    .db-chart-empty { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: var(--dim); font-size: 13px; }
+
+    /* 탭 */
+    .db-tabs { display: flex; align-items: center; gap: 4px; border-bottom: 1px solid var(--border); margin-bottom: 14px; }
+    .db-tab { background: none; border: none; border-bottom: 2px solid transparent; color: var(--muted); font: inherit; font-size: 14px;
+        font-weight: 600; padding: 10px 14px; cursor: pointer; margin-bottom: -1px; }
+    .db-tab.on { color: #fff; border-bottom-color: #FFBC00; }
+    .db-tab .cnt { font-size: 11px; background: #3A3A3E; color: #bbb; border-radius: 9px; padding: 1px 7px; margin-left: 5px; }
+    .db-tools { margin-left: auto; display: flex; gap: 8px; padding-bottom: 6px; }
+    .db-input { height: 32px; background: var(--input-bg); border: 1px solid var(--border); border-radius: 6px; color: var(--text);
+        font: inherit; font-size: 13px; padding: 0 10px; outline: none; }
+    .db-input:focus { border-color: #FFBC00; }
+
+    /* 파이프라인 줄 */
+    .pl-row { display: flex; align-items: center; gap: 14px; border: 1px solid var(--border); background: var(--card); border-radius: 8px;
+        padding: 13px 16px; margin-bottom: 8px; cursor: pointer; transition: border-color .12s, background .12s; }
+    .pl-row:hover { border-color: #6A6A6A; background: #29292B; }
+    .pl-main { flex: 1; min-width: 0; }
+    .pl-name { font-size: 14.5px; font-weight: 700; color: #F0F0F0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .pl-meta { font-size: 12px; color: var(--muted); margin-top: 4px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+    .pl-desc { color: var(--dim); max-width: 460px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .pl-icons { display: flex; gap: 4px; flex-shrink: 0; }
+    .pl-icon { width: 26px; height: 26px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 13px;
+        background: #333; border: 1px solid #444; }
+    .pl-more { font-size: 11px; color: var(--dim); align-self: center; }
+    .pl-badge { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 10px; background: #34343A; color: #ccc; white-space: nowrap; }
+    .pl-badge.timer-on { background: rgba(78,201,176,.15); color: #4EC9B0; }
+    .pl-badge.running { background: rgba(79,193,255,.15); color: #4FC1FF; }
+    .pl-last { width: 132px; flex-shrink: 0; font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex-shrink: 0; background: #555; }
+    .dot.done { background: #4EC9B0; } .dot.error { background: #F14C4C; } .dot.running { background: #4FC1FF; animation: blink 1s infinite; }
+    .dot.waiting { background: #DB2777; animation: blink 1s infinite; }
+    @keyframes blink { 50% { opacity: .35; } }
+    .pl-run { flex-shrink: 0; width: 34px; height: 34px; border-radius: 7px; border: 1px solid var(--border); background: transparent;
+        color: #ddd; cursor: pointer; font-size: 13px; }
+    .pl-run:hover { border-color: #FFBC00; color: #FFBC00; }
+    .pl-run:disabled { opacity: .35; cursor: default; border-color: var(--border); color: #ddd; }
+
+    /* 실행 기록 표 */
+    .ex-table { width: 100%; border-collapse: collapse; background: var(--card); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+    .ex-table th { text-align: left; font-size: 11.5px; color: var(--muted); font-weight: 700; padding: 10px 14px; background: var(--bg-3); border-bottom: 1px solid var(--border); }
+    .ex-table td { font-size: 13px; padding: 10px 14px; border-bottom: 1px solid #333; vertical-align: middle; }
+    .ex-table tr:last-child td { border-bottom: none; }
+    .ex-table tbody tr { cursor: pointer; } .ex-table tbody tr:hover td { background: #2B2B2E; }
+    .ex-status { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; }
+    .ex-err { color: #F48771; font-size: 12px; max-width: 360px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .ex-mode { font-size: 11.5px; color: var(--muted); }
+    .ex-approve { background: #DB2777; color: #fff; border: none; border-radius: 5px; font-size: 11.5px; font-weight: 700; padding: 3px 9px; cursor: pointer; }
+
+    .empty { text-align: center; padding: 50px 20px; color: var(--dim); border: 1px dashed var(--border); border-radius: 10px; }
+    .empty b { color: var(--text); }
+    .first-card { border: 1px dashed #6A5A20; background: rgba(255,188,0,.05); border-radius: 12px; padding: 34px; text-align: center; }
+    .first-card h3 { color: #F2F2F2; font-size: 18px; margin-bottom: 8px; }
+    .first-card p { color: var(--muted); font-size: 13px; margin-bottom: 18px; line-height: 1.6; }
+
+    .toast { position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%); background: #111; border: 1px solid #555; color: #eee;
+        padding: 10px 16px; border-radius: 8px; font-size: 13px; z-index: 200; display: none; }
+    .toast a { color: #FFBC00; margin-left: 8px; }
+
+    @media (max-width: 960px) {
+        .db-stats { grid-template-columns: repeat(2, 1fr); }
+        .db-stat { border-bottom: 1px solid var(--border); }
+        .pl-icons, .pl-last { display: none; }
+        .db-head { flex-direction: column; align-items: flex-start; }
+    }
+</style>
+<body>
+<nav th:replace="~{fragments/nav :: nav('home')}"></nav>
+
+<div class="db">
+    <div class="db-head">
+        <div>
+            <div class="db-eyebrow">wor<b>KB</b>ench · WORKFLOW STUDIO</div>
+            <div class="db-hello">끌어다 놓고, 이어 붙이면, <em>일이 돌아갑니다.</em></div>
+            <div class="db-sub">
+                <b>worKBench</b>는 반복 업무를 <b>노드</b>로 조립하는 내 PC 속 작업대입니다.
+                게시판·회의록·아웃라인·메신저를 AI와 한 줄로 잇고, 중요한 순간엔 사람이 확인합니다.
+            </div>
+            <div class="db-feats">
+                <span class="db-feat">🧩 끌어다 조립</span>
+                <span class="db-feat">🤖 AI가 읽고 정리</span>
+                <span class="db-feat">🔀 조건 따라 분기</span>
+                <span class="db-feat">🙋 사람이 확인</span>
+                <span class="db-feat">⏰ 알아서 반복</span>
+            </div>
+        </div>
+        <div class="db-actions">
+            <div class="db-period" id="period">
+                <button data-p="1">24시간</button>
+                <button data-p="7" class="on">7일</button>
+                <button data-p="30">30일</button>
+            </div>
+            <a class="btn btn-kb" href="/pipelines/new">＋ 새 파이프라인</a>
+        </div>
+    </div>
+
+    <div class="db-stats" id="stats"></div>
+
+    <div class="db-chart-card">
+        <div class="db-chart-head">
+            <span id="chart-title">실행 추이</span>
+            <span class="db-legend"><span><i style="background:#4EC9B0"></i>성공</span><span><i style="background:#F14C4C"></i>실패</span></span>
+        </div>
+        <div class="db-chart" id="chart"></div>
+        <div class="db-axis" id="axis"></div>
+    </div>
+
+    <div class="db-tabs">
+        <button class="db-tab on" data-tab="pipelines">파이프라인<span class="cnt" id="cnt-pipelines">0</span></button>
+        <button class="db-tab" data-tab="executions">실행 기록<span class="cnt" id="cnt-executions">0</span></button>
+        <button class="db-tab" data-tab="timers">예정된 타이머<span class="cnt" id="cnt-timers">0</span></button>
+        <div class="db-tools" id="tools">
+            <input class="db-input" id="q" placeholder="🔍 이름·설명 검색" autocomplete="off">
+            <select class="db-input" id="sort">
+                <option value="updated">최근 수정 순</option>
+                <option value="run">최근 실행 순</option>
+                <option value="name">이름 순</option>
+            </select>
+        </div>
+    </div>
+    <div id="panel"></div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+(function () {
+    var data = null, period = 7, tab = 'pipelines';
+    try { period = Number(localStorage.getItem('db-period')) || 7; tab = localStorage.getItem('db-tab') || 'pipelines'; } catch (e) {}
+    var MODE = { MANUAL: '▶ 수동', TEST: '🪝 웹훅 테스트', PROD: '🪝 웹훅', SCHEDULE: '⏰ 타이머' };
+    var $ = function (id) { return document.getElementById(id); };
+    var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return '&#' + c.charCodeAt(0) + ';'; }); };
+
+
+    function parse(s) { return s ? new Date(s) : null; }
+    function ago(s) {
+        var d = parse(s); if (!d) return '-';
+        var m = Math.round((Date.now() - d.getTime()) / 60000);
+        if (m < 1) return '방금'; if (m < 60) return m + '분 전';
+        var hh = Math.round(m / 60); if (hh < 24) return hh + '시간 전';
+        var dd = Math.round(hh / 24); if (dd < 30) return dd + '일 전';
+        return d.toLocaleDateString('ko-KR');
+    }
+    function dur(ms) {
+        if (ms == null) return '-';
+        if (ms < 1000) return ms + 'ms';
+        var s = ms / 1000; if (s < 60) return s.toFixed(s < 10 ? 1 : 0) + '초';
+        var m = Math.floor(s / 60); return m + '분 ' + Math.round(s % 60) + '초';
+    }
+    function fmtTime(s) {
+        var d = parse(s); if (!d) return '-';
+        return (d.getMonth() + 1) + '/' + d.getDate() + ' ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+    }
+
+    // ── 통계 ──
+    function inRange(runs, from, to) {
+        return runs.filter(function (r) { var t = parse(r.startedAt).getTime(); return t >= from && t < to; });
+    }
+    function summary(list) {
+        var err = list.filter(function (r) { return r.status === 'error'; }).length;
+        var avg = list.length ? list.reduce(function (a, r) { return a + (r.durationMs || 0); }, 0) / list.length : null;
+        return { total: list.length, err: err, rate: list.length ? err / list.length * 100 : null, avg: avg };
+    }
+    function delta(cur, prev, better) {   // better: 'up' | 'down' — 늘어나는 게 좋은지
+        if (prev == null || cur == null) return '<div class="db-delta">이전 기간 기록 없음</div>';
+        var d = cur - prev; if (Math.abs(d) < 0.05) return '<div class="db-delta">이전 기간과 같음</div>';
+        var good = better === 'up' ? d > 0 : d < 0;
+        return '<div class="db-delta ' + (good ? 'up' : 'down') + '">' + (d > 0 ? '▲ ' : '▼ ') + formatDelta(Math.abs(d), better) + ' 지난 기간 대비</div>';
+    }
+    var formatDelta = function (v) { return Number.isInteger(v) ? v : v.toFixed(1); };
+
+    function renderStats() {
+        var now = Date.now(), span = period * 86400000;
+        var cur = summary(inRange(data.runs, now - span, now + 60000));
+        var prevList = inRange(data.runs, now - 2 * span, now - span);
+        var prev = prevList.length ? summary(prevList) : null;
+        var pLabel = period === 1 ? '24시간' : period + '일';
+        var waiting = data.approvals, running = data.running.length;
+        $('stats').innerHTML =
+            stat('🚀 실행 (' + pLabel + ')', cur.total, '번', delta(cur.total, prev && prev.total, 'up')) +
+            stat('❌ 실패', cur.err, '번', delta(cur.err, prev && prev.err, 'down')) +
+            stat('📉 실패율', cur.rate == null ? '-' : cur.rate.toFixed(1), cur.rate == null ? '' : '%', delta(cur.rate, prev && prev.rate, 'down')) +
+            stat('⏱ 평균 실행 시간', cur.avg == null ? '-' : dur(Math.round(cur.avg)), '',
+                cur.avg != null && prev && prev.avg != null
+                    ? '<div class="db-delta ' + (cur.avg <= prev.avg ? 'up' : 'down') + '">지난 기간 ' + dur(Math.round(prev.avg)) + '</div>'
+                    : '<div class="db-delta">&nbsp;</div>') +
+            '<div class="db-stat' + (waiting ? ' alert clickable' : '') + '" ' + (waiting ? 'onclick="window.workflowApprovals && workflowApprovals.open()"' : '') + '>' +
+                '<div class="db-stat-label">🙋 확인 대기 · ⚡ 실행 중</div>' +
+                '<div class="db-stat-value">' + waiting + '<small>건</small> <span style="color:#666;font-weight:400">·</span> ' + running + '<small>개</small></div>' +
+                '<div class="db-delta">' + (waiting ? '눌러서 확인 창 열기' : '⏰ 켜진 타이머 ' + data.timers.length + '개') + '</div></div>';
+    }
+    function stat(label, value, unit, extra) {
+        return '<div class="db-stat"><div class="db-stat-label">' + label + '</div><div class="db-stat-value">' + value +
+            (unit ? '<small>' + unit + '</small>' : '') + '</div>' + extra + '</div>';
+    }
+
+    // ── 차트 ──
+    function renderChart() {
+        var buckets = [], now = new Date();
+        if (period === 1) {
+            var base = new Date(now); base.setMinutes(0, 0, 0);
+            for (var i = 23; i >= 0; i--) { var s = new Date(base.getTime() - i * 3600000); buckets.push({ from: s.getTime(), to: s.getTime() + 3600000, label: s.getHours() + '시' }); }
+        } else {
+            var day = new Date(now); day.setHours(0, 0, 0, 0);
+            for (var j = period - 1; j >= 0; j--) { var d = new Date(day); d.setDate(d.getDate() - j); var e = new Date(d); e.setDate(e.getDate() + 1);
+                buckets.push({ from: d.getTime(), to: e.getTime(), label: (d.getMonth() + 1) + '/' + d.getDate() }); }
+        }
+        buckets.forEach(function (b) {
+            var l = inRange(data.runs, b.from, b.to);
+            b.err = l.filter(function (r) { return r.status === 'error'; }).length; b.ok = l.length - b.err;
+        });
+        var max = Math.max.apply(null, buckets.map(function (b) { return b.ok + b.err; }).concat([1]));
+        var html = buckets.map(function (b) {
+            return '<div class="db-bar"><span class="ok" style="height:' + (b.ok / max * 100) + '%"></span>' +
+                '<span class="err" style="height:' + (b.err / max * 100) + '%"></span>' +
+                '<div class="db-bar-tip">' + b.label + ' · 성공 ' + b.ok + ' · 실패 ' + b.err + '</div></div>';
+        }).join('');
+        if (buckets.every(function (b) { return !b.ok && !b.err; })) html += '<div class="db-chart-empty">이 기간에는 실행 기록이 없습니다</div>';
+        $('chart').innerHTML = html;
+        var step = period === 30 ? 5 : period === 1 ? 3 : 1;
+        $('axis').innerHTML = buckets.map(function (b, i) { return '<span>' + (i % step === 0 ? b.label : '') + '</span>'; }).join('');
+        $('chart-title').textContent = '실행 추이 — ' + (period === 1 ? '최근 24시간 (시간별)' : '최근 ' + period + '일 (일별)');
+    }
+
+    // ── 탭 ──
+    function renderPipelines() {
+        var q = $('q').value.trim().toLowerCase(), sort = $('sort').value;
+        var list = data.pipelines.filter(function (p) { return !q || (p.name + ' ' + (p.description || '')).toLowerCase().indexOf(q) >= 0; });
+        list.sort(function (a, b) {
+            if (sort === 'name') return a.name.localeCompare(b.name, 'ko');
+            if (sort === 'run') return String(b.lastRun ? b.lastRun.at : '').localeCompare(String(a.lastRun ? a.lastRun.at : ''));
+            return String(b.updatedAt).localeCompare(String(a.updatedAt));
+        });
+        if (!data.pipelines.length) return '<div class="first-card"><h3>🧰 작업대가 비어 있어요</h3><p>트리거(웹훅·타이머)를 놓고 AI·게시판·메신저 노드를 끌어다 이어 보세요.<br>' +
+            '오른쪽 아래 <b>💬 도우미</b>에게 "매일 아침 9시에 … 하는 파이프라인 만들어 줘"라고 말해도 됩니다.</p>' +
+            '<a class="btn btn-kb btn-lg" href="/pipelines/new">＋ 첫 파이프라인 만들기</a></div>';
+        if (!list.length) return '<div class="empty">"' + esc(q) + '"에 맞는 파이프라인이 없습니다</div>';
+        return list.map(function (p) {
+            var icons = p.icons.slice(0, 6).map(function (i) {
+                return '<span class="pl-icon" title="' + esc(i.label) + '" style="border-color:' + i.color + '55;background:' + i.color + '22">' + i.icon + '</span>';
+            }).join('') + (p.icons.length > 6 ? '<span class="pl-more">+' + (p.icons.length - 6) + '</span>' : '');
+            var badges = p.triggers.map(function (t) {
+                var on = t.indexOf('타이머') >= 0 && p.timerOn;
+                return '<span class="pl-badge' + (on ? ' timer-on' : '') + '">' + (t.indexOf('타이머') >= 0 ? '⏰ ' : '🪝 ') + esc(t) + (on ? ' 켜짐' : '') + '</span>';
+            }).join('') + (p.running ? '<span class="pl-badge running">⚡ 실행 중</span>' : '');
+            var last = p.running ? '<span class="dot running"></span>실행 중'
+                : p.lastRun ? '<span class="dot ' + p.lastRun.status + '"></span>' + (p.lastRun.status === 'done' ? '성공' : '실패') + ' · ' + ago(p.lastRun.at)
+                : '<span class="dot"></span>실행 기록 없음';
+            var webhook = p.triggers.some(function (t) { return t.indexOf('웹훅') >= 0; });
+            return '<div class="pl-row" data-open="' + p.id + '">' +
+                '<div class="pl-main"><div class="pl-name">' + esc(p.name || '(이름 없음)') + '</div>' +
+                '<div class="pl-meta"><span>노드 ' + p.nodeCount + '개</span><span>· 수정 ' + ago(p.updatedAt) + '</span>' + badges +
+                (p.description ? '<span class="pl-desc">' + esc(p.description) + '</span>' : '') + '</div></div>' +
+                '<div class="pl-icons">' + icons + '</div>' +
+                '<div class="pl-last">' + last + '</div>' +
+                '<button class="pl-run" data-run="' + p.id + '" ' + (webhook || p.running ? 'disabled' : '') +
+                ' title="' + (webhook ? '웹훅으로 시작하는 파이프라인은 편집 화면의 ▶ 수신 대기로 테스트하세요' : '지금 실행') + '">▶</button></div>';
+        }).join('');
+    }
+
+    function renderExecutions() {
+        var rows = data.running.map(function (r) {
+            return '<tr data-open="' + r.pipelineId + '"><td><span class="ex-status"><span class="dot ' + (r.waiting ? 'waiting' : 'running') + '"></span>' +
+                (r.waiting ? '확인 대기' : '실행 중') + '</span></td><td>' + esc(r.pipelineName) + '</td><td>' + fmtTime(r.startedAt) + '</td><td>' +
+                dur(Date.now() - parse(r.startedAt).getTime()) + ' 째</td><td class="ex-mode">' + (MODE[r.mode] || r.mode) + '</td><td>' +
+                (r.waiting ? '<button class="ex-approve" data-approve="1">🙋 확인 창 열기</button>' : '') + '</td></tr>';
+        });
+        data.runs.slice(0, 100).forEach(function (r) {
+            rows.push('<tr data-open="' + r.pipelineId + '"><td><span class="ex-status"><span class="dot ' + r.status + '"></span>' +
+                (r.status === 'done' ? '성공' : '실패') + '</span></td><td>' + esc(r.pipelineName) + '</td><td>' + fmtTime(r.startedAt) +
+                ' <span style="color:var(--dim);font-size:11.5px">(' + ago(r.startedAt) + ')</span></td><td>' + dur(r.durationMs) +
+                '</td><td class="ex-mode">' + (MODE[r.mode] || r.mode) + '</td><td>' +
+                (r.status === 'error' ? '<div class="ex-err" title="' + esc(r.message) + '">' + esc(r.errorNode ? r.errorNode + ' — ' : '') + esc(r.message || '') + '</div>'
+                    : '<span style="color:var(--dim);font-size:12px">노드 ' + r.nodes + '개 완료</span>') + '</td></tr>');
+        });
+        if (!rows.length) return '<div class="empty">아직 실행 기록이 없습니다 — 파이프라인을 ▶ 실행하면 여기에 쌓입니다 (최근 60일)</div>';
+        return '<table class="ex-table"><thead><tr><th style="width:110px">상태</th><th>파이프라인</th><th style="width:170px">시작</th>' +
+            '<th style="width:100px">걸린 시간</th><th style="width:120px">방식</th><th>결과</th></tr></thead><tbody>' + rows.join('') + '</tbody></table>';
+    }
+
+    function renderTimers() {
+        if (!data.timers.length) return '<div class="empty">켜진 타이머가 없습니다 — 파이프라인에 <b>⏰ 타이머</b> 노드를 놓고 켜면 여기와 <a href="/calendar" style="color:#FFBC00">달력</a>에 보입니다</div>';
+        return '<table class="ex-table"><thead><tr><th style="width:170px">다음 실행</th><th>파이프라인</th><th>주기</th></tr></thead><tbody>' +
+            data.timers.map(function (t) {
+                return '<tr data-open="' + t.pipelineId + '"><td><b>' + esc(t.next || '-') + '</b></td><td>' + esc(t.pipelineName) + '</td><td style="color:var(--muted)">' + esc(t.description) + '</td></tr>';
+            }).join('') + '</tbody></table>';
+    }
+
+    function renderPanel() {
+        document.querySelectorAll('.db-tab').forEach(function (b) { b.classList.toggle('on', b.dataset.tab === tab); });
+        $('tools').style.visibility = tab === 'pipelines' ? 'visible' : 'hidden';
+        $('panel').innerHTML = tab === 'pipelines' ? renderPipelines() : tab === 'executions' ? renderExecutions() : renderTimers();
+    }
+
+    function render() {
+        if (!data) return;
+        document.querySelectorAll('#period button').forEach(function (b) { b.classList.toggle('on', Number(b.dataset.p) === period); });
+        $('cnt-pipelines').textContent = data.pipelines.length;
+        $('cnt-executions').textContent = data.runs.length + data.running.length;
+        $('cnt-timers').textContent = data.timers.length;
+        renderStats(); renderChart(); renderPanel();
+    }
+
+    function load() {
+        return fetch('/api/dashboard').then(function (r) { return r.json(); }).then(function (d) { data = d; render(); }).catch(function () {});
+    }
+
+    function toast(html) {
+        var t = $('toast'); t.innerHTML = html; t.style.display = 'block';
+        clearTimeout(toast.t); toast.t = setTimeout(function () { t.style.display = 'none'; }, 4000);
+    }
+
+    // ── 이벤트 ──
+    $('period').addEventListener('click', function (e) {
+        var b = e.target.closest('button'); if (!b) return;
+        period = Number(b.dataset.p); try { localStorage.setItem('db-period', period); } catch (x) {}
+        render();
+    });
+    document.querySelectorAll('.db-tab').forEach(function (b) {
+        b.addEventListener('click', function () { tab = b.dataset.tab; try { localStorage.setItem('db-tab', tab); } catch (x) {} renderPanel(); });
+    });
+    $('q').addEventListener('input', renderPanel);
+    $('sort').addEventListener('change', renderPanel);
+    $('panel').addEventListener('click', function (e) {
+        if (e.target.closest('[data-approve]')) { e.stopPropagation(); if (window.workflowApprovals) workflowApprovals.open(); return; }
+        var run = e.target.closest('[data-run]');
+        if (run) {
+            e.stopPropagation(); run.disabled = true;
+            fetch('/api/pipelines/' + run.dataset.run + '/run', { method: 'POST' }).then(function (r) { return r.json(); }).then(function (r) {
+                toast(r.executionId ? '▶ 실행을 시작했습니다<a href="/pipelines/' + run.dataset.run + '">편집 화면에서 보기</a>' : '실행하지 못했습니다');
+                setTimeout(load, 600);
+            }).catch(function () { toast('실행하지 못했습니다'); run.disabled = false; });
+            return;
+        }
+        var row = e.target.closest('[data-open]');
+        if (row) location.href = '/pipelines/' + row.dataset.open;
+    });
+
+    load();
+    setInterval(function () { if (!document.hidden) load(); }, 5000);
+})();
+</script>
+</body>
+</html>

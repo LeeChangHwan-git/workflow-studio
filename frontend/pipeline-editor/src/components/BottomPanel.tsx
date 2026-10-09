@@ -1,4 +1,5 @@
 import type { NodeTypeInfo, RunLog, RunMode } from '../types'
+import { openApprovalWindow } from './ApprovalInfoField'
 
 interface Props {
   logs: RunLog[]
@@ -61,8 +62,10 @@ export function BottomPanel({
 
   const successCount = logs.filter((l) => l.status === 'success').length
   const errorCount   = logs.filter((l) => l.status === 'error').length
+  const waiting      = logs.some((l) => l.status === 'waiting')
 
   const statusLabel =
+    status === 'running' && waiting ? '🙋 확인 기다리는 중' :
     status === 'running' ? '● 실행 중' :
     status === 'done'    ? `✓ 완료` :
     status === 'error'   ? '✕ 오류' :
@@ -124,7 +127,9 @@ export function BottomPanel({
               const nt = typeMap.get(log.nodeType)
               const icon =
                 log.status === 'success' ? '✅' :
-                log.status === 'error'   ? '❌' : '⏳'
+                log.status === 'error'   ? '❌' :
+                log.status === 'waiting' ? '🙋' :
+                log.status === 'skipped' ? '⏭️' : '⏳'
               return (
                 <div
                   key={i}
@@ -141,8 +146,24 @@ export function BottomPanel({
                     </span>
                   )}
                   {!log.output && log.status === 'running' && (
-                    <span className="bp-log-preview">실행 중...</span>
+                    <span className="bp-log-preview">{/[가-힣]/.test(log.message ?? '') && !/실행 중...$/.test(log.message) ? log.message : '실행 중...'}</span>
                   )}
+                  {log.status === 'waiting' && (
+                    <>
+                      <span className="bp-log-preview waiting">{log.message}</span>
+                      <button
+                        type="button"
+                        className="bp-approve-btn"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          openApprovalWindow(log.nodeId)
+                        }}
+                      >
+                        🙋 확인 창 열기
+                      </button>
+                    </>
+                  )}
+                  {log.status === 'skipped' && <span className="bp-log-preview">{log.message}</span>}
                   {!log.output && log.status === 'error' && (
                     <span className="bp-log-preview error">{log.message}</span>
                   )}

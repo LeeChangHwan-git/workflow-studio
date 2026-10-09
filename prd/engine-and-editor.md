@@ -37,7 +37,7 @@ public class DelayModule implements NodeModule {
 - **트리거 노드**는 `NodeTypeInfo`의 마지막 인자 `trigger=true`로 선언 → 캔버스에서 입력 핸들이 없고(왼쪽 둥근 카드),
   외부 이벤트로 시작될 땐 `runner.runTriggered(pipeline, nodeId, mode, data)` 호출. 모듈은 `ctx.triggerData()`로 데이터를 받음
 - `category`가 `null`이면 팔레트에 노출되지 않음 (구버전 호환용 숨김 노드 등에 사용)
-- 파라미터 `type`: `text` | `textarea` | `select`(options 필수) | `number` | `password` | `image` | `webhookUrls`(표시 전용) | `webhookTemplate`(템플릿 + 키 칩 + 미리보기) | `folder` · `file`(경로 입력 + 📁 찾아보기 선택 창) | `geminiModel`(입력 + 자동 연결 검증) | `memoryInfo`(표시 전용) | `httpOpen`(HTTP 화면 열기 버튼) | `scheduleInfo`(타이머 상태) | `outlineConnection`(아웃라인 연결 확인) · `outlineCollection`(컬렉션 입력 + 목록) | `secretTextarea`(여러 줄 비밀값 — 쿠키·토큰 헤더, AI 도우미에게 ***) | `htmlPicker`(🔍 HTML 분석기 열기)
+- 파라미터 `type`: `text` | `textarea` | `select`(options 필수) | `number` | `password` | `image` | `webhookUrls`(표시 전용) | `webhookTemplate`(템플릿 + 키 칩 + 미리보기) | `folder` · `file`(경로 입력 + 📁 찾아보기 선택 창) | `geminiModel`(입력 + 자동 연결 검증) | `memoryInfo`(표시 전용) | `httpOpen`(HTTP 화면 열기 버튼) | `scheduleInfo`(타이머 상태) | `outlineConnection`(아웃라인 연결 확인) · `outlineCollection`(컬렉션 입력 + 목록) | `secretTextarea`(여러 줄 비밀값 — 쿠키·토큰 헤더, AI 도우미에게 ***) | `htmlPicker`(🔍 HTML 분석기 열기) | `branchRules`(분기 규칙 편집기 + 🧪 시험 + ❓ 설명서) | `approvalInfo`(확인 요청 사용법 + 대기 중이면 확인 창 열기 버튼, 표시 전용)
 - 조건부 표시: `new NodeParam(..., showWhen)` — `"source=파일"`(같을 때) / `"bodyType!=없음"`(다를 때) / `"action=조회|검색"`(여러 값 중 하나)
 - 출력을 다음 노드로 넘기려면 `outputVar` 파라미터를 두는 것을 관례로 함
   (엔진이 `outputVar` 값 또는 `{nodeId}.output` 키로 출력을 저장)
@@ -67,6 +67,9 @@ public class DelayModule implements NodeModule {
 | `node()` | 현재 노드 (id, type, config) |
 | `objectMapper()` | JSON 직렬화용 |
 | `isCancelled()` | 실행 취소 여부 |
+| `route(outputIds)` | **분기**: 이번에 흘려보낼 출력 고르기 (출력이 여러 개인 노드). 부르지 않으면 모든 출력으로 |
+| `status(status, message)` | 실행 중 상태 표시 바꾸기 (예: `"waiting"`, "확인 대기 중") — 노드 카드·하단 패널에 바로 반영 |
+| `executionId()` · `pipelineId()` · `pipelineName()` | 이번 실행 정보 (확인 요청 등) |
 
 ---
 
@@ -82,7 +85,16 @@ public class DelayModule implements NodeModule {
 6. 취소: `POST /api/executions/{execId}/cancel` → 스레드 interrupt
 7. 실행 기록은 메모리에 최대 200개 (초과 시 끝난 실행부터 오래된 순 제거)
 
-> 현재 한계: 분기(if/else)·반복·병렬 없음. 실행 상태는 메모리에만 있어 서버 재시작 시 사라짐.
+### 분기 실행 (2026-10-09)
+- 노드는 **출력을 여러 개** 가질 수 있음: `NodeTypeInfo.outputs`(고정 — 확인 요청 승인/다시/거절) 또는 `outputsParam`
+  (설정에서 정해짐 — 분기 규칙 + "else", 모듈이 `DynamicOutputs` 로 이름 제공). 화살표는 `PipelineConnection.fromHandle` 에 출력 id 저장
+- 모듈이 `ctx.route(...)` 로 출력을 고르면 그 출력에서 나간 화살표만 "흐름". 고르지 않으면 모든 화살표가 흐름(기존 노드 그대로)
+- 노드는 **들어오는 화살표가 있는데 하나도 흐르지 않으면 건너뜀**(`RunLog` status `skipped`, "앞 분기에서 이 쪽이 선택되지 않음")
+  → 건너뛴 노드의 뒤쪽도 차례로 건너뜀. 여러 갈래가 합쳐지는 노드는 하나라도 흐르면 실행, `${input}` 은 흐른 쪽 출력만 합침
+- 고른 출력은 `RunLog.route`, 로그 메시지 "완료 → 1 포함" — 노드 카드에서 고른 출력 줄이 초록으로 강조, 건너뛴 노드는 흐리게
+- 실행 중 기다리기: 모듈이 실행 스레드에서 기다려도 됨 (확인 요청). `ctx.status("waiting", …)` 로 상태 표시, 취소하면 interrupt
+
+> 현재 한계: 반복(되돌아가는 화살표)·병렬 없음. 실행 상태는 메모리에만 있어 서버 재시작 시 사라짐.
 > 운영(PROD) 실행 이력을 볼 화면은 아직 없음 (API로만 조회 가능).
 
 ### 변수 참조 (`${...}`)

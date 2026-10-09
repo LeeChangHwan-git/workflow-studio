@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>분기 표현식 설명서 — Workflow Studio</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #1E1E1E; color: #DADADA; font: 14px/1.7 'Segoe UI', 'Malgun Gothic', sans-serif; }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 26px 26px 70px; }
+  h1 { font-size: 23px; margin-bottom: 4px; }
+  .sub { color: #9A9A9A; margin-bottom: 18px; }
+  h2 { font-size: 17px; margin: 30px 0 10px; color: #7FDBF0; scroll-margin-top: 12px; }
+  h3 { font-size: 14.5px; margin: 16px 0 6px; color: #fff; }
+  p { margin: 6px 0; }
+  b { color: #fff; }
+  code { background: #111; padding: 1px 6px; border-radius: 4px; font: 12.5px Consolas, monospace; color: #FFD7A0; }
+  pre { background: #111; border: 1px solid #333; border-radius: 8px; padding: 10px 14px; font: 12.5px/1.6 Consolas, monospace; color: #E6E6E6; overflow-x: auto; margin: 8px 0; }
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; margin: 8px 0; }
+  th, td { border-bottom: 1px solid #333; padding: 7px 9px; text-align: left; vertical-align: top; }
+  th { color: #9A9A9A; font-size: 12px; font-weight: 600; }
+  td:first-child { white-space: nowrap; color: #fff; font-weight: 600; }
+  .card { background: #252526; border: 1px solid #3A3A3E; border-radius: 10px; padding: 14px 16px; margin: 10px 0; }
+  .flow { font: 13px Consolas, 'Malgun Gothic', monospace; white-space: pre; color: #ddd; }
+  .tip { border-left: 3px solid #4EC9B0; background: rgba(78,201,176,.08); padding: 8px 12px; border-radius: 0 6px 6px 0; margin: 10px 0; font-size: 13.5px; }
+  .warn { border-left: 3px solid #F48771; background: rgba(244,135,113,.08); padding: 8px 12px; border-radius: 0 6px 6px 0; margin: 10px 0; font-size: 13.5px; }
+  .toc { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 18px; }
+  .toc a { color: #ccc; text-decoration: none; font-size: 12.5px; padding: 4px 11px; border-radius: 14px; border: 1px solid #3A3A3E; background: #252526; }
+  .toc a:hover { border-color: #0891B2; color: #fff; }
+  .yes { color: #4EC9B0; font-weight: 700; } .no { color: #F48771; font-weight: 700; }
+  .close { position: fixed; top: 12px; right: 14px; background: #333; color: #ddd; border: 1px solid #555; border-radius: 6px; padding: 4px 12px; cursor: pointer; }
+</style>
+</head>
+<body>
+<button class="close" onclick="window.close()">닫기 ✕</button>
+<div class="wrap">
+  <h1>🔀 분기 표현식 설명서</h1>
+  <div class="sub">분기 노드는 <b>값</b>을 <b>규칙</b>으로 검사해서, 맞는 규칙의 출력(오른쪽 연결점)으로만 다음 노드를 실행합니다.
+    맞는 규칙이 없으면 <b>그 외</b>로 갑니다. 선택되지 않은 쪽 노드는 실행 기록에 "건너뜀"으로 남습니다.</div>
+  <div class="toc">
+    <a href="#how">동작 방식</a><a href="#value">검사할 값</a><a href="#ops">연산자</a><a href="#expr">식 (고급)</a>
+    <a href="#regex">정규식</a><a href="#mode">여러 규칙이 맞으면</a><a href="#examples">예시 모음</a><a href="#faq">자주 묻는 것</a>
+  </div>
+
+  <h2 id="how">동작 방식</h2>
+  <div class="card flow">웹훅 ─▶ 🔀 분기 ─[1 포함]──▶ A 처리
+                ├[2 포함]──▶ B 처리
+                └[그 외]───▶ 기본 처리</div>
+  <ul style="padding-left:20px">
+    <li>규칙 하나 = 노드 오른쪽 출력 하나 (+ 맨 아래 <b>그 외</b>). 규칙 이름이 출력 이름이 되고 화살표에도 표시됩니다.</li>
+    <li>분기 노드는 받은 값을 <b>그대로</b> 다음 노드에 넘깁니다 (다음 노드의 <code>${input}</code> 은 분기 전과 같음).</li>
+    <li>맞은 규칙 이름은 <code>${branch.matched}</code> (출력 변수명이 branch 일 때) 로 쓸 수 있습니다.</li>
+    <li>설정 패널의 <b>🧪 시험해 보기</b>에 예시 값을 넣으면 실제 실행과 같은 판정으로 어느 출력으로 갈지 바로 보입니다.</li>
+  </ul>
+
+  <h2 id="value">검사할 값</h2>
+  <p>기본은 <code>${input}</code> — 앞 노드가 넘긴 값 전체. 일부만 보고 싶으면 변수 경로를 씁니다.</p>
+  <table>
+    <tr><th>쓰는 법</th><th>뜻</th></tr>
+    <tr><td><code>${input}</code></td><td>앞 노드 출력 전체</td></tr>
+    <tr><td><code>${webhook.body.type}</code></td><td>웹훅으로 받은 JSON 의 <code>type</code> 값 (전달 내용 구성을 비웠을 때)</td></tr>
+    <tr><td><code>${page.count}</code></td><td>웹 페이지 추출 결과의 개수</td></tr>
+    <tr><td><code>${approval.decision}</code></td><td>확인 요청의 결정 (approve / retry / reject)</td></tr>
+  </table>
+  <div class="tip">규칙마다 <b>"+ 이 규칙만 다른 값 검사"</b>를 누르면 그 규칙만 다른 값을 볼 수 있습니다. 예) 1번 규칙은 제목, 2번 규칙은 작성자.</div>
+
+  <h2 id="ops">연산자</h2>
+  <table>
+    <tr><th>연산자</th><th>뜻</th><th>예 (비교값 → 검사할 값)</th></tr>
+    <tr><td>포함</td><td>값 안에 비교값이 들어 있음</td><td><code>1</code> → "주문 <b>1</b>번" <span class="yes">맞음</span></td></tr>
+    <tr><td>포함하지 않음</td><td>들어 있지 않음</td><td><code>긴급</code> → "일반 문의" <span class="yes">맞음</span></td></tr>
+    <tr><td>같음 / 다름</td><td>앞뒤 공백을 뺀 값이 똑같은지</td><td><code>FW</code> → " FW " <span class="yes">같음</span></td></tr>
+    <tr><td>~로 시작 / ~로 끝남</td><td>앞(뒤)이 비교값</td><td><code>[긴급]</code> → "[긴급] 서버 장애" <span class="yes">시작</span></td></tr>
+    <tr><td>다음 중 하나 포함</td><td>쉼표로 적은 것 중 하나라도 들어 있음</td><td><code>긴급, 장애, 오류</code> → "결제 오류 발생" <span class="yes">맞음</span></td></tr>
+    <tr><td>정규식에 맞음</td><td>패턴 검색 (아래 <a href="#regex" style="color:#7FDBF0">정규식</a>)</td><td><code>^\d{8}$</code> → "20231234" <span class="yes">맞음</span></td></tr>
+    <tr><td>비어 있음 / 비어 있지 않음</td><td>공백만 있어도 "비어 있음"</td><td>(비교값 없음)</td></tr>
+    <tr><td>숫자 &gt; ≥ &lt; ≤ =</td><td>값을 숫자로 읽어서 비교. <b>"1,234", "85점"</b>처럼 쉼표·단위가 붙어도 숫자 하나면 읽음. 숫자가 아니면 <span class="no">맞지 않음</span></td><td><code>80</code> 숫자 ≥ → "85점" <span class="yes">맞음</span></td></tr>
+    <tr><td>글자 수 &gt; / &lt;</td><td>앞뒤 공백을 뺀 글자 수</td><td><code>100</code> 글자 수 &gt; → 긴 글 <span class="yes">맞음</span></td></tr>
+    <tr><td>식 (고급)</td><td>여러 조건을 한 줄로 (아래)</td><td><code>#value.contains('FW') and #num &gt; 3</code></td></tr>
+  </table>
+  <p>글자 비교는 기본으로 <b>대소문자 무시</b> (fw = FW). 노드 설정 "글자 비교"에서 바꿀 수 있습니다.</p>
+
+  <h2 id="expr">식 (고급)</h2>
+  <p>조건을 여러 개 묶거나 JSON 안의 값을 비교할 때 씁니다. 결과는 반드시 <b>참/거짓</b>이어야 합니다.</p>
+  <h3>쓸 수 있는 변수</h3>
+  <table>
+    <tr><th>변수</th><th>뜻</th><th>예</th></tr>
+    <tr><td><code>#value</code></td><td>검사할 값 (글자)</td><td><code>#value.contains('FW')</code> · <code>#value.startsWith('[긴급]')</code> · <code>#value.isBlank()</code></td></tr>
+    <tr><td><code>#num</code></td><td>값을 숫자로 읽은 것 (숫자가 아니면 <code>null</code>)</td><td><code>#num != null and #num &gt;= 80</code></td></tr>
+    <tr><td><code>#len</code></td><td>글자 수</td><td><code>#len &gt; 500</code></td></tr>
+    <tr><td><code>#json</code></td><td>값이 JSON 이면 그 내용 (아니면 <code>null</code>)</td><td><code>#json['score'] &gt;= 80</code> · <code>#json['items'].size() &gt; 0</code></td></tr>
+    <tr><td><code>#lines</code></td><td>줄 목록</td><td><code>#lines.size() &gt; 3</code></td></tr>
+  </table>
+  <h3>연산</h3>
+  <table>
+    <tr><th>종류</th><th>쓰는 법</th></tr>
+    <tr><td>비교</td><td><code>==</code> <code>!=</code> <code>&gt;</code> <code>&gt;=</code> <code>&lt;</code> <code>&lt;=</code> (글자는 작은따옴표: <code>'FW'</code>)</td></tr>
+    <tr><td>그리고 / 또는 / 아님</td><td><code>and</code> <code>or</code> <code>not</code> (또는 <code>&amp;&amp;</code> <code>||</code> <code>!</code>), 괄호 <code>( )</code></td></tr>
+    <tr><td>글자 함수</td><td><code>.contains('x')</code> <code>.startsWith('x')</code> <code>.endsWith('x')</code> <code>.toLowerCase()</code> <code>.trim()</code> <code>.length()</code> <code>.isBlank()</code></td></tr>
+    <tr><td>정규식</td><td><code>#value matches '^\d{8}$'</code></td></tr>
+    <tr><td>3항</td><td><code>(#num ?: 0) &gt; 10</code> — <code>?:</code> 는 null 이면 오른쪽 값</td></tr>
+  </table>
+  <h3>예</h3>
+<pre>#value.contains('FW') and #num &gt; 3
+#json['type'] == 'bug' and #json['priority'] &gt;= 2
+(#value.contains('긴급') or #value.contains('장애')) and not #value.contains('테스트')
+#json != null and #json['items'].size() &gt; 0
+#value.toLowerCase().startsWith('re:')</pre>
+  <div class="warn">안전을 위해 <b>읽기 전용</b>으로만 동작합니다 — 프로그램 실행, 파일 접근, 새 객체 만들기(<code>T(...)</code>, <code>new ...</code>) 는 오류가 납니다.</div>
+
+  <h2 id="regex">정규식 짧은 정리</h2>
+  <table>
+    <tr><th>패턴</th><th>뜻</th></tr>
+    <tr><td><code>^</code> · <code>$</code></td><td>처음 · 끝</td></tr>
+    <tr><td><code>\d</code> · <code>\d{8}</code></td><td>숫자 하나 · 숫자 8개</td></tr>
+    <tr><td><code>.</code> · <code>.*</code></td><td>아무 글자 하나 · 아무 글자 여러 개</td></tr>
+    <tr><td><code>[가-힣]+</code></td><td>한글 한 글자 이상</td></tr>
+    <tr><td><code>A|B</code></td><td>A 또는 B</td></tr>
+    <tr><td><code>\[긴급\]</code></td><td>대괄호 글자 그대로 (특수문자 앞에는 <code>\</code>)</td></tr>
+  </table>
+  <p>예: 사번 8자리 <code>^\d{8}$</code> · 날짜 <code>\d{4}-\d{2}-\d{2}</code> · 메일 <code>[\w.]+@[\w.]+</code></p>
+
+  <h2 id="mode">여러 규칙이 맞으면</h2>
+  <table>
+    <tr><th>설정</th><th>동작</th></tr>
+    <tr><td>처음 맞는 규칙 하나만 (기본)</td><td>위에서부터 검사해 처음 맞는 출력 하나로만. <b>순서가 중요</b> — 좁은 조건을 위에 (↑↓ 로 순서 바꾸기)</td></tr>
+    <tr><td>맞는 규칙 모두</td><td>맞는 출력 모두로 동시에 (예: "FW 관련"이면서 "긴급"이면 두 쪽 다 실행)</td></tr>
+  </table>
+
+  <h2 id="examples">예시 모음</h2>
+  <table>
+    <tr><th>하고 싶은 것</th><th>규칙</th></tr>
+    <tr><td>문의 종류별로 나누기</td><td>① <code>1</code> 포함 → 주문 문의 · ② <code>2</code> 포함 → 배송 문의 · 그 외 → 기타</td></tr>
+    <tr><td>긴급 글만 쪽지</td><td><code>긴급, 장애, 오류</code> 다음 중 하나 포함 → 쪽지 보내기 · 그 외 → (연결 안 함 = 끝)</td></tr>
+    <tr><td>점수로 나누기</td><td>숫자 ≥ <code>80</code> → 합격 · 숫자 ≥ <code>60</code> → 보류 · 그 외 → 불합격 (처음 맞는 하나만)</td></tr>
+    <tr><td>글이 있을 때만 다음 단계</td><td>비어 있지 않음 → 계속 · 그 외 → 끝</td></tr>
+    <tr><td>웹 페이지에서 새 글이 있을 때만</td><td>검사할 값 <code>${page.count}</code>, 숫자 &gt; <code>0</code></td></tr>
+    <tr><td>JSON 조건 여러 개</td><td>식: <code>#json['team'] == 'FW' and #json['severity'] &gt;= 3</code></td></tr>
+  </table>
+
+  <h2 id="faq">자주 묻는 것</h2>
+  <table>
+    <tr><th>질문</th><th>답</th></tr>
+    <tr><td>출력에 아무것도 안 이으면?</td><td>그쪽으로 가면 거기서 끝 (오류 아님).</td></tr>
+    <tr><td>여러 갈래가 다시 합쳐지면?</td><td>합쳐지는 노드는 들어오는 화살표 중 <b>하나라도</b> 흐르면 실행됩니다.</td></tr>
+    <tr><td>규칙을 지우면 화살표는?</td><td>그 출력에서 나온 화살표는 함께 사라집니다.</td></tr>
+    <tr><td>숫자 비교인데 안 맞아요</td><td>값이 숫자 하나로 읽히는지 확인 — "1차 80점"처럼 숫자가 둘이면 숫자로 못 읽음. 이때는 정규식이나 식을 쓰세요.</td></tr>
+  </table>
+</div>
+</body>
+</html>

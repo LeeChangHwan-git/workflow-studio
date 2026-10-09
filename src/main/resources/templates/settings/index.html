@@ -7,6 +7,8 @@
     .set-side-title { font-size: 11px; font-weight: 700; color: var(--dim); text-transform: uppercase; letter-spacing: .5px; padding: 4px 10px 10px; }
     .set-tab { display: flex; align-items: center; gap: 9px; width: 100%; padding: 9px 12px; border-radius: 6px; border: none; background: none;
         color: #BBB; font-size: 13.5px; font-family: inherit; cursor: pointer; text-align: left; }
+    .set-link { display: flex; padding: 9px 12px; border-radius: 6px; color: #bbb; font-size: 13.5px; text-decoration: none; margin-top: 6px; border-top: 1px solid var(--border); }
+    .set-link:hover { background: var(--bg-3); color: #FFBC00; }
     .set-tab:hover { background: var(--bg-3); color: #fff; }
     .set-tab.active { background: rgba(78,91,242,.22); color: #fff; }
     .set-tab .cnt { margin-left: auto; font-size: 10.5px; color: #888; background: #333; border-radius: 9px; padding: 1px 7px; }
@@ -33,6 +35,20 @@
     .kv div { background: var(--bg-3); border-radius: 6px; padding: 10px 12px; }
     .kv span { display: block; font-size: 11px; color: var(--dim); margin-bottom: 3px; }
     .kv b { font-size: 14px; font-weight: 600; word-break: break-all; }
+    .gp { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; margin-bottom: 10px; display: grid;
+        grid-template-columns: 170px 1fr 34px; gap: 8px 12px; align-items: start; }
+    .gp .set-input { height: 32px; }
+    .gp textarea.set-input { height: 54px; padding: 7px 10px; resize: vertical; line-height: 1.5; }
+    .gp-at { font-size: 12px; color: #FFBC00; margin-top: 6px; font-family: Consolas, monospace; }
+    .gp-names { grid-column: 2; display: flex; flex-wrap: wrap; gap: 5px; }
+    .gp-names span { font-size: 11.5px; background: #34343A; border-radius: 10px; padding: 2px 8px; color: #ccc; }
+    .gp-names span.unknown { color: #F0B35C; }
+    .gp-del { background: none; border: 1px solid var(--border); color: #aaa; border-radius: 6px; height: 32px; cursor: pointer; }
+    .gp-del:hover { color: #F48771; border-color: #F48771; }
+    .gp-people { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 6px; font-size: 12.5px; }
+    .gp-people div { background: var(--bg-3); border-radius: 6px; padding: 6px 10px; cursor: pointer; }
+    .gp-people div:hover { outline: 1px solid #FFBC00; }
+    .gp-people b { font-family: Consolas, monospace; color: #ddd; margin-right: 6px; }
     .prov { display: flex; gap: 10px; margin-bottom: 14px; }
     .prov label { flex: 1; border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; cursor: pointer; font-size: 13px; line-height: 1.5; }
     .prov label:has(input:checked) { border-color: #4E5BF2; background: rgba(78,91,242,.12); }
@@ -50,15 +66,7 @@
     .empty { color: var(--dim); font-size: 13px; padding: 14px 0; }
 </style>
 <body>
-<nav>
-    <div class="nav-brand"><div class="nav-brand-icon">🗂</div>내 메모</div>
-    <a th:href="@{/memos}"     class="nav-link">메모</a>
-    <a th:href="@{/bookmarks}" class="nav-link">북마크</a>
-    <a th:href="@{/calendar}"  class="nav-link">달력</a>
-    <a th:href="@{/pipelines}" class="nav-link">파이프라인</a>
-    <a th:href="@{/http}"      class="nav-link">HTTP</a>
-    <a th:href="@{/settings}"  class="nav-link active">⚙ 설정</a>
-</nav>
+<nav th:replace="~{fragments/nav :: nav('settings')}"></nav>
 
 <div class="set-wrap">
     <aside class="set-side">
@@ -66,9 +74,11 @@
         <button class="set-tab" data-tab="status">📊 상태</button>
         <button class="set-tab" data-tab="keys">🔑 공용 키</button>
         <button class="set-tab" data-tab="assistant">💬 AI 도우미</button>
+        <button class="set-tab" data-tab="groups">👥 메신저 그룹 <span class="cnt" id="cnt-groups"></span></button>
         <button class="set-tab" data-tab="timers">⏰ 타이머 <span class="cnt" id="cnt-timers"></span></button>
         <button class="set-tab" data-tab="backups">🗄 백업 <span class="cnt" id="cnt-backups"></span></button>
         <button class="set-tab" data-tab="logs">📜 로그</button>
+        <a class="set-link" href="/brand">🎨 로고 바꾸기 ↗</a>
     </aside>
 
     <main class="set-main">
@@ -153,6 +163,23 @@
             </div>
         </section>
 
+        <!-- 메신저 그룹 -->
+        <section class="set-sec" id="sec-groups">
+            <div class="set-h">메신저 그룹</div>
+            <div class="set-sub">쪽지를 자주 보내는 사람들을 묶어 두면, 쪽지 노드의 받는 사람 칸에 <b>@그룹이름</b>(예: <code>@FW팀</code>)으로 한 번에 보낼 수 있습니다.
+                그룹 구성원을 여기서 바꾸면 그 그룹을 쓰는 모든 파이프라인에 바로 반영됩니다. 이름에는 공백·쉼표를 쓸 수 없습니다(_로 바뀜).</div>
+            <div id="groups"></div>
+            <div class="set-actions">
+                <button class="btn btn-ghost" onclick="addGroup()">＋ 그룹 추가</button>
+                <button class="btn btn-primary" onclick="saveGroups()">저장</button>
+                <span class="set-msg" id="msg-groups"></span>
+            </div>
+            <div class="set-card" style="margin-top:18px">
+                <h3>📇 시연용 사원 (사번)</h3>
+                <div id="people" class="gp-people"></div>
+            </div>
+        </section>
+
         <!-- 타이머 -->
         <section class="set-sec" id="sec-timers">
             <div class="set-h">동작 중인 타이머</div>
@@ -203,10 +230,66 @@
         if (location.hash !== '#' + tab) history.replaceState(null, '', '#' + tab);
         if (tab === 'status') loadStatus();
         if (tab === 'timers') loadTimers();
+        if (tab === 'groups') loadGroups();
         if (tab === 'backups') loadBackups();
         if (tab === 'logs') loadLogs();
     }
     $all('.set-tab').forEach(function (b) { b.addEventListener('click', function () { show(b.dataset.tab); }); });
+
+    // ── 메신저 그룹 ──
+    var groups = [], people = {}, lastGroupInput = null;
+    function loadGroups() {
+        api('/api/messenger/groups').then(function (r) {
+            groups = r.groups.map(function (g) { return { name: g.name, description: g.description, members: g.members.map(function (m) { return m.id; }).join(', ') }; });
+            people = r.people; renderGroups();
+            $('#people').innerHTML = Object.keys(people).map(function (id) {
+                return '<div data-id="' + esc(id) + '" title="누르면 마지막으로 고른 그룹에 넣기"><b>' + esc(id) + '</b>' + esc(people[id]) + '</div>'; }).join('');
+            $('#cnt-groups').textContent = groups.length || '';
+        }).catch(function (e) { msg('msg-groups', e.message, false); });
+    }
+    function readGroups() {
+        $all('.gp').forEach(function (row, i) {
+            groups[i] = { name: $('[data-k=name]', row).value, description: $('[data-k=description]', row).value, members: $('[data-k=members]', row).value };
+        });
+    }
+    function names(members) {
+        return members.split(/[,;\s]+/).filter(Boolean).map(function (id) {
+            return '<span class="' + (people[id] ? '' : 'unknown') + '">' + esc(people[id] || '사번 ' + id) + '</span>'; }).join('');
+    }
+    function renderGroups() {
+        $('#groups').innerHTML = groups.length ? groups.map(function (g, i) {
+            return '<div class="gp" data-i="' + i + '">' +
+                '<div><input class="set-input" data-k="name" placeholder="그룹 이름" value="' + esc(g.name) + '"><div class="gp-at">@' + esc(g.name || '이름') + '</div></div>' +
+                '<div><textarea class="set-input" data-k="members" placeholder="사번 (쉼표로 구분) — 아래 사원 목록을 눌러 넣기">' + esc(g.members) + '</textarea>' +
+                '<input class="set-input" data-k="description" placeholder="설명 (선택)" style="margin-top:6px" value="' + esc(g.description) + '"></div>' +
+                '<button class="gp-del" title="그룹 삭제" data-del="' + i + '">✕</button>' +
+                '<div class="gp-names">' + names(g.members) + '</div></div>';
+        }).join('') : '<div class="set-card" style="color:var(--dim)">그룹이 없습니다 — ＋ 그룹 추가</div>';
+    }
+    function addGroup() { readGroups(); groups.push({ name: '새그룹', description: '', members: '' }); renderGroups(); lastGroupInput = $all('.gp [data-k=members]').pop(); lastGroupInput.focus(); }
+    function saveGroups() {
+        readGroups();
+        api('/api/settings', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ messenger: { groups: groups } }) })
+            .then(function () { msg('msg-groups', '✓ 저장했습니다', true); loadGroups(); })
+            .catch(function (e) { msg('msg-groups', e.message, false); });
+    }
+    document.addEventListener('input', function (e) {
+        var row = e.target.closest && e.target.closest('.gp'); if (!row) return;
+        if (e.target.dataset.k === 'name') $('.gp-at', row).textContent = '@' + (e.target.value || '이름');
+        if (e.target.dataset.k === 'members') $('.gp-names', row).innerHTML = names(e.target.value);
+    });
+    document.addEventListener('focusin', function (e) { if (e.target.dataset && e.target.dataset.k === 'members') lastGroupInput = e.target; });
+    document.addEventListener('click', function (e) {
+        var d = e.target.closest && e.target.closest('[data-del]');
+        if (d) { readGroups(); groups.splice(Number(d.dataset.del), 1); renderGroups(); return; }
+        var p = e.target.closest && e.target.closest('#people [data-id]');
+        if (p && lastGroupInput) {
+            var ids = lastGroupInput.value.split(/[,;\s]+/).filter(Boolean);
+            if (ids.indexOf(p.dataset.id) < 0) ids.push(p.dataset.id);
+            lastGroupInput.value = ids.join(', ');
+            lastGroupInput.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+    });
 
     // ── 설정 ──
     function fill() {

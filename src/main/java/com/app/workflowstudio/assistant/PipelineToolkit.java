@@ -32,7 +32,7 @@ public class PipelineToolkit {
     public static final String MASK = "***";
     /** 화면 표시 전용 파라미터 타입 — AI에게 보여 주지 않음 */
     static final Set<String> DISPLAY_TYPES =
-            Set.of("webhookUrls", "memoryInfo", "httpOpen", "scheduleInfo", "outlineConnection", "htmlPicker");
+            Set.of("webhookUrls", "memoryInfo", "httpOpen", "scheduleInfo", "outlineConnection", "htmlPicker", "approvalInfo", "messengerGroups");
     /** 비밀값 파라미터 타입 — AI에게 *** 로 보이고, *** 를 돌려받으면 원래 값 유지 */
     static final Set<String> SECRET_TYPES = Set.of("password", "secretTextarea");
     private static final Pattern NODE_ID = Pattern.compile("[A-Za-z0-9_-]{1,40}");
@@ -109,6 +109,8 @@ public class PipelineToolkit {
                 case "select", "number", "textarea", "password" -> p.type();
                 case "secretTextarea" -> "textarea";
                 case "geminiModel", "outlineCollection", "webhookTemplate", "folder", "file", "image" -> "text";
+                case "branchRules" -> "json — 규칙 목록 JSON 문자열 [{\"id\":\"r1\",\"label\":\"이름\",\"op\":\"contains\",\"value\":\"1\"}] "
+                        + "(op: " + String.join("|", com.app.workflowstudio.node.modules.branch.BranchRules.OPS.keySet()) + ")";
                 default -> "text";
             });
             if (p.defaultValue() != null && !"".equals(p.defaultValue())) pm.put("default", p.defaultValue());
@@ -117,6 +119,13 @@ public class PipelineToolkit {
             params.add(pm);
         }
         m.put("config", params);
+        if (t.outputs() != null && !t.outputs().isEmpty()) {
+            m.put("outputs", t.outputs().stream().map(o -> Map.of("id", o.id(), "label", o.label())).toList());
+            m.put("outputsNote", "출력이 여러 개 — 이 노드에서 나가는 화살표마다 \"output\" 에 출력 id 를 꼭 지정");
+        } else if (t.outputsParam() != null) {
+            m.put("outputs", "설정 '" + t.outputsParam() + "' 의 규칙 id 마다 하나 + \"else\"(그 외)");
+            m.put("outputsNote", "이 노드에서 나가는 화살표마다 \"output\" 에 규칙 id 또는 \"else\" 를 꼭 지정");
+        }
         return m;
     }
 
@@ -161,6 +170,7 @@ public class PipelineToolkit {
             Map<String, Object> cm = new LinkedHashMap<>();
             cm.put("from", c.getFromNodeId());
             cm.put("to", c.getToNodeId());
+            if (c.getFromHandle() != null && !c.socket()) cm.put("output", c.getFromHandle());
             if (c.socket()) cm.put("socket", c.getToHandle());
             conns.add(cm);
         }
@@ -242,7 +252,8 @@ public class PipelineToolkit {
             String from = ac.path("from").asText("").trim();
             String to = ac.path("to").asText("").trim();
             String socket = ac.path("socket").asText("").trim();
-            String where = from + " → " + to + (socket.isEmpty() ? "" : " (소켓 " + socket + ")");
+            String output = ac.path("output").asText("").trim();
+            String where = from + " → " + to + (socket.isEmpty() ? "" : " (소켓 " + socket + ")") + (output.isEmpty() ? "" : " [출력 " + output + "]");
             NodeTypeInfo ft = types.get(from), tt = types.get(to);
             if (ft == null || tt == null) {
                 errors.add("연결 " + where + ": 없는 노드 id");
@@ -266,8 +277,22 @@ public class PipelineToolkit {
                     continue;
                 }
             }
-            if (!seen.add(from + "|" + to + "|" + socket)) continue;
-            conns.add(new PipelineConnection(from, to, socket.isEmpty() ? null : socket));
+            if (socket.isEmpty()) {
+                // 출력이 여러 개인 노드(분기·확인 요청)에서 나가는 화살표는 출력 id 필수
+                Set<String> outs = outputIds(ft, nodes.stream().filter(n -> n.getId().equals(from)).findFirst().orElse(null));
+                if (!outs.isEmpty() && !outs.contains(output)) {
+                    errors.add("연결 " + where + ": " + ft.id() + " 에서 나가는 화살표는 output 을 지정해야 합니다 — 가능: " + String.join(", ", outs));
+                    continue;
+                }
+                if (outs.isEmpty() && !output.isEmpty()) {
+                    errors.add("연결 " + where + ": " + ft.id() + " 는 출력이 하나라 output 을 쓰지 않습니다");
+                    continue;
+                }
+            }
+            if (!seen.add(from + "|" + to + "|" + socket + "|" + output)) continue;
+            PipelineConnection pc = new PipelineConnection(from, to, socket.isEmpty() ? null : socket);
+            if (!output.isEmpty()) pc.setFromHandle(output);
+            conns.add(pc);
         }
         p.setConnections(conns);
 
@@ -430,6 +455,17 @@ public class PipelineToolkit {
     }
 
     // ── helpers ──
+
+    /** 노드의 출력 id 들 (출력이 하나면 빈 집합) — 정적 출력 또는 설정(규칙)에서 정해지는 출력 */
+    private Set<String> outputIds(NodeTypeInfo t, PipelineNode node) {
+        Set<String> ids = new LinkedHashSet<>();
+        if (t.outputs() != null) t.outputs().forEach(o -> ids.add(o.id()));
+        if (t.outputsParam() != null && node != null) {
+            var m = registry.find(t.id());
+            if (m instanceof com.app.workflowstudio.node.DynamicOutputs d) ids.addAll(d.outputLabels(node).keySet());
+        }
+        return ids;
+    }
 
     /** (x, y) 근처에 이미 다른 노드가 있는지 (노드 카드 크기 기준) */
     private static boolean occupied(Pipeline p, PipelineNode self, double x, double y) {

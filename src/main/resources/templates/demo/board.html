@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+<meta charset="UTF-8">
+<title>KB그룹웨어 — 전사 게시판</title>
+<style>
+  body { margin: 0; font: 12px 'Malgun Gothic', Dotum, sans-serif; background: #F3F3F3; color: #333; }
+  .gw-top { background: #2B3A55; color: #fff; height: 42px; display: flex; align-items: center; padding: 0 18px; gap: 18px; }
+  .gw-top b { font-size: 15px; } .gw-top b i { color: #FFBC00; font-style: normal; }
+  .gw-top span { color: #C9D1E0; } .gw-top form { margin-left: auto; }
+  .gw-top button { background: none; border: 1px solid #6B7A99; color: #C9D1E0; font-size: 11px; padding: 2px 8px; cursor: pointer; }
+  .gw-wrap { display: flex; }
+  .gw-left { width: 170px; background: #fff; border-right: 1px solid #D5D5D5; min-height: calc(100vh - 42px); padding: 12px 0; }
+  .gw-left div { padding: 6px 16px; color: #555; } .gw-left div.on { background: #E9EEF7; color: #1F4E9B; font-weight: bold; }
+  .gw-main { flex: 1; padding: 16px 22px; }
+  h2 { font-size: 16px; margin: 0 0 10px; color: #1F4E9B; border-bottom: 2px solid #1F4E9B; padding-bottom: 6px; }
+  table.board-list { width: 100%; border-collapse: collapse; background: #fff; border-top: 2px solid #555; }
+  table.board-list th { background: #F7F7F7; border-bottom: 1px solid #CCC; padding: 7px 4px; font-weight: bold; }
+  table.board-list td { border-bottom: 1px solid #E5E5E5; padding: 7px 4px; text-align: center; }
+  table.board-list td.subject { text-align: left; padding-left: 10px; }
+  td.subject a { color: #333; text-decoration: none; } td.subject a:hover { text-decoration: underline; }
+  .cate { color: #1F4E9B; margin-right: 4px; }
+  .new { display: inline-block; background: #E8452C; color: #fff; font-size: 9px; padding: 0 3px; margin-left: 4px; border-radius: 2px; }
+  .paging { text-align: center; margin-top: 12px; color: #888; }
+</style>
+</head>
+<body>
+<div class="gw-top"><b><i>KB</i> 그룹웨어</b><span>메일</span><span>결재</span><span style="color:#fff">게시판</span><span>일정</span>
+  <form method="post" action="/demo-board/logout"><span>FW팀 · 나</span> <button>로그아웃</button></form></div>
+<div class="gw-wrap">
+  <div class="gw-left"><div class="on">전사 게시판</div><div>부서 게시판</div><div>자료실</div><div>경조사</div></div>
+  <div class="gw-main">
+    <h2>전사 게시판</h2>
+    <table class="board-list">
+      <thead><tr><th style="width:60px">번호</th><th>제목</th><th style="width:90px">작성자</th><th style="width:90px">작성일</th><th style="width:60px">조회</th></tr></thead>
+      <tbody>
+        <tr th:each="p : ${posts}">
+          <td class="no" th:text="${p.no}"></td>
+          <td class="subject"><span class="cate" th:text="'[' + ${p.category} + ']'"></span><a th:href="@{/demo-board/{n}(n=${p.no})}" th:text="${p.title}"></a><span class="new" th:if="${p.date == today}">N</span></td>
+          <td class="writer" th:text="${p.writer}"></td>
+          <td class="date" th:text="${#temporals.format(p.date, 'yyyy-MM-dd')}"></td>
+          <td class="views" th:text="${p.views}"></td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="paging">[1] 2 3 4 5 ▶</div>
+  </div>
+</div>
+</body>
+</html>

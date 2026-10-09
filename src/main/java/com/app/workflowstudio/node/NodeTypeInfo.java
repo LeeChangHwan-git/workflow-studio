@@ -21,8 +21,19 @@ public record NodeTypeInfo(
         List<NodeParam> params,
         boolean trigger,
         List<NodeSocket> sockets,
-        String provides
+        String provides,
+        List<NodeOutput> outputs,
+        String outputsParam
 ) {
+    /**
+     * @param outputs      오른쪽 출력이 여러 개인 노드의 출력 목록 (분기). null/빈 목록이면 출력 하나
+     * @param outputsParam 출력이 설정값에서 정해지는 노드면 그 파라미터 이름 (예: 분기 규칙 "rules") — 화면이 규칙 목록 + "그 외"로 출력을 그림
+     */
+    public NodeTypeInfo(String id, String label, String icon, String color, String category, List<NodeParam> params,
+                        boolean trigger, List<NodeSocket> sockets, String provides) {
+        this(id, label, icon, color, category, params, trigger, sockets, provides, List.of(), null);
+    }
+
     /** 일반(비트리거) 노드 */
     public NodeTypeInfo(String id, String label, String icon, String color, String category, List<NodeParam> params) {
         this(id, label, icon, color, category, params, false, List.of(), null);

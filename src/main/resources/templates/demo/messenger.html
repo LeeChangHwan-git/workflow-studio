@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>시연용 사내 메신저 — 받은 쪽지함</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #EEF0F5; color: #111827; font: 14px/1.6 'Segoe UI', 'Malgun Gothic', sans-serif; }
+  header { background: #3B4CCA; color: #fff; padding: 14px 24px; display: flex; align-items: center; gap: 12px; }
+  header h1 { font-size: 17px; flex: 1; }
+  header small { opacity: .8; font-size: 12px; }
+  header button { background: rgba(255,255,255,.15); color: #fff; border: 1px solid rgba(255,255,255,.35); border-radius: 6px; padding: 5px 12px; cursor: pointer; }
+  main { max-width: 860px; margin: 22px auto; padding: 0 16px; display: grid; grid-template-columns: 1fr 240px; gap: 18px; }
+  .note { background: #fff; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,.06); padding: 14px 16px; margin-bottom: 10px; border-left: 4px solid #3B4CCA; }
+  .note.new { animation: pop .5s ease-out; }
+  @keyframes pop { from { transform: translateY(-6px); background: #E8EBFF; } }
+  .meta { font-size: 12px; color: #6B7280; margin-bottom: 6px; }
+  .meta b { color: #111827; }
+  .msg { white-space: pre-wrap; word-break: break-word; }
+  .empty { color: #6B7280; text-align: center; padding: 40px; background: #fff; border-radius: 10px; }
+  aside { background: #fff; border-radius: 10px; padding: 14px; height: fit-content; box-shadow: 0 2px 8px rgba(0,0,0,.06); }
+  aside h2 { font-size: 13px; color: #3B4CCA; margin-bottom: 8px; }
+  aside table { width: 100%; font-size: 12.5px; border-collapse: collapse; }
+  aside td { padding: 4px 2px; border-bottom: 1px solid #F0F1F4; }
+  aside td:first-child { font-family: Consolas, monospace; color: #374151; }
+  aside p { font-size: 11.5px; color: #6B7280; margin-top: 10px; }
+  .unknown { color: #B45309; font-size: 11px; margin-left: 6px; }
+  .sec-h { font-size: 13px; font-weight: 700; color: #374151; margin: 4px 0 8px; display: flex; gap: 8px; align-items: center; }
+  .sec-h small { font-weight: 400; color: #6B7280; }
+  .sec-gap { margin-top: 22px; }
+  .note.out { border-left-color: #9CA3AF; opacity: .85; }
+  .me-box { background: #EEF0FF; border-radius: 8px; padding: 10px; margin-bottom: 12px; font-size: 12.5px; }
+  .me-box select { width: 100%; margin-top: 6px; padding: 5px; border: 1px solid #C7CCF5; border-radius: 6px; font: inherit; }
+  aside tr.me td { color: #3B4CCA; font-weight: 700; }
+</style>
+</head>
+<body>
+<header>
+  <h1>✉ 시연용 사내 메신저 <small>— 쪽지함 (이 PC = 나)</small></h1>
+  <span id="count"></span>
+  <button onclick="clearAll()">비우기</button>
+</header>
+<main>
+  <section>
+    <div class="sec-h">📥 나에게 온 쪽지 <small>— 이 PC 화면 오른쪽 아래에 쪽지 창이 뜸</small></div>
+    <div id="inbox"></div>
+    <div class="sec-h sec-gap">📤 다른 사람에게 간 쪽지 <small>— 그 사람 PC 에 뜨는 쪽지 (여기엔 기록만)</small></div>
+    <div id="outbox"></div>
+  </section>
+  <aside>
+    <div class="me-box">🙋 <b>나(이 PC)의 사번</b> — 이 사번으로 온 쪽지만 쪽지 창이 뜸
+      <select id="me" onchange="setMe(this.value)"></select></div>
+    <h2>시연용 사원 (사번)</h2>
+    <table id="emps"></table>
+    <p>목록에 없는 사번도 받습니다 (이름 대신 "사번 …"으로 표시). 쪽지 노드의 사번을 <b>나의 사번</b>으로 하면 이 PC 에 쪽지 창이 뜹니다.</p>
+  </aside>
+</main>
+<script>
+  let lastTop = 0;
+  const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const card = (n, out) => `
+      <div class="note${out ? ' out' : ''}${n.id > lastTop && lastTop ? ' new' : ''}">
+        <div class="meta"><b>${esc(n.sender)}</b> → ${esc(n.to)}${n.known ? '' : '<span class="unknown">목록에 없는 사번</span>'} · ${esc(n.time)}</div>
+        <div class="msg">${esc(n.message)}</div>
+      </div>`;
+  async function load() {
+    const r = await fetch('/demo-messenger/api/notes').then(r => r.json()).catch(() => null);
+    if (!r) return;
+    const ids = Object.keys(r.employees);
+    if (!ids.includes(r.myId)) ids.unshift(r.myId);
+    document.getElementById('emps').innerHTML = Object.entries(r.employees).map(([k, v]) => `<tr class="${k === r.myId ? 'me' : ''}"><td>${esc(k)}</td><td>${esc(v)}</td></tr>`).join('');
+    const sel = document.getElementById('me');
+    if (document.activeElement !== sel) sel.innerHTML = ids.map(k => `<option value="${esc(k)}"${k === r.myId ? ' selected' : ''}>${esc(k)} · ${esc(r.employees[k] || '사번 ' + k)}</option>`).join('');
+    document.getElementById('count').textContent = r.notes.length ? r.notes.length + '개' : '';
+    const top = r.notes[0]?.id || 0;
+    const mine = r.notes.filter(n => n.toMe), others = r.notes.filter(n => !n.toMe);
+    document.getElementById('inbox').innerHTML = mine.length ? mine.map(n => card(n, false)).join('')
+      : '<div class="empty">아직 나에게 온 쪽지가 없습니다.<br>쪽지 노드의 사번을 <b>' + esc(r.myId) + '</b>(나)로 해서 실행해 보세요.</div>';
+    document.getElementById('outbox').innerHTML = others.length ? others.map(n => card(n, true)).join('') : '<div class="empty">없음</div>';
+    lastTop = top;
+  }
+  async function setMe(id) {
+    await fetch('/demo-messenger/api/me', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ empId: id }) });
+    load();
+  }
+  async function clearAll() { await fetch('/demo-messenger/api/notes', { method: 'DELETE' }); load(); }
+  load();
+  setInterval(load, 2000);
+</script>
+</body>
+</html>
