@@ -15,6 +15,13 @@ public class AppSettings {
     public Appearance appearance = new Appearance();
     public Demo demo = new Demo();
     public Messenger messenger = new Messenger();
+    public Modules modules = new Modules();
+
+    /** 모듈 켜기/끄기 — 꺼진 모듈은 팔레트에서 숨김 (이미 놓인 노드는 그대로 실행) */
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public static class Modules {
+        public java.util.List<String> disabled = new java.util.ArrayList<>();
+    }
 
     /** 공용 자격 증명 — 노드에서 비워 두면 이 값을 쓴다 (노드 → 설정 → 환경 변수 순) */
     @JsonIgnoreProperties(ignoreUnknown = true)

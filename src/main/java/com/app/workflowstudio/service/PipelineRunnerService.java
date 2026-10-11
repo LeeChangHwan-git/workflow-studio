@@ -78,7 +78,7 @@ public class PipelineRunnerService {
 
         Thread t = new Thread(() -> {
             try {
-                executePipeline(pipeline, state, triggerData);
+                executePipeline(pipeline, state, triggerData, null, null, null);
             } finally {
                 if ("running".equals(state.status)) state.status = "error";
                 record(pipeline, state);
@@ -163,9 +163,37 @@ public class PipelineRunnerService {
 
     // ── 실행 엔진 ──────────────────────────────────────────────
 
-    private void executePipeline(Pipeline pipeline, ExecutionState state, Object triggerData) {
+    /** 노드 안에서 다른 파이프라인을 바로 실행한 결과 (파이프라인 모듈용) */
+    public record InlineResult(String status, String output, List<RunLog> logs, Map<String, String> outputs) {}
+
+    /**
+     * 파이프라인을 <b>지금 스레드에서</b> 바로 실행 (파이프라인 모듈 — 노드 하나처럼 쓰기).
+     * 실행 기록·대시보드에는 남기지 않고, 부모 실행의 id 를 그대로 써서 취소·확인 요청이 부모와 같이 움직인다.
+     * @param initialVars  모듈 입력값 등 미리 넣을 변수 (예: {@code ${in.폴더}})
+     * @param rootInput    들어오는 화살표가 없는 첫 노드들의 {@code ${input}}
+     * @param outputNodeId 결과로 쓸 노드 (null 이면 마지막으로 출력을 낸 노드)
+     */
+    public InlineResult runInline(Pipeline pipeline, Map<String, Object> initialVars, String rootInput, RunMode mode,
+                                  String parentExecutionId, String outputNodeId) {
+        ExecutionState state = new ExecutionState(
+                parentExecutionId == null ? UUID.randomUUID().toString() : parentExecutionId, pipeline.getId(), mode, null);
+        Map<String, String> outputs = new LinkedHashMap<>();
+        executePipeline(pipeline, state, null, initialVars, rootInput, outputs);
+        if ("running".equals(state.status)) state.status = "error";
+        String out = null;
+        if (outputNodeId != null && !outputNodeId.isBlank()) out = outputs.get(outputNodeId);
+        else for (String v : outputs.values()) out = v;      // 실행 순서상 마지막
+        List<RunLog> logs;
+        synchronized (state.logs) { logs = new ArrayList<>(state.logs); }
+        return new InlineResult(state.status, out, logs, outputs);
+    }
+
+    private void executePipeline(Pipeline pipeline, ExecutionState state, Object triggerData,
+                                 Map<String, Object> initialVars, String rootInput, Map<String, String> outputsOut) {
         Map<String, Object> vars = new HashMap<>();     // outputVar / nodeId.output → value
-        Map<String, String> outputs = new HashMap<>();  // nodeId → 이번 실행 출력 (${input} 계산용)
+        if (initialVars != null) vars.putAll(initialVars);
+        // nodeId → 이번 실행 출력 (${input} 계산용, 실행 순서 유지)
+        Map<String, String> outputs = outputsOut != null ? outputsOut : new LinkedHashMap<>();
         Set<String> reachable = state.triggerNodeId != null
                 ? reachableFrom(pipeline, state.triggerNodeId) : null;
         // 분기: 노드가 고른 출력(없으면 전부) — 고르지 않은 출력 쪽 화살표는 흐르지 않음
@@ -209,7 +237,7 @@ public class PipelineRunnerService {
                         .map(outputs::get)
                         .filter(Objects::nonNull)
                         .reduce((a, b) -> a + "\n" + b)
-                        .orElse(null);
+                        .orElse(ins.isEmpty() ? rootInput : null);
                 Object nodeTrigger = node.getId().equals(state.triggerNodeId) ? triggerData : null;
 
                 NodeContext ctx = new NodeContext(node, vars, input, state.mode, nodeTrigger,
@@ -225,7 +253,7 @@ public class PipelineRunnerService {
                     log.setRoute(new ArrayList<>(ctx.routes()));
                 }
                 log.setStatus("success");
-                log.setMessage("[" + node.getType() + "] 완료"
+                log.setMessage("[" + tag(module, node) + "] 완료"
                         + (ctx.routes() != null ? " → " + String.join(", ", outputLabels(module, node, ctx.routes())) : ""));
                 log.setOutput(output);
                 if (output != null) {
@@ -246,13 +274,18 @@ public class PipelineRunnerService {
                 return;
             } catch (Exception e) {
                 log.setStatus("error");
-                log.setMessage("[" + node.getType() + "] 오류: " + e.getMessage());
+                log.setMessage("[" + tag(nodeTypeRegistry.find(node.getType()), node) + "] 오류: " + e.getMessage());
                 state.status = "error";
                 return;
             }
         }
 
         state.status = "done";
+    }
+
+    /** 로그 앞 표시 — 기본 모듈은 타입 id, 내 모듈(MOD_…)은 모듈 이름 */
+    private static String tag(NodeModule module, PipelineNode node) {
+        return module != null && node.getType().startsWith("MOD_") ? module.info().label() : node.getType();
     }
 
     /** 이 화살표로 흐르는지: 앞 노드가 실행됐고, 출력을 골랐다면 그 출력에서 나온 화살표 */

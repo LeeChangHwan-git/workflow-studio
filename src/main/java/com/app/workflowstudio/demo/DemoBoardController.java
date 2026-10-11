@@ -24,10 +24,14 @@ public class DemoBoardController {
 
     public record Post(int no, String category, String title, String writer, String dept, LocalDate date, int views, String body) {}
 
-    /** 오늘 기준 글 목록 (최신 순) */
+    /** API(POST /demo-board/api/posts)로 쓴 글 — 메모리, 서버를 다시 켜면 사라짐 */
+    private static final List<Post> written = new java.util.concurrent.CopyOnWriteArrayList<>();
+    private static final java.util.concurrent.atomic.AtomicInteger nextNo = new java.util.concurrent.atomic.AtomicInteger(1049);
+
+    /** 오늘 기준 글 목록 (최신 순) — API 로 쓴 글이 맨 위 */
     static List<Post> posts() {
         LocalDate t = LocalDate.now();
-        List<Post> p = new ArrayList<>();
+        List<Post> p = new ArrayList<>(written);
         p.add(new Post(1048, "보안", "OTA 서버 TLS 인증서 교체 일정 안내 (10/20 02:00~04:00)", "정보안", "보안팀", t, 37,
                 "OTA 배포 서버 인증서가 만료 예정이라 교체합니다. 펌웨어에 고정(pinning)된 루트 인증서가 있는 제품은 사전 업데이트가 필요합니다. 펌웨어 담당자는 10/15까지 영향 모델을 회신해 주세요."));
         p.add(new Post(1047, "총무", "10월 넷째 주 사내 식당 메뉴", "총무팀", "총무팀", t, 211,
@@ -84,6 +88,33 @@ public class DemoBoardController {
         c.setHttpOnly(true);
         res.addCookie(c);
         return "redirect:/demo-board";
+    }
+
+    /**
+     * 글쓰기 API (회사 그룹웨어 API 흉내) — 쿠키 GW_SESSION 필요.
+     * {category?, title, content, writer?} → {result:"OK", no, url} · 쿠키 없으면 401, 제목·내용 없으면 400
+     */
+    @PostMapping("/api/posts")
+    @ResponseBody
+    public org.springframework.http.ResponseEntity<java.util.Map<String, Object>> write(
+            @CookieValue(name = COOKIE, required = false) String session,
+            @RequestBody java.util.Map<String, Object> req, jakarta.servlet.http.HttpServletRequest http) {
+        if (!SESSION.equals(session))
+            return org.springframework.http.ResponseEntity.status(401).body(java.util.Map.of("result", "UNAUTHORIZED", "message", "로그인이 필요합니다 (쿠키 GW_SESSION)"));
+        String title = str(req.get("title")), content = str(req.get("content"));
+        if (title.isEmpty() || content.isEmpty())
+            return org.springframework.http.ResponseEntity.badRequest().body(java.util.Map.of("result", "BAD_REQUEST", "message", "title, content 는 꼭 있어야 합니다"));
+        String category = str(req.get("category"));
+        String writer = str(req.get("writer"));
+        int no = nextNo.getAndIncrement();
+        written.add(0, new Post(no, category.isEmpty() ? "일반" : category, title.length() > 120 ? title.substring(0, 120) : title,
+                writer.isEmpty() ? "나" : writer, "FW팀", LocalDate.now(), 0, content));
+        String url = http.getScheme() + "://" + http.getServerName() + ":" + http.getServerPort() + "/demo-board/" + no;
+        return org.springframework.http.ResponseEntity.ok(java.util.Map.of("result", "OK", "no", no, "url", url));
+    }
+
+    private static String str(Object o) {
+        return o == null ? "" : String.valueOf(o).trim();
     }
 
     @PostMapping("/logout")

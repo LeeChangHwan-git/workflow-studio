@@ -1,0 +1,113 @@
+{
+  "format" : "worKBench-module",
+  "formatVersion" : 1,
+  "exportedAt" : "2026-10-11T22:14:35",
+  "module" : {
+    "id" : "MOD_47c3ceba",
+    "kind" : "pipeline",
+    "label" : "회의록 폴더 요약",
+    "icon" : "\uD83D\uDDC2",
+    "color" : "#7C3AED",
+    "category" : "내 모듈",
+    "description" : "폴더의 Word 회의록을 모아 AI가 게시판용 요약을 씀 (안쪽: 파일 가져오기 → AI)",
+    "version" : "1.0",
+    "author" : "FW팀",
+    "createdAt" : "2026-10-11T22:13:08",
+    "updatedAt" : "2026-10-11T22:13:08",
+    "params" : [ {
+      "name" : "폴더",
+      "label" : "회의록 폴더",
+      "type" : "text",
+      "defaultValue" : "%USERPROFILE%\\Desktop\\workflow-studio\\회의록",
+      "options" : [ ],
+      "target" : {
+        "nodeId" : "docs",
+        "key" : "folder"
+      }
+    }, {
+      "name" : "형식",
+      "label" : "요약 형식 (AI 지시문)",
+      "type" : "textarea",
+      "defaultValue" : "당신은 FW팀 PM 입니다. 회의록을 읽고 사내 게시판에 올릴 요약을 한국어로 씁니다 (일반 텍스트, 표·코드블록 없이).\n\n■ 한 줄 요약\n■ 결정 사항 (최대 7개, \"- \" 로 시작)\n■ 할 일 — 담당 · 기한 (최대 7개)\n■ 리스크 (없으면 \"없음\")\n\n회의록에 없는 내용은 지어내지 말 것.",
+      "options" : [ ],
+      "target" : {
+        "nodeId" : "ins",
+        "key" : "text"
+      }
+    } ],
+    "outputVar" : "summary",
+    "http" : null,
+    "pipeline" : {
+      "sourcePipelineId" : null,
+      "sourceName" : "부품 — 회의록 폴더 요약",
+      "outputNodeId" : "agent",
+      "nodes" : [ {
+        "id" : "docs",
+        "type" : "FILE_IMPORT",
+        "posX" : 40.0,
+        "posY" : 160.0,
+        "config" : {
+          "name" : "회의록 모으기",
+          "mode" : "폴더의 여러 파일 (합치기)",
+          "folder" : "%USERPROFILE%\\Desktop\\workflow-studio\\회의록",
+          "pattern" : "*.docx;*.doc",
+          "sort" : "이름순",
+          "recentDays" : 0,
+          "maxFiles" : 50,
+          "join" : "파일마다 ## 파일 이름 제목을 붙여 합치기",
+          "encoding" : "UTF-8",
+          "maxChars" : 60000,
+          "outputVar" : "docs"
+        }
+      }, {
+        "id" : "agent",
+        "type" : "AI_AGENT",
+        "posX" : 360.0,
+        "posY" : 150.0,
+        "config" : {
+          "name" : "요약하기",
+          "prompt" : "아래 회의록 ${docs.count}개를 읽고 주간 요약을 써 주세요.\n\n${docs.content}",
+          "outputVar" : "agent"
+        }
+      }, {
+        "id" : "model",
+        "type" : "GEMINI_MODEL",
+        "posX" : 280.0,
+        "posY" : 420.0,
+        "config" : {
+          "name" : "",
+          "apiKey" : "",
+          "model" : "gemini-flash-latest",
+          "temperature" : 0.3
+        }
+      }, {
+        "id" : "ins",
+        "type" : "AI_INSTRUCTION",
+        "posX" : 480.0,
+        "posY" : 420.0,
+        "config" : {
+          "name" : "요약 형식",
+          "source" : "직접 입력",
+          "filePath" : "",
+          "text" : "당신은 FW팀 PM 입니다. 회의록을 읽고 사내 게시판에 올릴 요약을 한국어로 씁니다 (일반 텍스트, 표·코드블록 없이).\n\n■ 한 줄 요약\n■ 결정 사항 (최대 7개, \"- \" 로 시작)\n■ 할 일 — 담당 · 기한 (최대 7개)\n■ 리스크 (없으면 \"없음\")\n\n회의록에 없는 내용은 지어내지 말 것."
+        }
+      } ],
+      "connections" : [ {
+        "fromNodeId" : "docs",
+        "toNodeId" : "agent",
+        "toHandle" : null,
+        "fromHandle" : null
+      }, {
+        "fromNodeId" : "model",
+        "toNodeId" : "agent",
+        "toHandle" : "model",
+        "fromHandle" : null
+      }, {
+        "fromNodeId" : "ins",
+        "toNodeId" : "agent",
+        "toHandle" : "instruction",
+        "fromHandle" : null
+      } ]
+    }
+  }
+}

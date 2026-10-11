@@ -1,0 +1,57 @@
+{
+  "format" : "worKBench-module",
+  "formatVersion" : 1,
+  "exportedAt" : "2026-10-11T22:14:35",
+  "module" : {
+    "id" : "MOD_04d7044e",
+    "kind" : "http",
+    "label" : "오늘 날씨",
+    "icon" : "\uD83C\uDF24",
+    "color" : "#0EA5E9",
+    "category" : "내 모듈",
+    "description" : "Open-Meteo 공개 API 로 지금 기온·습도·바람 (인터넷 필요, 키 없음)",
+    "version" : "1.0",
+    "author" : "FW팀",
+    "createdAt" : "2026-10-11T22:13:08",
+    "updatedAt" : "2026-10-11T22:13:08",
+    "params" : [ {
+      "name" : "위도",
+      "label" : "위도",
+      "type" : "number",
+      "defaultValue" : "37.5665",
+      "options" : [ ],
+      "target" : null
+    }, {
+      "name" : "경도",
+      "label" : "경도",
+      "type" : "number",
+      "defaultValue" : "126.9780",
+      "options" : [ ],
+      "target" : null
+    } ],
+    "outputVar" : "weather",
+    "http" : {
+      "method" : "GET",
+      "url" : "https://api.open-meteo.com/v1/forecast?latitude={{위도}}&longitude={{경도}}&current=temperature_2m,relative_humidity_2m,wind_speed_10m&timezone=Asia%2FSeoul",
+      "headers" : "",
+      "bodyType" : "none",
+      "body" : "",
+      "timeoutSec" : 20,
+      "failOnError" : true,
+      "extract" : [ {
+        "name" : "기온",
+        "path" : "current.temperature_2m"
+      }, {
+        "name" : "습도",
+        "path" : "current.relative_humidity_2m"
+      }, {
+        "name" : "바람",
+        "path" : "current.wind_speed_10m"
+      }, {
+        "name" : "시각",
+        "path" : "current.time"
+      } ]
+    },
+    "pipeline" : null
+  }
+}

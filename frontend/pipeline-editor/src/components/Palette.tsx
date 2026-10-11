@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { NodeTypeInfo } from '../types'
 
 interface Props {
@@ -13,19 +13,28 @@ interface Props {
 }
 
 // 그룹 표시 순서 (여기 없는 그룹은 모듈 등록 순서대로 뒤에 붙음)
-const CATEGORY_ORDER: string[] = ['트리거', '흐름', 'AI', 'AI 부품', '통합', '파일']
+const CATEGORY_ORDER: string[] = ['트리거', '흐름', 'AI', 'AI 부품', '통합', '파일', '내 모듈']
 
 export function Palette({ nodeTypes, draggingTypeId, onStartDrag, onAddAtCenter, onBack }: Props) {
   const [query, setQuery] = useState('')
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({})
+  // 🧩 모듈 관리에서 끈 모듈은 팔레트에서 숨김 (이미 놓인 노드는 그대로)
+  const [disabled, setDisabled] = useState<Set<string>>(new Set())
+  useEffect(() => {
+    fetch('/api/modules')
+      .then((r) => r.json())
+      .then((r) => setDisabled(new Set(r.disabled ?? [])))
+      .catch(() => {})
+  }, [])
 
   const groups = useMemo(() => {
     const q = query.trim().toLowerCase()
+    const usable = nodeTypes.filter((nt) => !disabled.has(nt.id))
     const visible = q
-      ? nodeTypes.filter(
+      ? usable.filter(
           (nt) => nt.label.toLowerCase().includes(q) || nt.id.toLowerCase().includes(q),
         )
-      : nodeTypes.filter((nt) => nt.category) // category=null은 팔레트 미노출
+      : usable.filter((nt) => nt.category) // category=null은 팔레트 미노출
 
     const map = new Map<string, NodeTypeInfo[]>()
     for (const nt of visible) {
@@ -43,7 +52,7 @@ export function Palette({ nodeTypes, draggingTypeId, onStartDrag, onAddAtCenter,
       if (!sorted.has(cat)) sorted.set(cat, items)
     }
     return sorted
-  }, [nodeTypes, query])
+  }, [nodeTypes, query, disabled])
 
   const toggle = (cat: string) =>
     setCollapsed((prev) => ({ ...prev, [cat]: !prev[cat] }))
@@ -91,6 +100,9 @@ export function Palette({ nodeTypes, draggingTypeId, onStartDrag, onAddAtCenter,
           </div>
         ))
       )}
+      <a className="palette-modules" href="/modules" target="_blank" rel="noreferrer" title="모듈 켜기·끄기, 내 모듈 만들기·내보내기·가져오기">
+        🧩 모듈 관리 ↗
+      </a>
     </div>
   )
 }

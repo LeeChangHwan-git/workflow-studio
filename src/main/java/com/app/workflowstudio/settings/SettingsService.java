@@ -89,6 +89,10 @@ public class SettingsService {
         s.backup.keepPerPipeline = Math.max(1, Math.min(200, s.backup.keepPerPipeline));
         if (s.appearance == null) s.appearance = new AppSettings.Appearance();
         if (s.demo == null) s.demo = new AppSettings.Demo();
+        if (s.modules == null) s.modules = new AppSettings.Modules();
+        if (s.modules.disabled == null) s.modules.disabled = new java.util.ArrayList<>();
+        s.modules.disabled = new java.util.ArrayList<>(new java.util.LinkedHashSet<>(
+                s.modules.disabled.stream().filter(x -> x != null && !x.isBlank()).map(String::trim).toList()));
         if (s.messenger == null) s.messenger = new AppSettings.Messenger();
         if (s.messenger.groups == null) s.messenger.groups = new java.util.ArrayList<>();
         s.messenger.groups.removeIf(g -> g == null || g.name == null);

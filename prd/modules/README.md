@@ -13,6 +13,7 @@
 | `HTTP_REQUEST` | HTTP 요청 (REST API 호출) | 통합 | ✅ 완료 (2026-10-03) | [http-request.md](http-request.md) |
 | `HTML_SELECT` | 웹 페이지 추출 + 🔍 HTML 분석기 (클릭으로 선택자) | 통합 | ✅ 완료 (2026-10-05) | [html-select.md](html-select.md) |
 | `MESSENGER` | 사내 메신저 쪽지 (사번·메시지, 시연용 메신저 포함) | 통합 | ✅ 완료 (2026-10-09) | [messenger.md](messenger.md) |
+| (내 모듈) | 🧩 모듈 관리 — 켜기/끄기 · HTTP 모듈 · 파이프라인 모듈 · .wbmod 내보내기/가져오기 | 내 모듈 | ✅ 완료 (2026-10-11) | [custom-modules.md](custom-modules.md) |
 | `BRANCH` | 분기 (규칙마다 출력 + 그 외, 표현식 설명서) | 흐름 | ✅ 완료 (2026-10-09) | [branch.md](branch.md) |
 | `APPROVAL` | 확인 요청 (승인 / 고쳐서 승인 / 다시 → AI 수정 / 거절) | 흐름 | ✅ 완료 (2026-10-09) | [approval.md](approval.md) |
 | `OUTLINE` | 아웃라인 게시판 (조회·검색·가져오기·등록·수정) | 통합 | ✅ 완료 (2026-10-04) | [outline.md](outline.md) |

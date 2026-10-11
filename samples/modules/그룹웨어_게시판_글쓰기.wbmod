@@ -1,0 +1,66 @@
+{
+  "format" : "worKBench-module",
+  "formatVersion" : 1,
+  "exportedAt" : "2026-10-11T22:14:34",
+  "secretsRemoved" : [ "입력칸 '로그인 쿠키 GW_SESSION 값' 기본값" ],
+  "module" : {
+    "id" : "MOD_6671c7f1",
+    "kind" : "http",
+    "label" : "그룹웨어 게시판 글쓰기",
+    "icon" : "\uD83D\uDCF0",
+    "color" : "#1F4E9B",
+    "category" : "내 모듈",
+    "description" : "KB 그룹웨어 전사 게시판에 글을 올립니다 (로그인 쿠키 필요)",
+    "version" : "1.0",
+    "author" : "FW팀",
+    "createdAt" : "2026-10-11T22:13:08",
+    "updatedAt" : "2026-10-11T22:13:08",
+    "params" : [ {
+      "name" : "분류",
+      "label" : "분류",
+      "type" : "select",
+      "defaultValue" : "개발",
+      "options" : [ "개발", "공지", "품질", "HW", "일반" ],
+      "target" : null
+    }, {
+      "name" : "제목",
+      "label" : "제목",
+      "type" : "text",
+      "defaultValue" : "",
+      "options" : [ ],
+      "target" : null
+    }, {
+      "name" : "내용",
+      "label" : "내용",
+      "type" : "textarea",
+      "defaultValue" : "${input}",
+      "options" : [ ],
+      "target" : null
+    }, {
+      "name" : "세션",
+      "label" : "로그인 쿠키 GW_SESSION 값",
+      "type" : "password",
+      "defaultValue" : "",
+      "options" : [ ],
+      "target" : null
+    } ],
+    "outputVar" : "board",
+    "http" : {
+      "method" : "POST",
+      "url" : "http://localhost:8080/demo-board/api/posts",
+      "headers" : "Cookie: GW_SESSION={{세션}}",
+      "bodyType" : "json",
+      "body" : "{\n  \"category\": \"{{분류}}\",\n  \"title\": \"{{제목}}\",\n  \"content\": \"{{내용}}\"\n}",
+      "timeoutSec" : 30,
+      "failOnError" : true,
+      "extract" : [ {
+        "name" : "글번호",
+        "path" : "no"
+      }, {
+        "name" : "주소",
+        "path" : "url"
+      } ]
+    },
+    "pipeline" : null
+  }
+}

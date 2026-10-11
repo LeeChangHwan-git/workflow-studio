@@ -885,3 +885,8 @@ body.resizing-row .bottom-panel { transition: none; }
 .mg-chip.on { background: rgba(59,76,202,.35); border-color: #6B7FE8; color: #fff; }
 
 .wh-url-hint a { color: #8FA3FF; }
+
+/* 팔레트 맨 아래 — 🧩 모듈 관리 링크 */
+.palette-modules { display: block; margin: 14px 4px 8px; padding: 8px 10px; border: 1px dashed #4B5563; border-radius: 6px;
+  color: #A5B4FC; font-size: 12.5px; text-decoration: none; text-align: center; }
+.palette-modules:hover { border-color: #A5B4FC; background: rgba(124,58,237,.12); }

@@ -72,6 +72,15 @@ interface Props {
   initialPipelineId: string
 }
 
+/** 지워졌거나 아직 가져오지 않은 모듈로 만든 노드 — 화면이 깨지지 않게 자리 표시 (저장하면 원래 타입 그대로 남음) */
+function missingType(id: string): NodeTypeInfo {
+  return {
+    id, label: '없는 모듈 (' + id + ')', icon: '❓', color: '#6B7280', category: null,
+    params: [{ name: 'name', label: '노드 이름', type: 'text', defaultValue: '' }],
+    trigger: false, sockets: [], provides: null,
+  } as unknown as NodeTypeInfo
+}
+
 export default function App({ initialPipelineId }: Props) {
   const [nodeTypes, setNodeTypes] = useState<NodeTypeInfo[]>([])
   const [pipelineId, setPipelineId] = useState<string | null>(initialPipelineId || null)
@@ -165,7 +174,7 @@ export default function App({ initialPipelineId }: Props) {
         id: n.id,
         type: 'pipelineNode',
         position: { x: n.posX, y: n.posY },
-        data: { nodeType: typeMap.get(n.type)!, config: n.config },
+        data: { nodeType: typeMap.get(n.type) ?? missingType(n.type), config: n.config },
       })),
     )
     setEdges(pipeline.connections.map((c) => makeEdge(c.fromNodeId, c.toNodeId, c.toHandle, c.fromHandle)))

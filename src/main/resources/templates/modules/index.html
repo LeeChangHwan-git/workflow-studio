@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('모듈 관리')}"></head>
+<style>
+    .mm { max-width: 1180px; margin: 0 auto; padding: 26px 28px 70px; }
+    .mm-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 8px; }
+    .mm-title { font-size: 22px; font-weight: 800; color: #F2F2F2; }
+    .mm-sub { font-size: 13px; color: var(--muted); margin-top: 4px; line-height: 1.6; max-width: 720px; }
+    .mm-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+    .btn-kb { background: #FFBC00; color: #1E1E1E; } .btn-kb:hover { background: #FFCB3D; }
+    .btn-sm { height: 28px; padding: 0 10px; font-size: 12px; }
+    .mm-sec { margin-top: 26px; }
+    .mm-sec-h { font-size: 15px; font-weight: 700; color: #E5E5E5; margin-bottom: 4px; display: flex; gap: 8px; align-items: center; }
+    .mm-sec-h .cnt { font-size: 11px; background: #3A3A3E; color: #bbb; border-radius: 9px; padding: 1px 7px; }
+    .mm-sec-sub { font-size: 12.5px; color: var(--dim); margin-bottom: 12px; }
+
+    .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 12px; }
+    .card { border: 1px solid var(--border); background: var(--card); border-radius: 10px; padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; }
+    .card.off { opacity: .55; }
+    .card-top { display: flex; gap: 12px; align-items: flex-start; }
+    .card-icon { width: 38px; height: 38px; border-radius: 9px; display: flex; align-items: center; justify-content: center; font-size: 19px; flex-shrink: 0; }
+    .card-name { font-size: 14.5px; font-weight: 700; color: #F0F0F0; }
+    .card-desc { font-size: 12px; color: var(--muted); margin-top: 2px; line-height: 1.5; }
+    .badge-kind { font-size: 10.5px; font-weight: 700; padding: 1px 7px; border-radius: 8px; margin-left: 6px; vertical-align: 2px; }
+    .badge-kind.http { background: rgba(79,193,255,.15); color: #4FC1FF; }
+    .badge-kind.pipeline { background: rgba(167,139,250,.18); color: #C4B5FD; }
+    .card-meta { font-size: 11.5px; color: var(--dim); line-height: 1.6; word-break: break-all; }
+    .card-meta b { color: #BBB; font-weight: 600; }
+    .card-btns { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 2px; }
+    .empty { border: 1px dashed var(--border); border-radius: 10px; padding: 28px; text-align: center; color: var(--dim); font-size: 13px; line-height: 1.8; }
+
+    .sw { position: relative; width: 34px; height: 18px; flex-shrink: 0; cursor: pointer; }
+    .sw input { display: none; }
+    .sw span { position: absolute; inset: 0; background: #4B4B50; border-radius: 9px; transition: .15s; }
+    .sw span::after { content: ''; position: absolute; left: 2px; top: 2px; width: 14px; height: 14px; background: #ddd; border-radius: 50%; transition: .15s; }
+    .sw input:checked + span { background: #16A34A; }
+    .sw input:checked + span::after { left: 18px; background: #fff; }
+
+    .bi-group { margin-bottom: 12px; }
+    .bi-cat { font-size: 12px; font-weight: 700; color: #9CA3AF; margin-bottom: 6px; }
+    .bi-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 6px; }
+    .bi { display: flex; align-items: center; gap: 9px; background: var(--card); border: 1px solid var(--border); border-radius: 7px; padding: 7px 10px; font-size: 13px; }
+    .bi.off { opacity: .5; }
+    .bi .ic { width: 24px; height: 24px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 13px; }
+    .bi .nm { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .bi .us { font-size: 11px; color: var(--dim); }
+
+    /* 편집 창 */
+    .modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,.6); z-index: 300; display: none; align-items: flex-start; justify-content: center; overflow-y: auto; padding: 30px 12px; }
+    .modal-bg.open { display: flex; }
+    .modal { background: #1F1F22; border: 1px solid #45454A; border-radius: 12px; width: min(980px, 100%); box-shadow: var(--shadow-lg); }
+    .modal-h { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; border-bottom: 1px solid var(--border); }
+    .modal-h b { font-size: 16px; color: #F2F2F2; }
+    .modal-x { background: none; border: none; color: #aaa; font-size: 18px; cursor: pointer; }
+    .modal-b { padding: 16px 18px; display: flex; flex-direction: column; gap: 14px; }
+    .modal-f { padding: 12px 18px; border-top: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+    .box { border: 1px solid var(--border); border-radius: 9px; padding: 12px 14px; background: #252528; }
+    .box-h { font-size: 13px; font-weight: 700; color: #E5E5E5; margin-bottom: 8px; display: flex; gap: 8px; align-items: center; }
+    .box-h small { font-weight: 400; color: var(--dim); font-size: 11.5px; }
+    .row { display: grid; grid-template-columns: 120px 1fr; gap: 6px 12px; align-items: center; margin-bottom: 8px; }
+    .row label { font-size: 12.5px; color: #BBB; }
+    .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 18px; }
+    .in { width: 100%; height: 32px; padding: 0 9px; border-radius: 5px; border: 1px solid var(--border); background: var(--input-bg); color: var(--text); font: inherit; font-size: 13px; outline: none; }
+    textarea.in { height: auto; min-height: 70px; padding: 7px 9px; resize: vertical; line-height: 1.5; font-family: Consolas, 'D2Coding', monospace; font-size: 12.5px; }
+    .in:focus { border-color: #FFBC00; }
+    select.in option { background: #2D2D30; }
+    .ptable { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+    .ptable th { text-align: left; color: var(--dim); font-weight: 600; font-size: 11.5px; padding: 4px 6px; }
+    .ptable td { padding: 3px 4px; vertical-align: top; }
+    .ptable .in { height: 30px; font-size: 12.5px; }
+    .x-btn { background: none; border: 1px solid var(--border); color: #aaa; border-radius: 5px; height: 30px; width: 30px; cursor: pointer; }
+    .x-btn:hover { color: #F48771; border-color: #F48771; }
+    .chips { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 4px; }
+    .chip { font-size: 11.5px; font-family: Consolas, monospace; background: #34343A; color: #FFD666; border: 1px solid #4B4B50; border-radius: 10px; padding: 1px 8px; cursor: pointer; }
+    .chip:hover { border-color: #FFBC00; }
+    .hint { font-size: 11.5px; color: var(--dim); line-height: 1.6; }
+    .hint code { color: #FFD666; }
+    .icons { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 4px; }
+    .icons span { cursor: pointer; font-size: 16px; padding: 1px 3px; border-radius: 4px; }
+    .icons span:hover { background: #3A3A3E; }
+    .test-out { background: #111; border: 1px solid #333; border-radius: 6px; padding: 10px; font-family: Consolas, monospace; font-size: 12px; color: #D4D4D4; white-space: pre-wrap; max-height: 280px; overflow: auto; margin-top: 8px; display: none; }
+    .test-out.ok { display: block; border-color: #2F6B5A; } .test-out.fail { display: block; border-color: #7F2D2D; color: #F48771; }
+    .msg { font-size: 12.5px; } .msg.ok { color: #4EC9B0; } .msg.fail { color: #F48771; }
+    .preview-node { display: inline-flex; align-items: center; gap: 8px; border: 1px solid #45454A; border-radius: 8px; padding: 6px 12px; background: #2A2A2E; font-size: 13px; font-weight: 600; }
+    .preview-node i { font-style: normal; width: 24px; height: 24px; border-radius: 6px; display: inline-flex; align-items: center; justify-content: center; }
+    .toast { position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%); background: #111; border: 1px solid #555; color: #eee;
+        padding: 10px 16px; border-radius: 8px; font-size: 13px; z-index: 400; display: none; max-width: 80vw; }
+    @media (max-width: 800px) { .grid2 { grid-template-columns: 1fr; } .row { grid-template-columns: 1fr; } }
+</style>
+<body>
+<nav th:replace="~{fragments/nav :: nav('settings')}"></nav>
+
+<div class="mm">
+    <div class="mm-head">
+        <div>
+            <div class="mm-title">🧩 모듈 관리</div>
+            <div class="mm-sub">
+                파이프라인 노드(모듈)를 <b>끼웠다 뺐다</b> 합니다. <b>HTTP 모듈</b>은 사내 시스템 API 요청 하나를 입력칸만 보이는 전용 노드로,
+                <b>파이프라인 모듈</b>은 만들어 둔 파이프라인을 노드 하나로 포장합니다. 만든 모듈은 <b>⬇ 내보내기</b>로 <code>.wbmod</code> 파일을 만들어
+                팀원에게 주고, 받은 사람은 <b>⬆ 가져오기</b>로 팔레트에 바로 추가합니다.
+            </div>
+        </div>
+        <div class="mm-actions">
+            <button class="btn btn-kb" onclick="openEditor('http')">＋ HTTP 모듈 만들기</button>
+            <button class="btn btn-primary" onclick="openEditor('pipeline')">＋ 파이프라인으로 만들기</button>
+            <button class="btn btn-ghost" onclick="document.getElementById('importFile').click()">⬆ 가져오기 (.wbmod)</button>
+            <input type="file" id="importFile" accept=".wbmod,.json" style="display:none" onchange="importFile(this)">
+        </div>
+    </div>
+
+    <div class="mm-sec">
+        <div class="mm-sec-h">내 모듈 <span class="cnt" id="cnt-custom">0</span></div>
+        <div class="mm-sec-sub">직접 만들었거나 가져온 모듈 — 팔레트 "내 모듈" 칸에 보입니다.</div>
+        <div id="custom"></div>
+    </div>
+
+    <div class="mm-sec">
+        <div class="mm-sec-h">기본 모듈 <span class="cnt" id="cnt-builtin">0</span></div>
+        <div class="mm-sec-sub">앱에 들어 있는 모듈 — 안 쓰는 건 끄면 팔레트에서 숨겨집니다. 이미 파이프라인에 놓인 노드는 꺼도 그대로 실행됩니다.</div>
+        <div id="builtin"></div>
+    </div>
+</div>
+
+<!-- 만들기 · 고치기 창 -->
+<div class="modal-bg" id="modal">
+    <div class="modal">
+        <div class="modal-h"><b id="m-title">모듈 만들기</b><button class="modal-x" onclick="closeEditor()">✕</button></div>
+        <div class="modal-b">
+            <div class="box">
+                <div class="box-h">① 노드 모양 <small>팔레트·캔버스에 이렇게 보입니다</small> <span style="margin-left:auto" id="m-preview"></span></div>
+                <div class="grid2">
+                    <div>
+                        <div class="row"><label>이름</label><input class="in" id="f-label" placeholder="예: 결재 올리기" maxlength="40"></div>
+                        <div class="row"><label>아이콘</label><div><input class="in" id="f-icon" style="width:70px" maxlength="4">
+                            <div class="icons" id="icon-presets"></div></div></div>
+                        <div class="row"><label>색</label><input type="color" id="f-color" value="#7C3AED" style="height:30px;width:60px;background:none;border:none"></div>
+                    </div>
+                    <div>
+                        <div class="row"><label>설명</label><input class="in" id="f-desc" placeholder="무엇을 하는 노드인지 한 줄"></div>
+                        <div class="row"><label>팔레트 분류</label><input class="in" id="f-cat" placeholder="내 모듈"></div>
+                        <div class="row"><label>버전 · 만든 사람</label><div style="display:flex;gap:6px"><input class="in" id="f-ver" style="width:80px" placeholder="1.0"><input class="in" id="f-author" placeholder="이름 (선택)"></div></div>
+                        <div class="row"><label>출력 변수명</label><input class="in" id="f-var" placeholder="예: approval → ${approval.docNo}"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="box">
+                <div class="box-h">② 입력칸 <small>이 모듈을 쓰는 사람이 노드 설정에서 채우는 칸 — 값에 ${input}·${date} 같은 변수도 쓸 수 있음</small></div>
+                <table class="ptable">
+                    <thead><tr><th style="width:120px">이름 (틀에서 {{이름}})</th><th style="width:150px">표시 이름</th><th style="width:100px">종류</th><th>기본값</th>
+                        <th style="width:150px">선택지 (쉼표)</th><th class="only-pipeline" style="width:210px">연결할 안쪽 노드 설정</th><th style="width:34px"></th></tr></thead>
+                    <tbody id="params"></tbody>
+                </table>
+                <button class="btn btn-ghost btn-sm" style="margin-top:6px" onclick="addParam()">＋ 입력칸 추가</button>
+            </div>
+
+            <div class="box only-http">
+                <div class="box-h">③ 보낼 요청 <small>입력칸 값은 <code>{{이름}}</code> 자리에 들어갑니다 (주소는 URL 인코딩, JSON 바디는 따옴표 안에 안전하게)</small></div>
+                <div class="row"><label>메소드 · 주소</label><div style="display:flex;gap:6px">
+                    <select class="in" id="h-method" style="width:100px"><option>POST</option><option>GET</option><option>PUT</option><option>PATCH</option><option>DELETE</option></select>
+                    <input class="in tpl" id="h-url" placeholder="https://gw.company.com/api/approval"></div></div>
+                <div class="row"><label>요청 헤더</label><textarea class="in tpl" id="h-headers" rows="3" placeholder="Authorization: Bearer {{토큰}}&#10;Cookie: SESSION={{세션}}"></textarea></div>
+                <div class="row"><label>바디</label><div>
+                    <select class="in" id="h-btype" style="width:180px;margin-bottom:6px"><option value="json">JSON</option><option value="form">Form (a=1&amp;b=2)</option><option value="text">Text</option><option value="none">없음</option></select>
+                    <textarea class="in tpl" id="h-body" rows="6" placeholder='{"title": "{{제목}}", "content": "{{내용}}"}'></textarea></div></div>
+                <div class="row"><label>입력칸 넣기</label><div><div class="chips" id="h-chips"></div>
+                    <div class="hint">칩을 누르면 마지막으로 누른 칸(주소·헤더·바디)의 커서 자리에 <code>{{이름}}</code> 이 들어갑니다. 토큰·쿠키는 헤더에 직접 쓰지 말고 <b>비밀값(password) 입력칸</b>으로 — 내보낼 때 자동으로 빠집니다.</div></div></div>
+                <div class="row"><label>시간 제한 · 실패</label><div style="display:flex;gap:12px;align-items:center">
+                    <input class="in" id="h-timeout" type="number" min="1" max="300" style="width:80px"> <span class="hint">초</span>
+                    <label style="font-size:12.5px;color:#BBB;display:flex;gap:6px;align-items:center"><input type="checkbox" id="h-fail"> 2xx 가 아니면 오류로 멈춤</label></div></div>
+                <div class="row" style="align-items:start"><label>응답에서 꺼낼 값</label><div>
+                    <table class="ptable"><thead><tr><th style="width:160px">이름 (${출력변수.이름})</th><th>JSON 경로 (예: data.docNo · items[0].title)</th><th style="width:34px"></th></tr></thead><tbody id="extract"></tbody></table>
+                    <button class="btn btn-ghost btn-sm" style="margin-top:4px" onclick="addExtract()">＋ 꺼낼 값 추가</button></div></div>
+            </div>
+
+            <div class="box only-pipeline">
+                <div class="box-h">③ 안쪽 파이프라인 <small>트리거(웹훅·타이머)는 빼고 나머지 노드를 그대로 실행합니다 — 앞 노드 출력은 안쪽 첫 노드의 ${input}</small></div>
+                <div class="row"><label>원본 파이프라인</label><div style="display:flex;gap:6px;align-items:center">
+                    <select class="in" id="p-source" onchange="loadSource()"></select>
+                    <button class="btn btn-ghost btn-sm" id="p-refresh" onclick="refreshSource()" title="원본 파이프라인을 고쳤다면 안쪽 노드를 다시 복사">↻ 원본에서 다시 가져오기</button></div></div>
+                <div class="row"><label>결과로 쓸 노드</label><select class="in" id="p-output"></select></div>
+                <div class="hint" id="p-info"></div>
+            </div>
+
+            <div class="box">
+                <div class="box-h">④ 🧪 시험 실행 <small>저장하지 않고 지금 설정으로 한 번 실행해 봅니다</small></div>
+                <div id="t-values"></div>
+                <div class="row"><label>앞 노드 출력 (${input})</label><textarea class="in" id="t-input" rows="2" placeholder="(선택) 앞 노드가 넘겨줄 글"></textarea></div>
+                <button class="btn btn-success btn-sm" onclick="runTest()" id="t-btn">🧪 시험 실행</button> <span class="msg" id="t-msg"></span>
+                <div class="test-out" id="t-out"></div>
+            </div>
+        </div>
+        <div class="modal-f">
+            <span class="msg" id="m-msg"></span>
+            <div style="display:flex;gap:8px"><button class="btn btn-ghost" onclick="closeEditor()">취소</button><button class="btn btn-kb" onclick="save()">💾 저장</button></div>
+        </div>
+    </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script th:inline="none">
+(function () {
+    var $ = function (id) { return document.getElementById(id); };
+    var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return '&#' + c.charCodeAt(0) + ';'; }); };
+    var state = null, editing = null, kind = 'http', sourceNodes = [], lastTpl = null;
+    var ICONS = ['🧩', '📝', '📰', '🌤', '📊', '📮', '🔔', '🗂', '🧾', '🔍', '🤝', '🛠', '📦', '🚀', '💬', '📅'];
+
+    function api(url, opt) {
+        return fetch(url, opt).then(function (r) {
+            return r.json().catch(function () { return {}; }).then(function (b) { if (!r.ok) { var e = new Error(b.error || ('HTTP ' + r.status)); e.status = r.status; e.body = b; throw e; } return b; });
+        });
+    }
+    function json(method, url, body) { return api(url, { method: method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }); }
+    function toast(t) { var el = $('toast'); el.textContent = t; el.style.display = 'block'; clearTimeout(toast.t); toast.t = setTimeout(function () { el.style.display = 'none'; }, 4500); }
+    function msg(id, t, ok) { var el = $(id); el.textContent = t || ''; el.className = 'msg ' + (ok ? 'ok' : 'fail'); }
+
+    // ── 목록 ──
+    function load() {
+        return api('/api/modules').then(function (r) { state = r; render(); });
+    }
+    function render() {
+        var c = state.custom;
+        $('cnt-custom').textContent = c.length;
+        $('custom').innerHTML = c.length ? '<div class="cards">' + c.map(function (m) {
+            var meta = m.kind === 'http'
+                ? '<b>요청</b> ' + esc(m.request)
+                : '<b>원본</b> ' + esc(m.sourceName || '?') + (m.sourceExists ? '' : ' <span style="color:#F0B35C">(이 PC 에 없음)</span>') + ' · 안쪽 노드 ' + m.nodes + '개';
+            var used = m.usedIn.length ? '<b>쓰는 곳</b> ' + m.usedIn.map(function (u) { return u.id.indexOf('module:') === 0 ? esc(u.name) : '<a style="color:#8FA3FF" href="/pipelines/' + esc(u.id) + '">' + esc(u.name) + '</a>'; }).join(', ') : '아직 쓰는 파이프라인 없음';
+            return '<div class="card' + (m.enabled ? '' : ' off') + '">' +
+                '<div class="card-top"><div class="card-icon" style="background:' + m.color + '33;border:1px solid ' + m.color + '88">' + esc(m.icon) + '</div>' +
+                '<div style="flex:1;min-width:0"><div class="card-name">' + esc(m.label) + '<span class="badge-kind ' + m.kind + '">' + (m.kind === 'http' ? 'HTTP' : '파이프라인') + '</span></div>' +
+                '<div class="card-desc">' + esc(m.description || '설명 없음') + '</div></div>' +
+                '<label class="sw" title="팔레트에 보이기"><input type="checkbox" data-toggle="' + esc(m.id) + '"' + (m.enabled ? ' checked' : '') + '><span></span></label></div>' +
+                '<div class="card-meta">' + meta + '<br>입력칸 ' + m.params + '개 · v' + esc(m.version || '1.0') + ' · id <code>' + esc(m.id) + '</code><br>' + used + '</div>' +
+                '<div class="card-btns">' +
+                '<button class="btn btn-ghost btn-sm" data-edit="' + esc(m.id) + '">✏️ 편집 · 🧪 시험</button>' +
+                '<a class="btn btn-ghost btn-sm" href="/api/modules/' + esc(m.id) + '/export">⬇ 내보내기</a>' +
+                (m.kind === 'pipeline' && m.sourceExists ? '<button class="btn btn-ghost btn-sm" data-refresh="' + esc(m.id) + '">↻ 원본에서 다시</button>' : '') +
+                '<button class="btn btn-ghost btn-sm" data-del="' + esc(m.id) + '" style="margin-left:auto">🗑</button></div></div>';
+        }).join('') + '</div>'
+            : '<div class="empty">아직 내 모듈이 없습니다.<br><b>＋ HTTP 모듈 만들기</b> — 사내 API 를 전용 노드로 · <b>＋ 파이프라인으로 만들기</b> — 만든 흐름을 노드 하나로 · <b>⬆ 가져오기</b> — 받은 .wbmod 파일</div>';
+
+        var groups = {};
+        state.builtin.forEach(function (b) { (groups[b.category || '기타'] = groups[b.category || '기타'] || []).push(b); });
+        $('cnt-builtin').textContent = state.builtin.length;
+        $('builtin').innerHTML = Object.keys(groups).map(function (cat) {
+            return '<div class="bi-group"><div class="bi-cat">' + esc(cat) + '</div><div class="bi-list">' + groups[cat].map(function (b) {
+                return '<div class="bi' + (b.enabled ? '' : ' off') + '"><span class="ic" style="background:' + b.color + '33">' + esc(b.icon) + '</span>' +
+                    '<span class="nm">' + esc(b.label) + '</span><span class="us">' + (b.used ? b.used + '곳' : '') + '</span>' +
+                    '<label class="sw" title="팔레트에 보이기"><input type="checkbox" data-toggle="' + esc(b.id) + '"' + (b.enabled ? ' checked' : '') + '><span></span></label></div>';
+            }).join('') + '</div></div>';
+        }).join('');
+    }
+
+    document.addEventListener('change', function (e) {
+        var t = e.target.dataset && e.target.dataset.toggle;
+        if (!t) return;
+        var disabled = new Set(state.disabled);
+        if (e.target.checked) disabled.delete(t); else disabled.add(t);
+        json('PUT', '/api/modules/state', { disabled: Array.from(disabled) }).then(function () {
+            toast(e.target.checked ? '✅ 켰습니다 — 열려 있는 편집 화면은 새로고침하면 팔레트에 반영' : '⏸ 껐습니다 — 팔레트에서 숨겨짐 (이미 놓인 노드는 그대로 실행)');
+            load();
+        }).catch(function (er) { toast(er.message); load(); });
+    });
+    document.addEventListener('click', function (e) {
+        var el = e.target.closest && e.target.closest('[data-edit],[data-del],[data-refresh]');
+        if (!el) return;
+        if (el.dataset.edit) api('/api/modules/' + el.dataset.edit).then(function (d) { openEditor(d.kind, d); });
+        if (el.dataset.refresh) api('/api/modules/' + el.dataset.refresh + '/refresh', { method: 'POST' }).then(function () { toast('↻ 원본 파이프라인에서 안쪽 노드를 다시 가져왔습니다'); load(); }).catch(function (er) { toast(er.message); });
+        if (el.dataset.del) del(el.dataset.del);
+    });
+
+    function del(id) {
+        var m = state.custom.find(function (x) { return x.id === id; });
+        var warn = m.usedIn.length ? '\n\n이 모듈을 쓰는 곳: ' + m.usedIn.map(function (u) { return u.name; }).join(', ') + '\n(지우면 그 노드는 "없는 모듈"로 표시되고 실행 때 오류가 납니다)' : '';
+        if (!confirm('🧩 ' + m.label + ' 모듈을 지울까요?' + warn + '\n\n지우기 전에 ⬇ 내보내기로 파일을 받아 두면 다시 가져올 수 있습니다.')) return;
+        api('/api/modules/' + id + '?force=true', { method: 'DELETE' }).then(function () { toast('🗑 지웠습니다'); load(); }).catch(function (er) { toast(er.message); });
+    }
+
+    // ── 가져오기 ──
+    window.importFile = function (input) {
+        var f = input.files[0]; input.value = '';
+        if (!f) return;
+        send(f, '');
+        function send(file, q) {
+            var fd = new FormData(); fd.append('file', file);
+            fetch('/api/modules/import' + q, { method: 'POST', body: fd }).then(function (r) { return r.json().then(function (b) { return { r: r, b: b }; }); }).then(function (x) {
+                if (x.r.status === 409 && x.b.conflict) {
+                    if (confirm(x.b.error + '\n\n[확인] 지금 것을 바꿔 쓰기 (같은 모듈을 쓰는 파이프라인에 바로 반영)\n[취소] 사본으로 따로 가져오기')) send(file, '?overwrite=true');
+                    else send(file, '?copy=true');
+                    return;
+                }
+                if (!x.r.ok) { toast('가져오기 실패 — ' + (x.b.error || x.r.status)); return; }
+                var m = x.b.module;
+                var extra = x.b.missingTypes && x.b.missingTypes.length ? ' ⚠️ 안쪽에 이 PC 에 없는 모듈: ' + x.b.missingTypes.join(', ') : '';
+                var secret = m.params.some(function (p) { return p.type === 'password'; }) ? ' 🔑 비밀값 입력칸은 비어 있으니 노드에서 채우세요.' : '';
+                toast((x.b.replaced ? '♻️ 바꿔 썼습니다: ' : '⬆ 가져왔습니다: ') + m.icon + ' ' + m.label + ' — 팔레트 "' + m.category + '"' + secret + extra);
+                load();
+            });
+        }
+    };
+
+    // ── 만들기 · 고치기 창 ──
+    window.openEditor = function (k, d) {
+        kind = k; editing = d || null;
+        $('m-title').textContent = (d ? '✏️ 모듈 고치기 — ' : '＋ 새 ') + (k === 'http' ? 'HTTP 모듈' : '파이프라인 모듈');
+        document.querySelectorAll('.only-http').forEach(function (el) { el.style.display = k === 'http' ? '' : 'none'; });
+        document.querySelectorAll('.only-pipeline').forEach(function (el) { el.style.display = k === 'pipeline' ? '' : 'none'; });
+        $('f-label').value = d ? d.label : '';
+        $('f-icon').value = d ? d.icon : (k === 'http' ? '📮' : '🧩');
+        $('f-color').value = d ? d.color : (k === 'http' ? '#0E7490' : '#7C3AED');
+        $('f-desc').value = d ? d.description || '' : '';
+        $('f-cat').value = d ? d.category || '내 모듈' : '내 모듈';
+        $('f-ver').value = d ? d.version || '1.0' : '1.0';
+        $('f-author').value = d ? d.author || '' : '';
+        $('f-var').value = d ? d.outputVar || '' : '';
+        $('params').innerHTML = '';
+        (d ? d.params : (k === 'http' ? [{ name: '제목', label: '제목', type: 'text', defaultValue: '' }] : [])).forEach(addParam);
+        var h = (d && d.http) || { method: 'POST', url: '', headers: '', bodyType: 'json', body: '', timeoutSec: 30, failOnError: true, extract: [] };
+        $('h-method').value = h.method; $('h-url').value = h.url; $('h-headers').value = h.headers || ''; $('h-btype').value = h.bodyType || 'json';
+        $('h-body').value = h.body || ''; $('h-timeout').value = h.timeoutSec || 30; $('h-fail').checked = h.failOnError !== false;
+        $('extract').innerHTML = ''; (h.extract || []).forEach(addExtract);
+        $('t-out').className = 'test-out'; $('t-msg').textContent = ''; $('m-msg').textContent = ''; $('t-input').value = '';
+        sourceNodes = [];
+        if (k === 'pipeline') {
+            $('p-refresh').style.display = d ? '' : 'none';
+            $('p-source').disabled = !!d;
+            api('/api/pipelines').then(function (list) {
+                var src = d && d.pipeline ? d.pipeline.sourcePipelineId : '';
+                $('p-source').innerHTML = (d ? '' : '<option value="">— 파이프라인을 고르세요 —</option>') +
+                    (d && !list.some(function (p) { return p.id === src; }) ? '<option value="">' + esc((d.pipeline && d.pipeline.sourceName) || '(원본 없음)') + ' — 이 PC 에 없음</option>' : '') +
+                    list.map(function (p) { return '<option value="' + esc(p.id) + '"' + (p.id === src ? ' selected' : '') + '>' + esc(p.name) + '</option>'; }).join('');
+                loadSource();
+            });
+        }
+        updatePreview(); renderChips(); renderTestValues();
+        $('modal').classList.add('open');
+    };
+    window.closeEditor = function () { $('modal').classList.remove('open'); };
+
+    function paramRow(p) {
+        var types = [['text', '한 줄 글'], ['textarea', '여러 줄 글'], ['number', '숫자'], ['select', '고르기'], ['password', '비밀값']];
+        var tgt = p.target ? p.target.nodeId + '|' + p.target.key : '';
+        return '<tr><td><input class="in" data-k="name" value="' + esc(p.name) + '" placeholder="이름"></td>' +
+            '<td><input class="in" data-k="label" value="' + esc(p.label) + '" placeholder="노드에 보일 이름"></td>' +
+            '<td><select class="in" data-k="type">' + types.map(function (t) { return '<option value="' + t[0] + '"' + (p.type === t[0] ? ' selected' : '') + '>' + t[1] + '</option>'; }).join('') + '</select></td>' +
+            '<td><input class="in" data-k="defaultValue" value="' + esc(p.defaultValue) + '" placeholder="기본값 (선택)"' + (p.type === 'password' ? ' type="password" autocomplete="new-password"' : '') + '></td>' +
+            '<td><input class="in" data-k="options" value="' + esc((p.options || []).join(', ')) + '" placeholder="고르기 종류일 때"></td>' +
+            '<td class="only-pipeline"' + (kind === 'pipeline' ? '' : ' style="display:none"') + '><select class="in" data-k="target" data-value="' + esc(tgt) + '">' + targetOptions(tgt) + '</select></td>' +
+            '<td><button class="x-btn" data-x="row">✕</button></td></tr>';
+    }
+    window.addParam = function (p) {
+        p = p && p.name !== undefined ? p : { name: '', label: '', type: 'text', defaultValue: '', options: [] };
+        $('params').insertAdjacentHTML('beforeend', paramRow(p));
+        renderChips(); renderTestValues();
+    };
+    window.addExtract = function (e) {
+        e = e && e.name !== undefined ? e : { name: '', path: '' };
+        $('extract').insertAdjacentHTML('beforeend', '<tr><td><input class="in" data-e="name" value="' + esc(e.name) + '" placeholder="예: 문서번호"></td>' +
+            '<td><input class="in" data-e="path" value="' + esc(e.path) + '" placeholder="예: data.docNo"></td><td><button class="x-btn" data-x="row">✕</button></td></tr>');
+    };
+    function targetOptions(sel) {
+        var opts = '<option value="">— 연결 안 함 (${in.이름} 으로만) —</option>';
+        sourceNodes.forEach(function (n) {
+            if (n.trigger) return;
+            n.params.forEach(function (q) {
+                var v = n.id + '|' + q.key;
+                opts += '<option value="' + esc(v) + '"' + (v === sel ? ' selected' : '') + '>' + esc(n.icon + ' ' + n.name + ' › ' + q.label.replace(/\s*\(.*$/, '').slice(0, 30)) + '</option>';
+            });
+        });
+        return opts;
+    }
+    function readParams() {
+        return Array.prototype.map.call(document.querySelectorAll('#params tr'), function (tr) {
+            var g = function (k) { return tr.querySelector('[data-k=' + k + ']'); };
+            var t = g('target') ? g('target').value : '';
+            return {
+                name: g('name').value.trim(), label: g('label').value.trim(), type: g('type').value, defaultValue: g('defaultValue').value,
+                options: g('options').value.split(',').map(function (s) { return s.trim(); }).filter(Boolean),
+                target: t ? { nodeId: t.split('|')[0], key: t.split('|').slice(1).join('|') } : null
+            };
+        }).filter(function (p) { return p.name; });
+    }
+    function readExtract() {
+        return Array.prototype.map.call(document.querySelectorAll('#extract tr'), function (tr) {
+            return { name: tr.querySelector('[data-e=name]').value.trim(), path: tr.querySelector('[data-e=path]').value.trim() };
+        }).filter(function (e) { return e.name; });
+    }
+    function collect() {
+        var d = {
+            id: editing ? editing.id : null, kind: kind, label: $('f-label').value.trim(), icon: $('f-icon').value.trim(), color: $('f-color').value,
+            description: $('f-desc').value.trim(), category: $('f-cat').value.trim() || '내 모듈', version: $('f-ver').value.trim() || '1.0',
+            author: $('f-author').value.trim(), outputVar: $('f-var').value.trim(), params: readParams()
+        };
+        if (kind === 'http') d.http = { method: $('h-method').value, url: $('h-url').value.trim(), headers: $('h-headers').value, bodyType: $('h-btype').value,
+            body: $('h-body').value, timeoutSec: Number($('h-timeout').value) || 30, failOnError: $('h-fail').checked, extract: readExtract() };
+        else d.pipeline = { sourcePipelineId: $('p-source').value || (editing && editing.pipeline ? editing.pipeline.sourcePipelineId : null), outputNodeId: $('p-output').value || null };
+        return d;
+    }
+
+    document.addEventListener('click', function (e) {
+        if (e.target.dataset && e.target.dataset.x === 'row') { e.target.closest('tr').remove(); renderChips(); renderTestValues(); }
+        if (e.target.classList && e.target.classList.contains('chip')) insertChip(e.target.dataset.name);
+        if (e.target.dataset && e.target.dataset.icon) { $('f-icon').value = e.target.dataset.icon; updatePreview(); }
+    });
+    document.addEventListener('focusin', function (e) { if (e.target.classList && e.target.classList.contains('tpl')) lastTpl = e.target; });
+    document.addEventListener('input', function (e) {
+        if (!e.target.closest) return;
+        if (e.target.closest('#params')) { renderChips(); renderTestValues(); }
+        if (['f-label', 'f-icon'].indexOf(e.target.id) >= 0) updatePreview();
+    });
+    document.addEventListener('change', function (e) {
+        if (e.target.id === 'f-color') updatePreview();
+        if (e.target.dataset && e.target.dataset.k === 'target' && e.target.value) {
+            // 연결한 노드 설정의 이름·종류·현재 값을 입력칸에 채움 (비어 있을 때)
+            var tr = e.target.closest('tr'), v = e.target.value.split('|');
+            var n = sourceNodes.find(function (x) { return x.id === v[0]; }), q = n && n.params.find(function (x) { return x.key === v[1]; });
+            if (!q) return;
+            var g = function (k) { return tr.querySelector('[data-k=' + k + ']'); };
+            if (!g('label').value) g('label').value = q.label.replace(/\s*[(—].*$/, '');
+            if (!g('name').value) g('name').value = g('label').value.replace(/[\s{}$,]+/g, '');
+            if (!g('defaultValue').value && q.value != null) g('defaultValue').value = q.value;
+            if (q.type === 'textarea') g('type').value = 'textarea';
+            else if (q.type === 'number') g('type').value = 'number';
+            else if (q.type === 'select' && q.options) { g('type').value = 'select'; g('options').value = q.options.join(', '); }
+            renderChips(); renderTestValues();
+        }
+        if (e.target.dataset && e.target.dataset.k === 'type') renderTestValues();
+    });
+    ICONS.forEach(function (i) { $('icon-presets').insertAdjacentHTML('beforeend', '<span data-icon="' + i + '">' + i + '</span>'); });
+
+    function updatePreview() {
+        var c = $('f-color').value;
+        $('m-preview').innerHTML = '<span class="preview-node"><i style="background:' + c + '33;border:1px solid ' + c + '">' + esc($('f-icon').value || '🧩') + '</i>' + esc($('f-label').value || '모듈 이름') + '</span>';
+    }
+    function renderChips() {
+        $('h-chips').innerHTML = readParams().map(function (p) { return '<span class="chip" data-name="' + esc(p.name) + '">{{' + esc(p.name) + '}}</span>'; }).join('') || '<span class="hint">먼저 ② 입력칸을 추가하세요</span>';
+    }
+    function insertChip(name) {
+        var el = lastTpl || $('h-body'), t = '{{' + name + '}}';
+        var s = el.selectionStart == null ? el.value.length : el.selectionStart, en = el.selectionEnd == null ? s : el.selectionEnd;
+        el.value = el.value.slice(0, s) + t + el.value.slice(en); el.focus(); el.selectionStart = el.selectionEnd = s + t.length;
+    }
+    function renderTestValues() {
+        var old = {};
+        document.querySelectorAll('#t-values [data-t]').forEach(function (el) { old[el.dataset.t] = el.value; });
+        $('t-values').innerHTML = readParams().map(function (p) {
+            var v = old[p.name] != null ? old[p.name] : p.defaultValue;
+            var input = p.type === 'textarea' ? '<textarea class="in" data-t="' + esc(p.name) + '" rows="2">' + esc(v) + '</textarea>'
+                : p.type === 'select' ? '<select class="in" data-t="' + esc(p.name) + '">' + p.options.map(function (o) { return '<option' + (o === v ? ' selected' : '') + '>' + esc(o) + '</option>'; }).join('') + '</select>'
+                : '<input class="in" data-t="' + esc(p.name) + '" value="' + esc(v) + '"' + (p.type === 'password' ? ' type="password" autocomplete="new-password"' : '') + '>';
+            return '<div class="row"><label>' + esc(p.label || p.name) + '</label>' + input + '</div>';
+        }).join('');
+    }
+
+    window.loadSource = function () {
+        var id = $('p-source').value;
+        var inner = editing && editing.pipeline ? editing.pipeline : null;
+        var fill = function (nodes) {
+            sourceNodes = nodes;
+            var out = inner ? inner.outputNodeId : '';
+            $('p-output').innerHTML = '<option value="">— 마지막으로 출력을 낸 노드 (자동) —</option>' + nodes.filter(function (n) { return !n.trigger && !n.part; })
+                .map(function (n) { return '<option value="' + esc(n.id) + '"' + (n.id === out ? ' selected' : '') + '>' + esc(n.icon + ' ' + n.name) + '</option>'; }).join('');
+            document.querySelectorAll('#params [data-k=target]').forEach(function (s) { s.innerHTML = targetOptions(s.dataset.value || s.value); });
+            var trig = nodes.filter(function (n) { return n.trigger; });
+            $('p-info').innerHTML = nodes.length ? '안쪽 노드 ' + nodes.filter(function (n) { return !n.trigger; }).length + '개' +
+                (trig.length ? ' · 트리거 ' + trig.map(function (n) { return esc(n.icon + ' ' + n.name); }).join(', ') + ' 는 빠집니다' : '') +
+                '. 입력칸을 안쪽 노드 설정에 연결하면 노드마다 다른 값으로 쓸 수 있습니다 (예: 폴더 경로, 지시문). 원본을 고친 뒤에는 ↻ 원본에서 다시 가져오기.' : '';
+        };
+        if (id) api('/api/modules/pipeline-source/' + id).then(function (r) { fill(r.nodes); });
+        else if (inner) fill(inner.nodes.map(function (n) { return { id: n.id, name: (n.config && n.config.name) || n.type, icon: '•', trigger: false, part: false, params: [] }; }));
+        else fill([]);
+    };
+    window.refreshSource = function () {
+        if (!editing) return;
+        api('/api/modules/' + editing.id + '/refresh', { method: 'POST' }).then(function (d) { editing = d; loadSource(); msg('m-msg', '↻ 원본에서 다시 가져왔습니다', true); load(); })
+            .catch(function (er) { msg('m-msg', er.message, false); });
+    };
+
+    window.runTest = function () {
+        var values = {};
+        document.querySelectorAll('#t-values [data-t]').forEach(function (el) { values[el.dataset.t] = el.value; });
+        $('t-btn').disabled = true; msg('t-msg', '⏳ 실행 중…', true); $('t-out').className = 'test-out';
+        json('POST', '/api/modules/test', { module: collect(), values: values, input: $('t-input').value || null }).then(function (r) {
+            $('t-btn').disabled = false;
+            if (r.ok) { msg('t-msg', '✅ 성공 (' + (r.ms / 1000).toFixed(1) + '초) — 아래가 다음 노드로 넘어가는 출력', true); $('t-out').textContent = r.output; $('t-out').className = 'test-out ok'; }
+            else { msg('t-msg', '❌ 실패', false); $('t-out').textContent = r.error; $('t-out').className = 'test-out fail'; }
+        }).catch(function (er) { $('t-btn').disabled = false; msg('t-msg', er.message, false); });
+    };
+
+    window.save = function () {
+        var d = collect();
+        var req = editing ? json('PUT', '/api/modules/' + editing.id, d) : json('POST', '/api/modules', d);
+        req.then(function (m) {
+            closeEditor();
+            toast('💾 저장했습니다 — ' + m.icon + ' ' + m.label + ' (팔레트 "' + m.category + '", 열려 있는 편집 화면은 새로고침)');
+            load();
+        }).catch(function (er) { msg('m-msg', er.message, false); });
+    };
+
+    load();
+})();
+</script>
+</body>
+</html>
