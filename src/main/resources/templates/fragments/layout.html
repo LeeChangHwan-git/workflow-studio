@@ -6,22 +6,8 @@
     <title th:text="${title} + ' — worKBench'">worKBench</title>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg"/>
     <script>
-        // 파이프라인 탭의 마지막 위치 기억: 다른 메뉴에서 '파이프라인'을 누르면 마지막으로 보던
-        // 목록/편집 화면으로 이동 (편집 화면 주소는 에디터(React)가 저장)
-        (function () {
-            var KEY = 'nav-last-pipelines-url';
-            var path = location.pathname;
-            try {
-                if (path === '/pipelines') localStorage.setItem(KEY, '/pipelines');
-                document.addEventListener('DOMContentLoaded', function () {
-                    if (path.indexOf('/pipelines') === 0) return; // 파이프라인 탭 안에서는 항상 목록으로
-                    var last = localStorage.getItem(KEY);
-                    var link = document.querySelector('nav a.nav-link[href="/pipelines"]');
-                    if (last && link) link.setAttribute('href', last);
-                });
-            } catch (e) { /* localStorage 사용 불가 시 기본 동작 */ }
-        })();
-
+        // 상단 '파이프라인' 탭은 항상 목록(/pipelines)으로 — 예전의 "마지막으로 보던 편집 화면" 기억은 없앰
+        try { localStorage.removeItem('nav-last-pipelines-url'); } catch (e) { /* 무시 */ }
     </script>
     <!-- 서버 재시작 감지(→ 새로고침) + 열린 앱 탭 관리(상단 "탭 N/M" 배지). 공유 워커로 브라우저당 연결 1개 -->
     <script src="/js/app-session.js?v=3" defer></script>

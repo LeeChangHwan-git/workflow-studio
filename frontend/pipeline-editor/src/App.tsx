@@ -429,14 +429,6 @@ export default function App({ initialPipelineId }: Props) {
     document.title = `${name || '새 파이프라인'} · 파이프라인 — worKBench`
   }, [name])
 
-  // 다른 메뉴에서 '파이프라인' 탭을 누르면 이 화면으로 돌아오도록 기억 (layout.html 스크립트와 같은 키)
-  useEffect(() => {
-    if (!pipelineId) return
-    try {
-      localStorage.setItem('nav-last-pipelines-url', `/pipelines/${pipelineId}`)
-    } catch { /* 저장 불가 시 무시 */ }
-  }, [pipelineId])
-
   const handleSave = useCallback(async (nodeList?: PipelineFlowNode[]): Promise<string> => {
     setSaving(true)
     try {
